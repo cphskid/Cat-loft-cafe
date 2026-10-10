@@ -234,7 +234,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
     </div>
     <p class="muted" style="margin-top:16px">有存檔碼嗎？貼在這裡讀取</p>
     <textarea id="loadCode" placeholder="CAT-..."></textarea>
-    <div class="row"><button id="loadBtn">讀取存檔碼</button><button id="loginBtn" hidden>用帳號登入</button></div>
+    <div class="row"><button id="loadBtn">讀取存檔碼</button><button id="loginBtn" hidden>用帳號登入</button><button id="logoutBtn" hidden>登出／切換帳號</button></div>
     <p class="muted">試玩版以 Stage 1「新手試營運」為主，另外先開放了員工和桌子。</p>
   </div>
 </div>
@@ -2812,7 +2812,7 @@ async function makeAccount(name, pass) {
   } catch (e) { toast('建立帳號失敗，請稍後再試'); }
 }
 async function logOut() {
-  await sbSave();
+  if (started) await sbSave(); // on the title screen G is only the demo game, never upload it
   await CLOUD.sb.auth.signOut();
   try { localStorage.removeItem('catloft-save'); } catch {}
   location.reload();
@@ -2822,9 +2822,23 @@ function openLogin() {
   card.innerHTML = `<h2>用帳號登入</h2><p class="muted">輸入在遊戲手機「存檔碼」裡建立的帳號，就能接著玩雲端上的進度。</p>
     <label class="fld">帳號名稱<input id="inUser" maxlength="10" autocomplete="username"></label>
     <label class="fld">密碼<input id="inPass" type="password" autocomplete="current-password"></label>
-    <div class="row"><button id="loginBack">返回</button><button class="primary" id="loginGo">登入</button></div>`;
+    <div class="row"><button id="loginBack">返回</button><button class="primary" id="loginGo">登入</button></div>
+    <p class="muted" style="margin-top:12px">還沒有帳號？填好想要的帳號名稱（2–10 個字）和密碼（至少 6 個字），按下面就能開一個新帳號，從第 1 天開始玩。</p>
+    <div class="row"><button id="signupGo">建立新帳號並開新遊戲</button></div>`;
   $('chooseOv').hidden = false; $('inUser').focus();
   $('loginBack').onclick = () => { $('chooseOv').hidden = true; };
+  $('signupGo').onclick = async () => {
+    const name = cleanName($('inUser').value, '', 10), pass = $('inPass').value;
+    if (name.length < 2) return toast('帳號名稱至少要 2 個字');
+    if (!pass || pass.length < 6) return toast('密碼至少要 6 個字');
+    $('signupGo').disabled = true;
+    const { data, error } = await CLOUD.sb.auth.signUp({ email: acctEmail(name), password: pass, options: { data: { name } } });
+    $('signupGo').disabled = false;
+    if (error || !data.session) return toast(error && /already|registered|exists/i.test(error.message) ? '這個帳號名稱有人用了，換一個吧' : '建立帳號失敗，請稍後再試');
+    CLOUD.uid = data.user.id; CLOUD.name = name; showAcct();
+    $('contBtn').hidden = true; $('newBtn').textContent = '開始新遊戲'; confirmNew = false;
+    toast(`帳號「${name}」建好了！記得密碼喔`); openSetup();
+  };
   $('loginGo').onclick = async () => {
     const name = $('inUser').value.trim(), pass = $('inPass').value;
     if (!name || !pass) return toast('請輸入帳號名稱和密碼');
@@ -2869,6 +2883,7 @@ function showAcct() {
     line.textContent = '沒有登入帳號，進度會自動存在這台裝置的瀏覽器裡。';
     chip.textContent = '・存在這台裝置';
   }
+  if (CLOUD.sb && !CLOUD.db) { $('loginBtn').hidden = !!CLOUD.name; $('logoutBtn').hidden = !CLOUD.name; }
 }
 function offerContinue(code, src) {
   let g; try { g = decodeSave(code); } catch { return; }
@@ -3002,10 +3017,11 @@ function showPopup(html) {
 }
 let confirmNew = false;
 $('newBtn').onclick = () => {
-  if (!$('contBtn').hidden && !confirmNew) { confirmNew = true; $('newBtn').textContent = '確定重新開始？舊進度會被蓋掉'; return; }
+  if (!$('contBtn').hidden && !confirmNew) { confirmNew = true; $('newBtn').textContent = CLOUD.name ? `確定重新開始？帳號「${CLOUD.name}」的進度會被蓋掉` : '確定重新開始？舊進度會被蓋掉'; return; }
   openSetup();
 };
 $('loginBtn').onclick = () => { if (CLOUD.sb) openLogin(); };
+$('logoutBtn').onclick = () => { if (CLOUD.sb) { $('logoutBtn').disabled = true; logOut(); } };
 $('loadBtn').onclick = () => { try { begin(decodeSave($('loadCode').value)); toast('讀取成功，第 ' + G.day + ' 天'); } catch (e) { toast('讀不到存檔碼：' + e.message); } };
 let localCode = null; try { localCode = localStorage.getItem('catloft-save'); } catch {}
 if (localCode) offerContinue(localCode, '這台裝置');
