@@ -112,7 +112,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 
 <div class="app">
   <header class="hud">
-    <div class="brand"><span class="logo">暖陽貓閣</span><span class="lv" id="lv">Lv.1 巷弄無名小店</span></div>
+    <div class="brand"><span class="logo" id="shopLogo">暖陽貓閣</span><span class="lv" id="lv">Lv.1</span><span class="lv" id="acct"></span></div>
     <div class="stats">
       <div class="stat">第<b id="day">1</b>天</div>
       <div class="stat clock"><b id="clock">07:00</b><span class="ph" id="phase">晨間備料</span></div>
@@ -139,6 +139,10 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   .actbtn:hover{background:#C9682F}
   .pad .controls{justify-content:center}
   .actbtn{justify-self:end}
+  .fld{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-size:14px;text-align:left}
+  .fld input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--wood-l);border-radius:10px;background:#fff;color:var(--ink)}
+  .item.locked{opacity:.6}
+  .unl{margin:8px 0 0;padding-left:20px;text-align:left;line-height:1.8}
   @media (max-width:560px){.pad{grid-template-columns:auto auto;justify-content:space-between}.pad .controls{grid-column:1/-1;grid-row:2}.joy{width:104px;height:104px}.actbtn{width:76px;height:76px}}
   </style>
   <div class="pad">
@@ -167,10 +171,13 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>兩種操控方式：用左下的<b>圓形搖桿</b>（或鍵盤方向鍵、WASD）走到東西旁邊，按右邊的<b>動作</b>鍵（或 E）；也可以直接點畫面上的東西，店長會自己走過去做。點的動作會排進「店長待辦」，點待辦可以取消。</li>
       <li>1F：點<b>烤箱</b>（樓梯旁的櫃子）烤點心、點<b>吧檯</b>幫排隊的客人點餐、點<b>等餐的客人</b>送餐、點<b>髒桌子</b>收拾、洗手間出現驚嘆號時點<b>洗手間</b>打掃（3 秒內擦掉污漬）。</li>
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
-      <li>點<b>樓梯</b>或下面的切換按鈕看另一層。另一層有狀況時，右上角和按鈕會亮起驚嘆號。</li>
+      <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。下面的切換按鈕只換看哪一層。另一層有狀況時，右上角和按鈕會亮起驚嘆號。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
-      <li>手機的「喵喵速達」可以買材料和新桌子（最多 5 張）。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
-      <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算，結算畫面有存檔碼。</li>
+      <li><b>做甜點</b>：店長到烤箱會照食譜一步一步做，點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
+      <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地（手機「我的店」看進度）。</li>
+      <li>貓咪頭上出現「摸摸我」時，走過去摸牠會很開心，會更常去陪客人玩；放著不理牠會鬧脾氣一陣子。手機的「喵音樂」可以換背景音樂。</li>
+      <li>手機的「喵喵速達」可以買材料、新桌子（最多 5 張）和解鎖的傢俱。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
+      <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算。每天開店前和打烊後會自動存檔（有登入就存在帳號裡），下次打開按「繼續」就好；營業到一半關掉，會回到當天早上。</li>
       <li>快捷鍵：方向鍵移動、E 動作、F 切換樓層、空白鍵暫停。</li>
     </ul>
   </details>
@@ -181,9 +188,10 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
     <div class="en">CAT LOFT CAFE</div>
     <div class="big">暖陽貓閣</div>
     <p>巷子裡一間小小的雙層貓咪咖啡廳。<br>今天開始，你是這間店的店長。</p>
+    <p class="muted" id="acctLine">正在確認帳號…</p>
     <div class="row">
-      <button class="primary" id="newBtn">開始新遊戲</button>
-      <button id="contBtn" hidden>繼續上次</button>
+      <button class="primary" id="contBtn" hidden>繼續</button>
+      <button id="newBtn">開始新遊戲</button>
     </div>
     <p class="muted" style="margin-top:16px">有存檔碼嗎？貼在這裡讀取</p>
     <textarea id="loadCode" placeholder="CAT-..."></textarea>
@@ -215,12 +223,43 @@ const DFONT = '"LXGW WenKai TC","Noto Sans TC",serif';
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const yen = n => '¥' + Math.round(n).toLocaleString();
+const yen = n => (n < 0 ? '−¥' : '¥') + Math.abs(Math.round(n)).toLocaleString();
 const starsTxt = n => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 const MENU = {
-  cookie:  { name: '貓掌奶油餅乾', short: '餅乾', base: 30, batch: 6, bake: 3 },
-  pudding: { name: '焦糖貓耳布丁', short: '布丁', base: 40, batch: 4, bake: 4 },
+  cookie:  { name: '貓掌奶油餅乾', short: '餅乾',   base: 30, batch: 6, bake: 3, lv: 1 },
+  pudding: { name: '焦糖貓耳布丁', short: '布丁',   base: 40, batch: 4, bake: 4, lv: 1 },
+  taiyaki: { name: '貓咪鯛魚燒',   short: '鯛魚燒', base: 35, batch: 6, bake: 3, lv: 2 },
+  pancake: { name: '肉球鬆餅',     short: '鬆餅',   base: 50, batch: 4, bake: 4, lv: 3 },
+  mochi:   { name: '雪球大福',     short: '大福',   base: 45, batch: 5, bake: 3, lv: 4 },
+  cake:    { name: '三花貓蛋糕',   short: '蛋糕',   base: 80, batch: 3, bake: 5, lv: 7 },
+};
+const DISHES = Object.keys(MENU);
+// shop level: experience needed to reach Lv.2, Lv.3 ... (customers' stars, perfect bakes, petting cats, each closed day)
+const LV_EXP = [0, 40, 110, 210, 340, 500, 700];
+const MAX_LV = LV_EXP.length;
+// furniture unlocked by shop level, bought in the phone shop
+const FURN = {
+  record:  { name: '復古唱片機',   price: 180, lv: 2, desc: '1F 放著輕音樂，客人排隊和等餐的耐心 +20%' },
+  cushion: { name: '加購貓咪坐墊', price: 100, lv: 3, desc: '2F 多 2 個座位，更多客人可以同時吸貓' },
+  deodor:  { name: '貓砂除臭機',   price: 160, lv: 4, desc: '貓砂盆要髒到 5 次才會有味道' },
+  warmer:  { name: '甜點保溫櫃',   price: 220, lv: 5, desc: '打烊沒賣完的甜點，一半可以留到明天賣' },
+  bed:     { name: '暖暖貓窩',     price: 200, lv: 5, desc: '貓咪睡覺回復體力快 50%' },
+  sign:    { name: '招牌燈箱',     price: 300, lv: 6, desc: '店門口的招牌亮起來，上門的客人多 20%' },
+};
+const CUSHION_EXTRA = [{ x: 520, y: 546 }, { x: 578, y: 594 }];
+const LAND_GOAL = 100000;
+// background music, generated in the browser (no audio files)
+const MUSIC = {
+  off:     { name: '不放音樂' },
+  piano:   { name: '午後鋼琴', desc: '輕柔的分解和弦', bpm: 76, prog: [[60, 64, 67, 71], [57, 60, 64, 67], [62, 65, 69, 72], [55, 59, 62, 65]],
+             play: (i, ch, t, e) => { if (i === 0) note(ch[0] - 12, t, e * 8, 'triangle', .5); note(ch[[0, 1, 2, 3, 2, 1, 2, 3][i] % ch.length] + 12, t, e * 3, 'triangle', .28); } },
+  jazz:    { name: '爵士咖啡', desc: '慢搖擺的貝斯和鋼琴', bpm: 96, swing: true, prog: [[62, 65, 69, 72], [55, 59, 62, 65], [60, 64, 67, 71], [57, 61, 64, 67]],
+             play: (i, ch, t, e) => { if (i % 2 === 0) note(ch[(i / 2) % ch.length] - 24, t, e * 1.8, 'sine', .6); if (i === 2 || i === 5) ch.forEach(n => note(n, t, e * 1.2, 'triangle', .12)); if (Math.random() < .25) note(pick(ch) + 12, t, e * 1.5, 'sine', .2); } },
+  marimba: { name: '貓咪木琴', desc: '蹦蹦跳跳的木琴', bpm: 112, prog: [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]],
+             play: (i, ch, t, e) => { if (i === 0 || i === 4) note(ch[0] - 12, t, e * 2, 'sine', .45); if ([0, 2, 3, 5, 6].includes(i)) note(ch[(i * 2) % ch.length] + 12 + (i === 6 ? 12 : 0), t, e * 1.1, 'sine', .3); } },
+  lofi:    { name: '雨天 lo-fi', desc: '慵懶的和弦，適合下午', bpm: 70, prog: [[57, 60, 64, 67], [53, 57, 60, 64], [60, 64, 67, 71], [55, 59, 62, 65]],
+             play: (i, ch, t, e) => { if (i === 0) ch.forEach(n => note(n, t, e * 8, 'triangle', .1)); if (i === 0 || i === 5) note(ch[0] - 24, t, e * 3, 'sine', .5); if (i % 2 && Math.random() < .35) note(pick(ch) + 12, t, e * 2, 'sine', .18); } },
 };
 const LOFT_BASE = 50;
 const SHOP = [
@@ -231,7 +270,9 @@ const SHOP = [
 const LV2_FANS = 60;
 
 // ---- 1F layout (mirrors the reference illustration: stairs left, shelf + oven, counter centre, loft railing above, window right)
-const STAIRS = { 1: { x: 92, y: 506 }, 2: { x: 78, y: 512 } };
+const STAIRS = { 1: { x: 70, y: 500 }, 2: { x: 96, y: 522 } };
+// walkable stair line on 1F (bottom step -> top step) and the 2F stairwell opening below the screen edge
+const STAIR_BOTTOM = { x: 88, y: 476 }, STAIR_TOP = { x: 300, y: 186 }, WELL_2F = { x: 40, y: 640 };
 const DOOR = { x: -40, y: 578 };
 const QUEUE = [{ x: 520, y: 556 }, { x: 466, y: 570 }, { x: 412, y: 556 }, { x: 358, y: 570 }, { x: 304, y: 556 }];
 const COUNTER = { x: 452, w: 172, top: 362, front: 498 };
@@ -270,9 +311,20 @@ let S = null; // one business day
 let started = false;
 
 function freshG() {
+  const prices = { loft: LOFT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, catfood: 0, litter: 1 },
-           prices: { cookie: 30, pudding: 40, loft: 50 }, bowl: 0, litterDirt: 0, tables: 3, staff: [] };
+           prices, bowl: 0, litterDirt: 0, tables: 3, staff: [],
+           exp: 0, earned: 0, furn: [], keep: {}, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano' };
 }
+const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
+const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
+const hasF = id => G.furn.includes(id);
+const dispTotal = () => DISHES.reduce((a, d) => a + (S.display[d] || 0), 0);
+const patMul = () => hasF('record') ? 1.2 : 1;
+const litterMax = () => hasF('deodor') ? 5 : 3;
+const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv).map(d => '食譜「' + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
+function gainExp(n) { G.exp += n; if (S) S.today.exp += n; }
+function gainEarned(n) { G.earned += n; if (!G.landReady && G.earned >= LAND_GOAL) { G.landReady = true; S.landUp = true; } }
 function makeCats() {
   const defs = [
     { id: 'orange', name: '橘子', body: '#E9A564', dark: '#C47A3E', belly: '#FFF6EC' },
@@ -298,13 +350,15 @@ function startDay() {
     mgr: { floor: 1, x: MGR_COUNTER.x, y: MGR_COUNTER.y, path: [], speed: 270, face: 1, task: null, carry: null, mode: 'idle', actT: 0, si: 0 },
     tasks: [], customers: [], queue: [], cid: 0,
     tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })),
-    cushions: CUSHION_POS.map(p => ({ ...p, cust: null })),
-    display: { cookie: 0, pudding: 0 }, restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
-    spawnT: 2.5, lastHour: 7, effects: [], mini: null, t: 0,
-    today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0 },
+    cushions: CUSHION_POS.concat(hasF('cushion') ? CUSHION_EXTRA : []).map(p => ({ ...p, cust: null })),
+    display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
+    spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
+    startLv: shopLv(), lvShown: shopLv(), landUp: false,
+    today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0 },
     cats: makeCats(),
     staff: G.staff.map(r => makeStaff(r, false)),
   };
+  S.today.kept = dispTotal(); G.keep = {};
   renderTasks(); updateButtons(); renderTutorial();
 }
 
@@ -531,13 +585,44 @@ function drawPudding(x, y, s = 1) {
   poly([[x - 6 * s, y - 8 * s], [x - 4 * s, y - 13 * s], [x - 2 * s, y - 8 * s]], '#9C5B2E', null);
   poly([[x + 2 * s, y - 8 * s], [x + 4 * s, y - 13 * s], [x + 6 * s, y - 8 * s]], '#9C5B2E', null);
 }
-const drawDish = (d, x, y, s) => d === 'cookie' ? drawCookie(x, y, s) : drawPudding(x, y, s);
+function drawTaiyaki(x, y, s = 1) {
+  poly([[x + 8 * s, y], [x + 16 * s, y - 7 * s], [x + 16 * s, y + 7 * s]], '#D49A55', INK, 1);
+  ell(x, y, 11 * s, 7.5 * s, '#DDA762', INK, 1.1);
+  poly([[x - 9 * s, y - 4 * s], [x - 7 * s, y - 12 * s], [x - 3 * s, y - 6 * s]], '#DDA762', INK, 1);
+  poly([[x - 2 * s, y - 7 * s], [x + 1 * s, y - 13 * s], [x + 3 * s, y - 6 * s]], '#DDA762', INK, 1);
+  ell(x - 5 * s, y - 1 * s, 1.3 * s, 1.5 * s, INK);
+}
+function drawPancake(x, y, s = 1) {
+  ell(x, y + 3 * s, 11 * s, 4 * s, '#D9A866', INK, 1); ell(x, y - 1 * s, 11 * s, 4 * s, '#E5BD7C', INK, 1); ell(x, y - 5 * s, 11 * s, 4 * s, '#EFD39C', INK, 1);
+  pawPrint(x, y - 6 * s, .38 * s, '#C65A5A');
+}
+function drawMochi(x, y, s = 1) {
+  poly([[x - 8 * s, y - 4 * s], [x - 6 * s, y - 12 * s], [x - 2 * s, y - 7 * s]], '#FFFDF8', INK, 1);
+  poly([[x + 2 * s, y - 7 * s], [x + 6 * s, y - 12 * s], [x + 8 * s, y - 4 * s]], '#FFFDF8', INK, 1);
+  ell(x, y, 10 * s, 8 * s, '#FFFDF8', INK, 1.1);
+  ell(x - 6 * s, y + 2 * s, 2 * s, 1.3 * s, '#F2B8B8'); ell(x + 6 * s, y + 2 * s, 2 * s, 1.3 * s, '#F2B8B8');
+  ell(x - 3 * s, y - 1 * s, 1 * s, 1.3 * s, INK); ell(x + 3 * s, y - 1 * s, 1 * s, 1.3 * s, INK);
+}
+function drawCake(x, y, s = 1) {
+  poly([[x - 9 * s, y - 8 * s], [x - 7 * s, y - 15 * s], [x - 3 * s, y - 8 * s]], '#FFF3E2', INK, 1);
+  poly([[x + 3 * s, y - 8 * s], [x + 7 * s, y - 15 * s], [x + 9 * s, y - 8 * s]], '#FFF3E2', INK, 1);
+  rrect(x - 11 * s, y - 9 * s, 22 * s, 16 * s, 4 * s, '#FFF3E2', INK, 1.1);
+  ell(x - 5 * s, y - 3 * s, 3.5 * s, 3 * s, '#E9A564'); ell(x + 5 * s, y + 2 * s, 3.5 * s, 2.6 * s, '#3B3633');
+  line(x - 11 * s, y + 3 * s, x + 11 * s, y + 3 * s, '#F0B9B0', 1.4);
+}
+const DISH_DRAW = { cookie: drawCookie, pudding: drawPudding, taiyaki: drawTaiyaki, pancake: drawPancake, mochi: drawMochi, cake: drawCake };
+const drawDish = (d, x, y, s) => DISH_DRAW[d](x, y, s);
 
 function drawMenuBoard() {
   text('菜 單', 560, 210, 16, '#6B4A35', 'center', DFONT, 700);
   pawPrint(482, 208, .65, '#A87650'); pawPrint(638, 208, .65, '#A87650');
-  const rows = [['貓掌奶油餅乾', G.prices.cookie], ['焦糖貓耳布丁', G.prices.pudding], ['2F 吸貓入場', G.prices.loft]];
-  rows.forEach((r, i) => { text(r[0], 478, 238 + i * 20, 13, INK, 'left', DFONT); text(yen(r[1]), 644, 238 + i * 20, 13, INK, 'right', DFONT, 700); });
+  const rows = unlockedDishes().map(d => [MENU[d].name, G.prices[d]]).concat([['2F 吸貓入場', G.prices.loft]]);
+  if (rows.length <= 3) { rows.forEach((r, i) => { text(r[0], 478, 238 + i * 20, 13, INK, 'left', DFONT); text(yen(r[1]), 644, 238 + i * 20, 13, INK, 'right', DFONT, 700); }); return; }
+  // more recipes: two columns with short names
+  const short = unlockedDishes().map(d => [MENU[d].short, G.prices[d]]).concat([['2F 吸貓', G.prices.loft]]), per = Math.ceil(short.length / 2), step = Math.min(18, 56 / Math.max(1, per - 1));
+  short.forEach((r, i) => { const col = Math.floor(i / per), y = 236 + (i % per) * step, x0 = 474 + col * 92;
+    text(r[0], x0, y, 12, INK, 'left', DFONT); text(yen(r[1]), x0 + 84, y, 12, INK, 'right', DFONT, 700); });
+  line(562, 228, 562, 228 + step * (per - 1) + 14, 'rgba(106,75,58,.25)', 1);
 }
 function drawCounter() {
   const { x, w, top, front } = COUNTER;
@@ -547,8 +632,9 @@ function drawCounter() {
   // glass display case
   rect(x + 6, top - 42, 98, 42, 'rgba(232,244,246,.75)', INK, 1.3);
   line(x + 6, top - 21, x + 104, top - 21, INK, .9);
-  for (let i = 0; i < Math.min(6, S.display.cookie); i++) drawCookie(x + 18 + i * 15, top - 29, .62);
-  for (let i = 0; i < Math.min(6, S.display.pudding); i++) drawPudding(x + 18 + i * 15, top - 8, .62);
+  const cap = unlockedDishes().length <= 2 ? 6 : 3, shown = [];
+  for (const d of DISHES) for (let i = 0; i < Math.min(cap, S.display[d] || 0); i++) shown.push(d);
+  shown.slice(0, 12).forEach((d, i) => drawDish(d, x + 18 + (i % 6) * 15, top - (i < 6 ? 29 : 8), .62));
   // register (monitor + base, as in the reference)
   rect(x + 118, top - 14, 44, 14, '#4A4340', INK, 1.2);
   rect(x + 128, top - 46, 30, 22, '#3B3532', INK, 1.2); line(x + 143, top - 24, x + 143, top - 14, INK, 2);
@@ -578,6 +664,29 @@ function drawRestroomState() {
   if (S.customers.some(c => c.state === 'inWC')) { rect(778, 298, 62, FLOOR - 298, 'rgba(90,64,50,.15)', null); text('使用中', 809, 352, 11, '#6B4A35', 'center', FONT, 700); }
   if (d >= 3) alertMark(809, 270);
 }
+function drawFurn1() {
+  if (hasF('record')) { // low cabinet + gramophone between the menu board and the restroom
+    wood(690, 438, 62, 40, '#A9774B', 1.3); line(721, 442, 721, 474, 'rgba(70,45,30,.3)', 1);
+    rect(694, 426, 46, 12, '#7A5238', INK, 1.1); ell(712, 426, 14, 3.6, '#2E2826', INK, 1); ell(712, 426, 3.5, 1.2, '#D9773E');
+    line(732, 426, 738, 408, INK, 1.4); poly([[736, 410], [748, 384], [760, 382], [756, 396], [740, 412]], '#E2B573', INK, 1.1);
+    if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; }
+  }
+  if (hasF('warmer')) { // warm glass box on top of the oven cabinet
+    rrect(376, 330, 50, 36, 5, 'rgba(255,226,180,.85)', INK, 1.3); line(376, 348, 426, 348, INK, .8);
+    for (const d of DISHES.slice(0, 3)) if ((S.display[d] || 0) > 0) { drawDish(d, 388 + DISHES.indexOf(d) * 13, 342, .45); }
+    text('保溫', 401, 360, 9, '#B07E52', 'center', FONT, 700);
+  }
+  if (hasF('sign')) { // light box on the wall by the entrance
+    g.globalAlpha = .35 + Math.sin(S.t * 2) * .1; ell(34, 352, 46, 34, '#FFE7A8'); g.globalAlpha = 1;
+    rrect(8, 332, 52, 40, 7, '#FFF6DA', INK, 1.4); pawPrint(20, 346, .45, '#D9773E');
+    text(G.shopName.slice(0, 4), 38, 362, 10, '#8D5A35', 'center', DFONT, 700);
+  }
+}
+function drawFurn2() {
+  if (hasF('cushion')) for (const c of CUSHION_EXTRA) cushion(c.x, c.y, '#EAD3C6');
+  if (hasF('bed')) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
+  if (hasF('deodor')) { rrect(446, 520, 22, 30, 5, '#E8EEF0', INK, 1.2); ell(457, 530, 4, 4, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); for (let i = 0; i < 3; i++) line(450 + i * 4, 542, 450 + i * 4, 547, 'rgba(90,64,50,.4)', 1); }
+}
 function drawBowl() {
   const { x, y } = BOWL;
   ell(x, y, 22, 7, '#EFE7DB', INK, 1.3); poly([[x - 22, y], [x + 22, y], [x + 16, y + 10], [x - 16, y + 10]], '#E6D2C6', INK, 1.3);
@@ -590,7 +699,7 @@ function drawLitter() {
   rect(x - 30, y - 18, 60, 20, '#D9E0DC', INK, 1.4);
   rect(x - 26, y - 22, 52, 6, '#EFE4CF', INK, 1);
   for (let i = 0; i < Math.min(G.litterDirt, 5); i++) ell(x - 18 + i * 9, y - 22, 3, 2, '#8A6A4C');
-  if (G.litterDirt >= 3) { g.globalAlpha = .5; for (let i = 0; i < 3; i++) text('~', x - 12 + i * 12, y - 34 - Math.sin(S.t * 3 + i) * 3, 14, '#9AA37A'); g.globalAlpha = 1; alertMark(x, y - 58); }
+  if (G.litterDirt >= litterMax()) { g.globalAlpha = .5; for (let i = 0; i < 3; i++) text('~', x - 12 + i * 12, y - 34 - Math.sin(S.t * 3 + i) * 3, 14, '#9AA37A'); g.globalAlpha = 1; alertMark(x, y - 58); }
 }
 function alertMark(x, y, c = '#D9773E') {
   const b = Math.sin(S.t * 6) * 2;
@@ -650,14 +759,17 @@ function drawMgr() {
   if (m.task && m.mode === 'act' && m.task.steps[m.si].dur > .3) progressRing(m, m.y - 150);
   else if (!m.task && started && S.phase !== 'settle') {
     const a = nearbyActions()[0];
-    if (a) { g.font = `700 13px ${FONT}`; const w = g.measureText('動作：' + a.label).width + 20; rrect(m.x - w / 2, m.y - 172, w, 24, 12, '#D9773E', null); text('動作：' + a.label, m.x, m.y - 160, 13, '#FFFFFF', 'center', FONT, 700); }
+    if (m.say) bubble(m.x, m.y - 166, m.say.text);
+    else if (a) { g.font = `700 13px ${FONT}`; const w = g.measureText('動作：' + a.label).width + 20; rrect(m.x - w / 2, m.y - 172, w, 24, 12, '#D9773E', null); text('動作：' + a.label, m.x, m.y - 160, 13, '#FFFFFF', 'center', FONT, 700); }
   }
-  text('店長', m.x, m.y + 12, 11, '#6B4A35', 'center', FONT, 700);
+  if (m.say && (m.task || !started || S.phase === 'settle')) bubble(m.x, m.y - 166, m.say.text);
+  text(G.mgrName, m.x, m.y + 12, 11, '#6B4A35', 'center', FONT, 700);
 }
 function drawStaff(s) {
   if (s.hidden) return;
   drawPerson(s, { shirt: s.shirt, pants: '#4A4542', hair: s.hair, apron: s.apron, long: s.long });
   if (s.task && s.mode === 'act' && s.task.steps[s.si].dur > .3) progressRing(s, s.y - 150);
+  if (s.say) bubble(s.x, s.y - 166, s.say.text);
   text(s.name, s.x, s.y + 12, 10, '#6B4A35', 'center', FONT, 700);
   if (s.stamina < 40) { rrect(s.x - 14, s.y + 20, 28, 4, 2, '#EEE4D8', null); rrect(s.x - 14, s.y + 20, 28 * s.stamina / 100, 4, 2, '#C65445', null); }
 }
@@ -692,7 +804,7 @@ function heart(x, y, s) {
   g.bezierCurveTo(x + s * .8, y - s * 1.6, x + s * 2, y - s * .2, x, y + s); g.fill();
 }
 function drawCat(k) {
-  const { x, y } = k; const f = k.face;
+  const x = k.x, y = k.y - (k.state === 'play' ? Math.abs(Math.sin(S.t * 7)) * 10 : 0), f = k.face;
   if (!k.onBed && !k.jumpFrom) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
   const out = k.fluffy ? '#BFAE96' : INK;
   if (k.state === 'sleep') {
@@ -721,7 +833,11 @@ function drawCat(k) {
     if (k.id === 'tux') ell(hx + 2 * f, hy + 4, 6, 4, k.belly);
     ell(hx + 4 * f, hy - 1, 1.4, 2, k.id === 'tux' ? '#F2E6A0' : INK);
     if (k.state === 'eat') text('喀', hx + 14 * f, hy - 16, 11, '#8B776B');
-    if (k.hunger > 70 && k.state !== 'eat') {
+    if (k.say) bubble(hx, hy - 34, k.say.text);
+    else if (k.wantPet) {
+      rrect(hx - 34, hy - 46, 68, 24, 10, '#FFF0F0', '#E07A7A', 1.4); text('摸摸我 ♡', hx, hy - 34, 12, '#C65445', 'center', FONT, 700);
+      alertMark(hx + 38, hy - 46, '#E07A7A');
+    } else if (k.hunger > 70 && k.state !== 'eat') {
       rrect(hx - 12, hy - 42, 26, 20, 8, '#FFFFFF', INK, 1);
       ell(hx, hy - 32, 7, 4, '#9DB4C0', INK, .9); poly([[hx + 6, hy - 32], [hx + 11, hy - 36], [hx + 11, hy - 28]], '#9DB4C0', INK, .9);
     }
@@ -757,7 +873,9 @@ function routeTo(e, f, x, y) {
   const path = []; let cf = e.floor, cx = e.x, cy = e.y;
   if (f !== cf) {
     leg(path, cf, cx, cy, STAIRS[cf].x, STAIRS[cf].y);
-    path.push({ f, x: STAIRS[f].x, y: STAIRS[f].y }); cf = f; cx = STAIRS[f].x; cy = STAIRS[f].y;
+    if (cf === 1) path.push({ f: 1, ...STAIR_BOTTOM }, { f: 1, ...STAIR_TOP }, { f: 2, ...WELL_2F }, { f: 2, ...STAIRS[2] });
+    else path.push({ f: 2, ...WELL_2F }, { f: 1, ...STAIR_TOP }, { f: 1, ...STAIR_BOTTOM }, { f: 1, ...STAIRS[1] });
+    cf = f; cx = STAIRS[f].x; cy = STAIRS[f].y;
   }
   leg(path, cf, cx, cy, x, y); e.path = path;
 }
@@ -775,6 +893,13 @@ function addTask(label, steps, opts = {}) {
 function updMgr(dt) {
   const m = S.mgr;
   const jx = JOY.x || KEYV.x, jy = JOY.y || KEYV.y, mag = Math.hypot(jx, jy);
+  if (m.climb) { // walking the stairs (from the joystick or the action button)
+    const done = moveAlong(m, dt);
+    if (S.view !== m.floor) { S.view = m.floor; updateButtons(); }
+    if (done) { m.climb = false; if (m.task) beginStep(m); }
+    return;
+  }
+  if (mag > .15 && ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 150 && (jy > .5 || jx < -.6)))) { climbStairs(); return; }
   if (mag > .15) { // joystick / arrow keys drive the manager directly; a queued task resumes on release
     m.manual = true; m.path = [];
     const sp = m.speed * Math.min(1, mag);
@@ -811,10 +936,12 @@ function endTask(w) { const t = w.task; w.task = null; w.mode = 'idle'; t && t.o
 const isMgr = w => w === S.mgr;
 
 // ---- task builders, shared by the manager's queue and the staff AI ----
-function bakeTask(dish) {
+function bakeTask(dish, byMgr) {
   const M = MENU[dish]; S.baking[dish] = true;
-  return { label: '烤' + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: M.bake,
-    pre: w => { if (G.stock.flour <= 0) { if (isMgr(w)) toast('沒有麵粉了，打開手機的「喵喵速達」買'); return false; } },
+  const pre = w => { if (G.stock.flour <= 0) { if (isMgr(w)) toast('沒有麵粉了，打開手機的「喵喵速達」買'); return false; } };
+  if (byMgr) return { label: '做' + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: .2, pre, fn: () => startCook(dish) }],
+    onEnd: () => { if (!S.cook || S.cook.dish !== dish) S.baking[dish] = false; } };
+  return { label: '烤' + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: M.bake, pre,
     fn: () => { const n = Math.min(M.batch, G.stock.flour); G.stock.flour -= n; S.display[dish] += n; floatText(1, OVEN_SPOT.x, 360, `+${n} ${M.short}`, '#6E9B4E'); } }],
     onEnd: () => { S.baking[dish] = false; } };
 }
@@ -830,7 +957,8 @@ function serveTask(c, from) {
       w.carry = null;
       if (c.state !== 'waitFood') { S.display[d]++; return; }
       if (c.wait > 25) { c.stars -= 1; c.notes.push('等餐太久'); }
-      c.state = 'eating'; c.t = rand(10, 14); } },
+      c.state = 'eating'; c.t = rand(10, 14);
+      say(w, '請慢用～'); later(1.3, () => { if (c.state === 'eating' && !c.say) sayFor(c, pick(['謝謝！', '看起來好好吃', '哇，好可愛！', '捨不得吃了'])); }); } },
   ], onEnd: w => { c.assigned = false; if (w.carry) { S.display[w.carry]++; w.carry = null; } } };
 }
 function clearTask(t) {
@@ -850,15 +978,23 @@ function litterTask() {
 function petTask(k, label) {
   k.hold = true;
   return { label: label || ((k.state === 'sleep' ? '叫醒' : '摸摸') + k.name), steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? BEDS[k.id].ground.x + 30 : k.x + (k.x > 480 ? -36 : 36), 150, 880), y: k.onBed ? BEDS[k.id].ground.y : clamp(k.y + 6, 490, 594) }), dur: .8,
-    fn: w => { k.hearts = 1.2; if (k.state === 'sleep') { wakeCat(k); if (isMgr(w)) toast(`${k.name}醒來了`); } } }], onEnd: () => k.hold = false };
+    fn: w => {
+      k.hearts = 1.2;
+      if (k.state === 'sleep') { wakeCat(k); if (isMgr(w)) toast(`${k.name}醒來了`); say(w, '起床囉～'); return; }
+      if (k.wantPet && isMgr(w)) {
+        k.wantPet = 0; k.petCool = 45; k.happy = 60; k.sulk = 0; gainExp(2);
+        say(w, pick(['乖乖～好舒服吧', '最喜歡你了', '好軟喔～'])); say(k, '呼嚕呼嚕～');
+        floatText(k.floor, k.x, k.y - 80, `${k.name}好開心 ♡`, '#E07A7A');
+      } else { say(w, pick(['乖乖～', '摸摸頭', '你好可愛'])); later(.8, () => say(k, '喵～')); }
+    } }], onEnd: () => k.hold = false };
 }
 const queueTask = t => addTask(t.label, t.steps, t);
 
 // ---- manager actions (from clicks) ----
-function actBake(dish) { if (S.baking[dish]) { toast(`已經有人在烤${MENU[dish].short}了`); return; } queueTask(bakeTask(dish)); }
+function actBake(dish) { if (S.baking[dish]) { toast(`已經有人在做${MENU[dish].short}了`); return; } queueTask(bakeTask(dish, true)); }
 function actOrder() {
   if (S.tasks.some(t => t.kind === 'order')) { toast('已經排了點餐'); return; }
-  addTask('點餐', [{ f: 1, ...MGR_COUNTER, dur: .8, fn: () => { takeOrder(false); } }], { kind: 'order' });
+  addTask('點餐', [{ f: 1, ...MGR_COUNTER, dur: .8, fn: w => { takeOrder(false, w); } }], { kind: 'order' });
 }
 function actServe(c) { if (c.assigned) { toast('已經有人在準備這桌了'); return; } queueTask(serveTask(c, MGR_COUNTER)); }
 function actClear(t) { if (!t.busy) queueTask(clearTask(t)); }
@@ -885,9 +1021,9 @@ function findJob(s) {
   const open = S.phase === 'open';
   switch (s.role) {
     case 'cook': {
-      if (S.baking.cookie || S.baking.pudding) return null;
-      const d = ['cookie', 'pudding'].sort((a, b) => S.display[a] - S.display[b])[0];
-      if (S.display[d] >= 4) return null;
+      if (Object.values(S.baking).some(Boolean) || S.cook) return null;
+      const d = unlockedDishes().sort((a, b) => S.display[a] - S.display[b])[0];
+      if (S.display[d] >= (unlockedDishes().length > 2 ? 3 : 4)) return null;
       if (G.stock.flour <= 0) { warnOnce('flour', '阿杰：麵粉用完了，烤不了點心'); return null; }
       return bakeTask(d);
     }
@@ -906,7 +1042,7 @@ function findJob(s) {
       const c = S.queue[0];
       if (!open || !c || c.path.length || s.cool > 0) return null;
       if (S.mgr.task && S.mgr.task.kind === 'order') return null;
-      return { label: '點餐', kind: 'order', steps: [{ f: 1, ...CASHIER_SPOT, dur: .8, fn: w => { if (!takeOrder(true)) w.cool = 2; } }] };
+      return { label: '點餐', kind: 'order', steps: [{ f: 1, ...CASHIER_SPOT, dur: .8, fn: w => { if (!takeOrder(true, w)) w.cool = 2; } }] };
     }
     case 'feeder': {
       if (G.bowl <= 2) { if (G.stock.catfood > 0) return bowlTask(); warnOnce('catfood', '小芸：貓糧用完了'); }
@@ -960,16 +1096,16 @@ function fire(role) {
 // ====================== customers ======================
 function spawnCustomer(special) {
   if (S.queue.length >= QUEUE.length) return;
-  const c = { id: ++S.cid, floor: 1, x: DOOR.x, y: DOOR.y, path: [], speed: 150, face: 1, state: 'queue', pat: 45, maxPat: 45, wait: 0,
+  const c = { id: ++S.cid, floor: 1, x: DOOR.x, y: DOOR.y, path: [], speed: 150, face: 1, state: 'queue', pat: 45 * patMul(), maxPat: 45 * patMul(), wait: 0,
     stars: 5, notes: [], shirt: pick(SHIRTS), pants: pick(['#5E6B7A', '#6B5B4E', '#4D4A48', '#7C8B70']), hair: pick(HAIRS), long: Math.random() < .45,
     order: null, special: !!special, name: null, sawCat: false };
-  if (special) { c.name = '小晴'; c.pat = c.maxPat = 80; c.shirt = '#F2F0EA'; c.pants = '#41556E'; c.hair = '#2E2420'; c.long = true; }
+  if (special) { c.name = '小晴'; c.pat = c.maxPat = 80 * patMul(); c.shirt = '#F2F0EA'; c.pants = '#41556E'; c.hair = '#2E2420'; c.long = true; }
   S.customers.push(c); S.queue.push(c);
 }
 function updQueue() { S.queue.forEach((c, i) => { if (c.slot !== i) { c.slot = i; routeTo(c, 1, QUEUE[i].x, QUEUE[i].y); } }); }
 function zone(price, base) { const r = price / base; return r <= 1.0001 ? 'green' : r <= 1.4001 ? 'yellow' : 'red'; }
 function pickDish(c) {
-  const want = Math.random() < .55 ? 'cookie' : 'pudding';
+  const want = pick(unlockedDishes());
   const z = zone(G.prices[want], MENU[want].base);
   if (z === 'red') return { dish: null, red: true };
   if (z === 'yellow' && Math.random() < .25 && !c.special) return { dish: null };
@@ -987,7 +1123,7 @@ function decideOrder(c) {
   return o;
 }
 // returns true when the front customer was handled
-function takeOrder(quiet) {
+function takeOrder(quiet, w) {
   const c = S.queue[0];
   if (!c || c.path.length) { if (!quiet) toast('吧檯前沒有客人'); return false; }
   if (!c.order) c.order = decideOrder(c);
@@ -1003,8 +1139,9 @@ function takeOrder(quiet) {
   let paid = 0;
   if (o.dish) { paid += G.prices[o.dish]; S.today.dessert += G.prices[o.dish]; }
   if (o.loft) { paid += G.prices.loft; S.today.loft += G.prices.loft; }
-  G.cash += paid; floatText(1, 560, 300, '+' + yen(paid), '#6E9B4E');
+  G.cash += paid; gainEarned(paid); floatText(1, 560, 300, '+' + yen(paid), '#6E9B4E');
   if (o.say) sayFor(c, o.say);
+  else if (w) talk(w, pick(['歡迎光臨～', '您好，要點什麼呢？', '歡迎來到' + G.shopName]), c, o.dish ? `我要一份${MENU[o.dish].short}${o.loft ? '，等等上樓看貓' : ''}` : '我想上樓看貓咪');
   return true;
 }
 function sayFor(c, t) { c.say = { text: t, t: 2.2 }; }
@@ -1019,8 +1156,8 @@ function afterEat(c) {
   if (!c.reordered && Math.random() < .35) {
     const p = pickDish(c);
     if (p.dish) {
-      c.reordered = true; c.order.dish = p.dish; c.state = 'waitFood'; c.pat = c.maxPat = 55; c.wait = 0;
-      G.cash += G.prices[p.dish]; S.today.dessert += G.prices[p.dish]; S.today.reorders++;
+      c.reordered = true; c.order.dish = p.dish; c.state = 'waitFood'; c.pat = c.maxPat = 55 * patMul(); c.wait = 0;
+      G.cash += G.prices[p.dish]; gainEarned(G.prices[p.dish]); S.today.dessert += G.prices[p.dish]; S.today.reorders++;
       floatText(1, c.x, c.y - 110, '再來一份 +' + yen(G.prices[p.dish]), '#6E9B4E');
       return;
     }
@@ -1030,7 +1167,7 @@ function afterEat(c) {
 }
 function afterLoft(c) {
   if (!c.sawCat) { c.stars -= 1; c.notes.push('沒摸到貓'); sayFor(c, '貓咪都不理我…'); }
-  if (G.litterDirt >= 3) { c.stars -= 1; c.notes.push('有貓砂味'); }
+  if (G.litterDirt >= litterMax()) { c.stars -= 1; c.notes.push('有貓砂味'); }
   if (c.cushion) { c.cushion.cust = null; c.cushion = null; }
   maybeWC(c, .4);
 }
@@ -1039,8 +1176,9 @@ function maybeWC(c, p) {
 }
 function leave(c) {
   if (c.state === 'leaving') return;
+  if (c.played && !c.angry) c.stars++; // a cat came over to play: best part of the visit
   const s = clamp(c.stars, 1, 5); c.final = s;
-  S.today.ratings.push(s);
+  S.today.ratings.push(s); gainExp(s);
   const df = [-2, -1, 0, 1, 3][s - 1]; G.fans = Math.max(0, G.fans + df); S.today.fans += df;
   if (c.special) S.today.xiaoqing = { stars: s, notes: c.notes.slice() };
   floatText(c.floor, c.x, c.y - 120, starsTxt(s), s >= 4 ? '#D9A23A' : '#8B776B');
@@ -1050,7 +1188,7 @@ function angryLeave(c, why) {
   const qi = S.queue.indexOf(c); if (qi >= 0) S.queue.splice(qi, 1);
   if (c.state === 'waitFood' && c.order) { const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; }
   if (c.table) { c.table.cust = null; c.table = null; }
-  c.stars = 1; c.notes.push(why); S.today.angry++;
+  c.stars = 1; c.angry = true; c.notes.push(why); S.today.angry++;
   sayFor(c, '💢 ' + why);
   leave(c);
 }
@@ -1059,7 +1197,7 @@ function updCust(c, dt) {
   if (c.say) { c.say.t -= dt; if (c.say.t <= 0) c.say = null; }
   switch (c.state) {
     case 'queue': c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '等太久了'); break;
-    case 'toTable': if (arrived) { c.state = 'waitFood'; c.pat = c.maxPat = c.special ? 70 : 55; c.wait = 0; c.face = 1; } break;
+    case 'toTable': if (arrived) { c.state = 'waitFood'; c.pat = c.maxPat = (c.special ? 70 : 55) * patMul(); c.wait = 0; c.face = 1; } break;
     case 'waitFood': c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '餐點一直沒來'); break;
     case 'eating': c.t -= dt; if (c.t <= 0) afterEat(c); break;
     case 'toLoft': if (arrived) { c.state = 'petting'; c.t = rand(18, 28); c.face = c.x > 770 ? -1 : 1; } break;
@@ -1082,7 +1220,15 @@ function goBed(k) {
   const b = BEDS[k.id];
   routeTo(k, b.f, b.ground.x, b.ground.y); k.path.push({ f: b.f, x: b.x, y: b.y, jump: true }); k.state = 'toBed';
 }
+const PLAY_STATES = ['petting', 'eating', 'waitFood'];
+function endPlay(k) { if (k.target) k.target.catBuddy = null; k.target = null; }
 function wander(k) {
+  // cats like company: walk over to a customer and play with them
+  const guests = S.customers.filter(c => c.floor === k.floor && !c.catBuddy && !c.hidden && PLAY_STATES.includes(c.state));
+  if (guests.length && !k.sulk && Math.random() < (k.happy ? .8 : .5)) {
+    const c = pick(guests); c.catBuddy = k; k.target = c;
+    routeTo(k, k.floor, clamp(c.x + (c.x > 480 ? -50 : 50), 160, 920), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; return;
+  }
   if (Math.random() < .2) {
     const f = k.floor === 1 ? 2 : 1;
     routeTo(k, f, f === 1 ? rand(160, 880) : rand(160, 900), rand(500, 594));
@@ -1096,7 +1242,9 @@ function updCat(k, dt) {
   if (k.hearts > 0) k.hearts -= dt * .8;
   if (k.hold) { k.moving = false; return; }
   const open = S.phase === 'open';
-  if (k.state === 'sleep') { if (open) { k.energy += 2.2 * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
+  for (const key of ['happy', 'sulk', 'petCool']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
+  if (k.wantPet) { k.wantPet -= dt; if (k.wantPet <= 0 || k.state === 'sleep') { k.wantPet = 0; if (k.state !== 'sleep') { k.sulk = 30; say(k, '哼…'); } } }
+  if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
   if (open) { k.energy -= .42 * dt; k.hunger += .4 * dt; }
   const arrived = moveAlong(k, dt);
   switch (k.state) {
@@ -1105,11 +1253,33 @@ function updCat(k, dt) {
     case 'beg': k.t -= dt; if (k.t <= 0) { if (G.bowl > 0) { k.state = 'eat'; k.t = 2.5; } else { k.t = 2; if (k.energy < 20) goBed(k); } } break;
     case 'eat': k.t -= dt; if (k.t <= 0) { G.bowl = Math.max(0, G.bowl - 2); k.hunger = 0; k.state = 'toLitter'; routeTo(k, 2, LITTER.x + rand(-14, 14), LITTER.y + 4); } break;
     case 'toLitter': if (arrived) { k.state = 'litter'; k.t = 1.5; } break;
-    case 'litter': k.t -= dt; if (k.t <= 0) { G.litterDirt++; if (G.litterDirt === 3) toast('2F 的貓砂盆該清了'); k.state = 'idle'; k.t = rand(1, 3); } break;
+    case 'litter': k.t -= dt; if (k.t <= 0) { G.litterDirt++; if (G.litterDirt === litterMax()) toast('2F 的貓砂盆該清了'); k.state = 'idle'; k.t = rand(1, 3); } break;
     case 'walk': if (arrived) { k.state = 'idle'; k.t = rand(2, 5); } break;
+    case 'toPlay': {
+      const c = k.target;
+      if (!c || c.gone || c.floor !== k.floor || !PLAY_STATES.includes(c.state)) { endPlay(k); k.state = 'idle'; k.t = 1; break; }
+      if (arrived) {
+        k.state = 'play'; k.t = rand(4, 6) * (k.happy ? 1.4 : 1); k.face = c.x > k.x ? 1 : -1; c.face = k.x > c.x ? 1 : -1;
+        c.sawCat = true; c.played = true; k.hearts = 1.2;
+        talk(c, pick(['好可愛～', '牠在跟我玩耶！', '哇，來蹭我了', '你也想吃嗎？', '乖乖，給你摸摸']), k, pick(['喵～', '喵嗚！', '呼嚕呼嚕']));
+      }
+      break;
+    }
+    case 'play': {
+      const c = k.target; k.t -= dt; if (k.hearts <= .2) k.hearts = 1.2;
+      if (!c || c.gone || !PLAY_STATES.includes(c.state) || k.t <= 0) {
+        if (c && c.state === 'waitFood') c.pat = Math.min(c.maxPat, c.pat + 12);
+        endPlay(k); k.state = 'idle'; k.t = rand(1, 3);
+      }
+      break;
+    }
     default:
       k.t -= dt;
-      if (open && k.energy < 25) { goBed(k); break; }
+      if (open && !k.wantPet && !k.petCool && !k.sulk && Math.random() < dt * .018) {
+        k.wantPet = 25; toast(`${k.name}想要${G.mgrName}店長摸摸`);
+      }
+      if (k.wantPet) { k.t = Math.max(k.t, .5); break; }
+      if (open && k.energy < 25) { k.wantPet = 0; goBed(k); break; }
       if (open && k.hunger > 70) { k.state = 'toBowl'; routeTo(k, 2, BOWL.x + 40 + rand(0, 20), BOWL.y + rand(0, 14)); break; }
       if (k.t <= 0) wander(k);
   }
@@ -1169,6 +1339,184 @@ function drawMini() {
   }
 }
 
+// ====================== step-by-step baking (the manager's own hands) ======================
+// [kind, label, taps / hold seconds, icon]; 'time' steps are [kind, label, icon]
+const COOK_STEPS = {
+  cookie:  [['tap', '倒入麵粉', 3, '🌾'], ['tap', '加入奶油和砂糖', 2, '🧈'], ['hold', '攪拌成麵團', 1.4, '🥄'], ['tap', '壓出貓掌形狀', 5, '🐾'], ['time', '烤到金黃色時按下', '🔥']],
+  pudding: [['tap', '打蛋', 3, '🥚'], ['tap', '倒入牛奶和砂糖', 2, '🥛'], ['hold', '攪拌均勻', 1.4, '🥄'], ['tap', '倒進貓耳模具', 4, '🐾'], ['time', '蒸到剛好凝固時按下', '🔥'], ['tap', '淋上焦糖', 1, '🍯']],
+  taiyaki: [['tap', '倒入麵糊', 3, '🌾'], ['tap', '放進紅豆餡', 3, '🫘'], ['tap', '蓋上貓咪模具', 1, '🐟'], ['time', '烤到兩面金黃時按下', '🔥']],
+  pancake: [['tap', '打蛋', 2, '🥚'], ['tap', '倒入麵粉和牛奶', 3, '🥛'], ['hold', '攪拌麵糊', 1.4, '🥄'], ['time', '煎到冒泡時翻面', '🔥'], ['tap', '用果醬畫肉球', 4, '🍓']],
+  mochi:   [['tap', '倒入糯米粉', 3, '🌾'], ['time', '蒸到 Q 彈時按下', '🔥'], ['hold', '揉成一團', 1.6, '🤲'], ['tap', '包進奶油餡', 3, '🍦'], ['tap', '捏出貓耳朵', 2, '🐾']],
+  cake:    [['tap', '打蛋', 3, '🥚'], ['hold', '打發蛋白', 1.8, '🥄'], ['tap', '倒入麵粉', 3, '🌾'], ['time', '烤到膨起來時按下', '🔥'], ['tap', '抹上鮮奶油', 3, '🍦'], ['tap', '點上三花斑點', 3, '🐾']],
+};
+const COOK_BOX = { x: 220, y: 96, w: 520, h: 410 }, COOK_X = { x: 712, y: 124 };
+function startCook(dish) {
+  const steps = COOK_STEPS[dish].map(a => a[0] === 'time' ? { kind: 'time', label: a[1], icon: a[2] } : { kind: a[0], label: a[1], need: a[2], icon: a[3] });
+  S.cook = { dish, steps, i: 0, n: 0, hold: false, prog: 0, t: 0, mk: 0, next: 0, flash: null, grade: 'ok', blobs: [], done: 0, result: null };
+  say(S.mgr, '來做' + MENU[dish].short + '吧！');
+}
+function updCook(dt) {
+  const c = S.cook; c.t += dt;
+  c.blobs.forEach(b => b.a = Math.min(1, b.a + dt * 4));
+  if (c.done) { c.done -= dt; if (c.done <= 0) finishCook(); return; }
+  if (c.next) {
+    c.next -= dt;
+    if (c.next <= 0) { c.next = 0; c.i++; c.n = 0; c.prog = 0; c.flash = null; c.hold = false; if (c.i >= c.steps.length) { c.done = 1.6; c.result = cookResult(c); } }
+    return;
+  }
+  const st = c.steps[c.i];
+  if (st.kind === 'hold' && c.hold) { c.prog += dt / st.need; if (c.prog >= 1) { c.prog = 1; c.next = .5; c.flash = '攪好了！'; } }
+  if (st.kind === 'time') { c.tt = (c.tt || 0) + dt; c.mk = (1 - Math.cos(c.tt * Math.PI * 2 / 1.8)) / 2; }
+}
+function cookPress() {
+  const c = S.cook; if (!c || c.done || c.next) return;
+  const st = c.steps[c.i];
+  if (st.kind === 'tap') {
+    c.n++; c.blobs.push({ x: rand(-50, 50), y: rand(-14, 10), icon: st.icon, a: 0 });
+    if (c.n >= st.need) { c.next = .45; c.flash = '好了！'; }
+  } else if (st.kind === 'hold') c.hold = true;
+  else {
+    const m = c.mk; c.tt = 0;
+    c.grade = m >= .62 && m <= .82 ? 'perfect' : m >= .5 && m <= .94 ? 'ok' : 'burnt';
+    c.flash = { perfect: '完美火候！', ok: '還不錯', burnt: m < .5 ? '太生了…' : '烤過頭了…' }[c.grade]; c.next = 1;
+  }
+}
+function cookRelease() { if (S && S.cook) S.cook.hold = false; }
+function cookResult(c) {
+  const used = Math.min(MENU[c.dish].batch, G.stock.flour);
+  const n = used ? Math.max(1, used + (c.grade === 'perfect' ? 1 : 0) - (c.grade === 'burnt' ? 2 : 0)) : 0;
+  return { used, n };
+}
+function finishCook() {
+  const c = S.cook, r = c.result; S.cook = null; S.baking[c.dish] = false;
+  G.stock.flour -= r.used; S.display[c.dish] += r.n;
+  floatText(1, OVEN_SPOT.x, 360, `+${r.n} ${MENU[c.dish].short}`, '#6E9B4E');
+  if (c.grade === 'perfect') { gainExp(3); say(S.mgr, '烤得剛剛好！'); }
+}
+function cancelCook() { const c = S.cook; if (!c || c.done) return; S.cook = null; S.baking[c.dish] = false; toast('不做了，麵粉沒有用掉'); }
+function drawCook() {
+  const c = S.cook, M = MENU[c.dish], B = COOK_BOX, cx = B.x + B.w / 2;
+  g.fillStyle = 'rgba(60,40,30,.45)'; g.fillRect(0, 0, W, H);
+  rrect(B.x, B.y, B.w, B.h, 18, '#FFFDF8', INK, 2);
+  text('做' + M.name, cx, B.y + 30, 21, INK, 'center', DFONT, 700);
+  if (!c.done) { ell(COOK_X.x, COOK_X.y, 15, 15, '#F1E7DA', INK, 1.1); text('✕', COOK_X.x, COOK_X.y + 1, 14, INK, 'center', FONT, 700); }
+  const n = c.steps.length, gap = Math.min(70, 440 / n), sx = cx - (n - 1) * gap / 2;
+  c.steps.forEach((st, i) => {
+    const x = sx + i * gap, done = i < c.i || c.done, cur = i === c.i && !c.done;
+    if (i < n - 1) line(x + 17, B.y + 68, x + gap - 17, B.y + 68, 'rgba(106,75,58,.35)', 2);
+    ell(x, B.y + 68, cur ? 18 : 15, cur ? 18 : 15, done ? '#CFE3C0' : cur ? '#F8D9B5' : '#F1E7DA', cur ? '#D9773E' : INK, cur ? 2 : 1.1);
+    text(st.icon, x, B.y + 69, cur ? 17 : 14);
+  });
+  // stage: a mixing bowl (or the oven for timing steps)
+  const st = c.steps[Math.min(c.i, n - 1)], by = B.y + 225;
+  if (!c.done && st.kind === 'time') {
+    rrect(cx - 90, by - 70, 180, 120, 12, '#8A6A55', INK, 1.6); rrect(cx - 70, by - 52, 140, 78, 8, '#2E2522', INK, 1.2);
+    g.globalAlpha = .25 + c.mk * .7; rrect(cx - 66, by - 48, 132, 70, 6, '#F2A65A', null); g.globalAlpha = 1;
+    for (let i = 0; i < 4; i++) drawDish(c.dish, cx - 42 + i * 28, by - 6 - c.mk * 4, .9);
+  } else {
+    ell(cx, by - 20, 110, 26, '#F4ECE1', INK, 1.6);
+    g.beginPath(); g.moveTo(cx - 110, by - 20); g.quadraticCurveTo(cx - 100, by + 60, cx, by + 62); g.quadraticCurveTo(cx + 100, by + 60, cx + 110, by - 20);
+    g.fillStyle = '#E9D6C2'; g.fill(); g.strokeStyle = INK; g.lineWidth = 1.6; g.stroke();
+    const fill = Math.min(1, (c.i + (st.kind === 'tap' ? c.n / st.need : c.prog)) / n);
+    if (fill > 0) ell(cx, by - 18, 100 * (.5 + fill * .5), 20 * (.5 + fill * .5), ['#F3E3C3', '#EBD3A6', '#E2BE85'][Math.min(2, Math.floor(fill * 3))], null);
+    for (const b of c.blobs.slice(-10)) { g.globalAlpha = b.a; text(b.icon, cx + b.x, by - 22 + b.y - (1 - b.a) * 30, 20); g.globalAlpha = 1; }
+    if (st.kind === 'hold' && !c.done) { const a = c.t * (c.hold ? 9 : 1.5); line(cx + Math.cos(a) * 46, by - 18 + Math.sin(a) * 10, cx + 30 + Math.cos(a) * 20, by - 110, '#B98A5C', 6); }
+    if (c.done) for (let i = 0; i < c.result.n && i < 8; i++) drawDish(c.dish, cx - 70 + (i % 4) * 46, by - 34 + Math.floor(i / 4) * 22, 1.3);
+  }
+  if (c.done) {
+    const r = c.result;
+    text(r.n ? `完成！+${r.n} 份${M.short}` : '麵粉不夠，沒做成', cx, B.y + 330, 26, '#6E9B4E', 'center', DFONT, 700);
+    text(c.grade === 'perfect' ? '火候完美，多做了一份 ✨' : c.grade === 'burnt' ? '火候沒抓好，壞了幾個' : '放進展示櫃了', cx, B.y + 364, 15, c.grade === 'burnt' ? '#C65445' : '#B07E52');
+    return;
+  }
+  text(`步驟 ${c.i + 1}/${n}：${st.label}`, cx, B.y + 114, 19, INK, 'center', DFONT, 700);
+  const bx = cx - 170, bw = 340, ly = B.y + 318;
+  let hint;
+  if (st.kind === 'tap') {
+    hint = `點一下畫面（或按空白鍵）  ${c.n}/${st.need}`;
+    for (let i = 0; i < st.need; i++) ell(cx - (st.need - 1) * 14 + i * 28, ly + 6, 9, 9, i < c.n ? '#D9773E' : '#F1E7DA', INK, 1);
+  } else if (st.kind === 'hold') {
+    hint = '按住不放（或按住空白鍵）攪拌到滿';
+    rrect(bx, ly, bw, 14, 7, '#EEE4D8', null); rrect(bx, ly, bw * c.prog, 14, 7, '#D9A23A', null);
+  } else {
+    hint = '指針走到綠色區時，點一下畫面';
+    rrect(bx, ly, bw, 16, 8, '#F0C9B8', null); rrect(bx + bw * .5, ly, bw * .44, 16, 0, '#F6E2A8', null); rrect(bx + bw * .62, ly, bw * .2, 16, 0, '#A9CF8E', null);
+    const mx = bx + bw * c.mk; poly([[mx, ly - 2], [mx - 8, ly - 14], [mx + 8, ly - 14]], INK, null); line(mx, ly - 2, mx, ly + 18, INK, 2);
+    text('生', bx - 14, ly + 8, 12, '#9B8577'); text('焦', bx + bw + 14, ly + 8, 12, '#9B8577');
+  }
+  text(hint, cx, B.y + B.h - 26, 14, '#8B776B');
+  if (c.flash) { g.globalAlpha = .95; text(c.flash, cx, by - 70, 30, c.grade === 'burnt' && st.kind === 'time' ? '#C65445' : '#D9773E', 'center', DFONT, 700); g.globalAlpha = 1; }
+}
+
+// ====================== conversations ======================
+function say(e, t, d = 2.6) { e.say = { text: t, t: d }; }
+function later(t, fn) { S.later.push({ t, fn }); }
+function talk(a, la, b, lb) { say(a, la); later(1.7, () => { if (!b.gone) say(b, lb); }); }
+const CAFE_TALK = [['這個餅乾上面有貓掌耶', '好可愛，捨不得吃'], ['你看樓梯旁邊那隻貓', '牠睡得好熟喔'], ['下次還要來這家', '我也是！'], ['甜點好好吃喔', '等等上樓去摸貓吧'], ['這家店好溫暖', '陽光照進來好舒服']];
+const LOFT_TALK = [['牠剛剛蹭我的手！', '好羨慕～'], ['這隻是橘子嗎？', '對，圓滾滾好可愛'], ['好療癒喔', '真的，都不想回家了'], ['黑豆一直看我們', '牠的眼睛好漂亮'], ['雪球好蓬喔', '像一顆棉花糖']];
+const STAFF_TALK = [['今天也要加油喔', '嗯，一起努力吧'], ['剛剛有客人說甜點很好吃', '太好了！'], ['樓上的貓咪好黏人', '牠們很喜歡大家呢'], ['這首歌好好聽', '是我挑的喔']];
+const CREW_TALK = [['今天好忙喔', '加油，快下班了'], ['你午餐吃什麼？', '剩下的布丁！'], ['橘子又在偷睡覺', '好羨慕牠'], ['客人好多喔', '這間店越來越有名了']];
+function chatter(dt) {
+  S.chatT -= dt; if (S.chatT > 0) return;
+  S.chatT = rand(6, 11);
+  const free = e => e && !e.say && !e.hidden && !e.resting;
+  const near = (a, b, d = 340) => a !== b && a.floor === b.floor && Math.abs(a.x - b.x) < d;
+  const m = S.mgr, opts = [];
+  const seated = S.customers.filter(c => free(c) && (c.state === 'eating' || c.state === 'petting'));
+  for (const a of seated) for (const b of seated) if (a.id < b.id && near(a, b)) opts.push(() => { const [x, y] = pick(a.state === 'petting' ? LOFT_TALK : CAFE_TALK); talk(a, x, b, y); });
+  for (const st of S.staff) if (free(st) && free(m) && near(st, m, 420)) opts.push(() => {
+    let l = pick(STAFF_TALK);
+    if (st.role === 'cook' && G.stock.flour < 4) l = ['麵粉快用完了喔', '好，我等等叫貨'];
+    else if (S.customers.length >= 6) l = ['今天客人好多喔！', '大家加油！'];
+    talk(st, G.mgrName + '店長，' + l[0], m, l[1]);
+  });
+  for (const a of S.staff) for (const b of S.staff) if (a.role < b.role && free(a) && free(b) && near(a, b)) opts.push(() => { const [x, y] = pick(CREW_TALK); talk(a, x, b, y); });
+  for (const k of S.cats) if (!k.onBed && k.state !== 'sleep' && free(k)) {
+    if (free(m) && near(k, m, 170)) opts.push(() => talk(m, pick(['你今天好乖喔', '要不要摸摸？', '不可以偷吃甜點喔']), k, pick(['喵～', '喵嗚？', '呼嚕呼嚕'])));
+    const c = S.customers.find(c => free(c) && c.state === 'petting' && near(c, k, 170));
+    if (c) opts.push(() => talk(c, pick(['過來給我摸摸～', '你叫什麼名字呀？', '好軟喔']), k, pick(['喵～', '呼嚕呼嚕', '喵！'])));
+  }
+  if (opts.length) pick(opts)(); else S.chatT = 2;
+}
+
+// ====================== music (generated in the browser) ======================
+const AUD = { ctx: null, master: null, lp: null, step: 0, next: 0, timer: null };
+const mf = n => 440 * Math.pow(2, (n - 69) / 12);
+function note(n, t, dur, wave, vol) {
+  const c = AUD.ctx, o = c.createOscillator(), gn = c.createGain();
+  o.type = wave; o.frequency.value = mf(n);
+  gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(vol, t + .012); gn.gain.exponentialRampToValueAtTime(.0008, t + dur);
+  o.connect(gn); gn.connect(AUD.master); o.start(t); o.stop(t + dur + .05);
+}
+function setMusic(id) {
+  if (!MUSIC[id]) id = 'off';
+  G.music = id;
+  if (id === 'off') { if (AUD.ctx) AUD.master.gain.setTargetAtTime(0, AUD.ctx.currentTime, .2); return; }
+  try {
+    if (!AUD.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      AUD.ctx = new AC(); AUD.master = AUD.ctx.createGain(); AUD.master.gain.value = 0;
+      AUD.lp = AUD.ctx.createBiquadFilter(); AUD.lp.type = 'lowpass';
+      AUD.master.connect(AUD.lp); AUD.lp.connect(AUD.ctx.destination);
+    }
+    AUD.ctx.resume && AUD.ctx.resume();
+    AUD.lp.frequency.value = id === 'lofi' ? 1100 : 2600;
+    AUD.master.gain.setTargetAtTime(.09, AUD.ctx.currentTime, .3);
+    AUD.step = 0; AUD.next = AUD.ctx.currentTime + .15;
+    if (!AUD.timer) AUD.timer = setInterval(schedMusic, 90);
+  } catch {}
+}
+function schedMusic() {
+  const T = G && MUSIC[G.music]; if (!T || !T.bpm || !AUD.ctx) return;
+  const e8 = 30 / T.bpm, now = AUD.ctx.currentTime;
+  if (AUD.next < now - .5) AUD.next = now + .05;
+  while (AUD.next < now + .3) {
+    const i = AUD.step % 8, ch = T.prog[Math.floor(AUD.step / 8) % T.prog.length];
+    T.play(i, ch, AUD.next, e8);
+    AUD.next += e8 * (T.swing ? (i % 2 === 0 ? 1.25 : .75) : 1); AUD.step++;
+  }
+}
+
 // ====================== main update & draw ======================
 function hourMult(t) { const h = t / 60; if (h < 10) return 1; if (h < 14) return 1.7; if (h < 15) return .8; if (h < 17) return 1; if (h < 19) return 1.4; if (h < 20.5) return .8; return 0; }
 const PHASES = [[8, '開門營業'], [10, '午間尖峰'], [14, '午後大掃除'], [15, '悠閒午後'], [17, '下班人潮'], [19, '悠閒午後']];
@@ -1186,7 +1534,7 @@ function update(dt) {
     S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
-      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m * rand(.7, 1.3); }
+      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) * rand(.7, 1.3); }
       else S.spawnT = 5;
     }
     if (S.time >= 1260) { closeDay(); return; }
@@ -1198,14 +1546,17 @@ function update(dt) {
   S.customers.forEach(c => updCust(c, dt));
   S.customers = S.customers.filter(c => !c.gone);
   S.effects.forEach(e => e.age += dt); S.effects = S.effects.filter(e => e.age < e.life);
+  for (const e of [S.mgr, ...S.staff, ...S.cats]) if (e.say) { e.say.t -= dt; if (e.say.t <= 0) e.say = null; }
+  const due = S.later.filter(l => (l.t -= dt) <= 0); S.later = S.later.filter(l => l.t > 0); due.forEach(l => l.fn());
+  chatter(dt);
 }
 function draw() {
   g = ctx;
   if (!BG[1]) return;
   const f = S.view;
   ctx.drawImage(BG[f], 0, 0, W, H);
-  if (f === 1) { drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); }
-  else { drawBowl(); drawLitter(); }
+  if (f === 1) { drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); drawFurn1(); }
+  else { drawFurn2(); drawBowl(); drawLitter(); }
   const items = [];
   if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
   if (S.mgr.floor === f) items.push({ y: S.mgr.y, d: drawMgr });
@@ -1218,6 +1569,7 @@ function draw() {
   if (S.phase === 'prep') { rrect(16, 16, 236, 30, 15, 'rgba(255,255,255,.92)', INK, 1.1); text('晨間備料中・時鐘暫停', 134, 31, 14, '#6B4A35', 'center', DFONT, 700); }
   if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', W / 2, H / 2, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
+  if (S.cook) drawCook();
 }
 function floorAlerts(f) {
   const a = [];
@@ -1228,8 +1580,10 @@ function floorAlerts(f) {
     if (S.restroomDirt >= 3) a.push('洗手間髒了');
   } else {
     if (G.bowl === 0 && S.cats.some(k => k.hunger > 70)) a.push('貓咪餓了，貓碗是空的');
-    if (G.litterDirt >= 3) a.push('貓砂盆要清');
+    if (G.litterDirt >= litterMax()) a.push('貓砂盆要清');
   }
+  const k = S.cats.find(k => k.floor === f && k.wantPet);
+  if (k) a.push(`${k.name}想要店長摸摸`);
   return a;
 }
 const CORNER = { x: W - 300, y: 12, w: 284, h: 34 };
@@ -1276,11 +1630,13 @@ cv.addEventListener('pointerdown', e => {
   if (!started || !S || S.phase === 'settle') return;
   const p = toCanvas(e);
   if (S.mini) { S.mini.last = p; cv.setPointerCapture(e.pointerId); return; }
+  if (S.cook) { if (Math.hypot(p.x - COOK_X.x, p.y - COOK_X.y) < 22) cancelCook(); else { cookPress(); cv.setPointerCapture(e.pointerId); } return; }
   if (S.paused) return;
   const h = hitTest(p.x, p.y); if (h) h.act();
 });
+cv.addEventListener('pointerup', cookRelease); cv.addEventListener('pointercancel', cookRelease);
 cv.addEventListener('pointermove', e => {
-  if (!S) return;
+  if (!S || S.cook) return;
   const p = toCanvas(e);
   if (S.mini) { miniRub(p.x, p.y); return; }
   const h = started && hitTest(p.x, p.y);
@@ -1301,6 +1657,10 @@ const JOY = { x: 0, y: 0 }, KEYV = { x: 0, y: 0 }, KEYS = {};
   joy.addEventListener('pointermove', e => { if (e.pointerId === pid) setFrom(e); });
   joy.addEventListener('pointerup', reset); joy.addEventListener('pointercancel', reset); joy.addEventListener('lostpointercapture', reset);
 })();
+function climbStairs() {
+  const m = S.mgr, to = m.floor === 1 ? 2 : 1;
+  m.climb = true; m.manual = false; routeTo(m, to, STAIRS[to].x + 70, STAIRS[to].y + 6);
+}
 function nearbyActions() {
   const m = S.mgr, f = m.floor, list = [];
   const add = (x, y, label, fn) => list.push({ label, fn, d: Math.hypot(m.x - x, (m.y - y) * 1.6) });
@@ -1320,28 +1680,33 @@ function nearbyActions() {
     const p = k.onBed ? BEDS[k.id].ground : k;
     add(p.x, p.y, (k.state === 'sleep' ? '叫醒' : '摸摸') + k.name, () => actPet(k));
   }
-  add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', () => {
-    m.floor = f === 1 ? 2 : 1; m.x = STAIRS[m.floor].x + 60; m.y = STAIRS[m.floor].y; m.path = [];
-    S.view = m.floor; updateButtons(); if (m.task) beginStep(m);
-  });
+  add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
   return list.filter(a => a.d < 100).sort((a, b) => a.d - b.d);
 }
 function doAction() {
-  if (!started || !S || S.phase === 'settle' || S.paused || S.uiPause || S.mini) return;
+  if (!started || !S || S.phase === 'settle' || S.paused || S.uiPause || S.mini || S.cook) return;
   const a = nearbyActions()[0];
   if (a) a.fn(); else toast('附近沒有可以做的事，再走近一點');
 }
 document.getElementById('actBtn').onclick = doAction;
+document.getElementById('actBtn').addEventListener('pointerdown', () => { if (S && S.cook) cookPress(); });
+document.getElementById('actBtn').addEventListener('pointerup', cookRelease);
+document.getElementById('actBtn').addEventListener('pointerleave', cookRelease);
 const KEYMAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ArrowDown: 'dn', s: 'dn', S: 'dn' };
 function syncKeys() { KEYV.x = (KEYS.r ? 1 : 0) - (KEYS.l ? 1 : 0); KEYV.y = (KEYS.dn ? 1 : 0) - (KEYS.u ? 1 : 0); }
 addEventListener('keydown', e => {
-  if (!started || e.target.tagName === 'TEXTAREA') return;
+  if (!started || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  if (S.cook) {
+    if (e.key === 'Escape') cancelCook();
+    else if (e.key === ' ' || e.key === 'e' || e.key === 'E' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) cookPress(); }
+    return;
+  }
   if (KEYMAP[e.key]) { KEYS[KEYMAP[e.key]] = true; syncKeys(); e.preventDefault(); return; }
   if (e.key === 'e' || e.key === 'E' || e.key === 'Enter') { e.preventDefault(); doAction(); }
   if (e.key === 'f' || e.key === 'F') { S.view = S.view === 1 ? 2 : 1; updateButtons(); }
   if (e.key === ' ') { e.preventDefault(); togglePause(); }
 });
-addEventListener('keyup', e => { if (KEYMAP[e.key]) { KEYS[KEYMAP[e.key]] = false; syncKeys(); } });
+addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'e' || e.key === 'E' || e.key === 'Enter') cookRelease(); if (KEYMAP[e.key]) { KEYS[KEYMAP[e.key]] = false; syncKeys(); } });
 addEventListener('blur', () => { for (const k in KEYS) KEYS[k] = false; syncKeys(); });
 
 // ====================== DOM UI ======================
@@ -1366,6 +1731,8 @@ function hudTick(dt) {
   hudAcc += dt; if (hudAcc < .15 || !S) return; hudAcc = 0;
   const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
   $('day').textContent = S.day;
+  $('shopLogo').textContent = G.shopName;
+  const lv = shopLv(); $('lv').textContent = lv < MAX_LV ? `Lv.${lv}・經驗 ${G.exp}/${LV_EXP[lv]}` : `Lv.${lv}・滿級`;
   $('clock').textContent = `${String(hh).padStart(2, '0')}:${String(mm - mm % 5).padStart(2, '0')}`;
   $('phase').textContent = phaseName();
   $('cash').textContent = yen(G.cash);
@@ -1377,7 +1744,7 @@ function hudTick(dt) {
     `<span class="${st.flour < 4 ? 'low' : ''}">麵粉 <b>${st.flour}</b> 份</span>` +
     `<span class="${st.catfood < 1 ? 'low' : ''}">貓糧 <b>${st.catfood}</b> 包</span>` +
     `<span class="${st.litter < 1 ? 'low' : ''}">貓砂 <b>${st.litter}</b> 次</span>` +
-    `<span>展示櫃 餅乾 <b>${S.display.cookie}</b>・布丁 <b>${S.display.pudding}</b></span>` +
+    `<span>展示櫃 ${unlockedDishes().map(d => `${MENU[d].short} <b>${S.display[d]}</b>`).join('・')}</span>` +
     `<span>貓碗 <b>${G.bowl}</b>/6</span><span>桌子 <b>${S.tables.length}</b> 張</span>`;
   const sp = $('staffPanel');
   sp.hidden = !S.staff.length;
@@ -1400,8 +1767,8 @@ function renderTutorial() {
   let html;
   if (S.phase === 'prep') {
     const items = [
-      [G.stock.flour > 0 || S.display.cookie + S.display.pudding > 0, '打開「店長手機」→「喵喵速達」，買麵粉和貓糧'],
-      [S.display.cookie + S.display.pudding > 0, '點樓梯旁櫃子下面的烤箱，烤一批貓掌餅乾'],
+      [G.stock.flour > 0 || dispTotal() > 0, '打開「店長手機」→「喵喵速達」，買麵粉和貓糧'],
+      [dispTotal() > 0, '點樓梯旁櫃子下面的烤箱，照步驟親手做一批貓掌餅乾'],
       [G.bowl > 0, '上 2F，點貓碗把貓糧裝滿'],
       [S.cats.some(k => k.state !== 'sleep'), '點還在睡的貓咪，把牠摸醒（客人想摸醒著的貓）'],
       [false, '都準備好了，按「開店營業」'],
@@ -1421,12 +1788,13 @@ $('phoneBtn').onclick = () => openPhone('home');
 
 function chooseBake() {
   const card = $('chooseCard');
-  card.innerHTML = `<h2>烤箱</h2><p class="muted">現在有麵粉 ${G.stock.flour} 份。一份麵粉做一份甜點。</p>`;
+  card.innerHTML = `<h2>烤箱</h2><p class="muted">現在有麵粉 ${G.stock.flour} 份，一份麵粉做一份甜點。${G.mgrName}店長會照食譜一步一步親手做，火候抓得完美會多做一份。</p>`;
   const row = document.createElement('div'); row.className = 'row'; row.style.flexDirection = 'column';
-  for (const d of ['cookie', 'pudding']) {
-    const M = MENU[d]; const b = document.createElement('button'); b.className = 'opt';
-    b.innerHTML = `<span>烤${M.name}</span><small>一批 ${M.batch} 份，需要 ${M.bake} 秒，售價 ${yen(G.prices[d])}</small>`;
-    b.onclick = () => { closeChoose(); actBake(d); };
+  for (const d of DISHES) {
+    const M = MENU[d], open = M.lv <= shopLv(); const b = document.createElement('button'); b.className = 'opt';
+    b.innerHTML = open ? `<span>做${M.name}</span><small>一批 ${M.batch} 份・${COOK_STEPS[d].length} 個步驟・售價 ${yen(G.prices[d])}</small>`
+                       : `<span>🔒 ${M.name}</span><small>店鋪 Lv.${M.lv} 解鎖</small>`;
+    if (open) b.onclick = () => { closeChoose(); actBake(d); }; else b.disabled = true;
     row.appendChild(b);
   }
   const c = document.createElement('button'); c.textContent = '取消'; c.onclick = closeChoose; row.appendChild(c);
@@ -1444,16 +1812,17 @@ function renderPhone() {
   const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
   let h = `<div class="sbar"><span>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span><span>遊戲暫停中</span><span>${yen(G.cash)}</span></div>`;
   if (phoneApp === 'home') {
-    const apps = [['menu', '掌上菜單', '調整價格', '#8D6E63', '價'], ['shop', '喵喵速達', '材料・桌子', '#D9773E', '送'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
-                  ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['save', '存檔碼', '複製進度', '#7A8DA6', '存']];
+    const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '喵喵速達', '材料・傢俱', '#D9773E', '送'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
+                  ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・新土地', '#6F9A9A', '店'],
+                  ['save', '存檔碼', '複製進度', '#7A8DA6', '存']];
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵喵 IG、喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼' };
+    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
-      const rows = [['cookie', MENU.cookie.name, MENU.cookie.base], ['pudding', MENU.pudding.name, MENU.pudding.base], ['loft', '2F 吸貓入場費', LOFT_BASE]];
+      const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE]]);
       h += `<p class="muted">綠色是合理價，客人一定買。黃色是精品價，大約四分之一的客人會打退堂鼓。紅色太貴，客人不會買，還會給低分。</p>`;
       for (const [id, name, base] of rows) {
         const p = G.prices[id], z = zone(p, base), pos = clamp((p / base - .5) / 1.5, 0, 1) * 100;
@@ -1462,6 +1831,7 @@ function renderPhone() {
           <div class="price-ctl"><button data-p="${id}" data-d="-5">−5</button><b>${yen(p)}</b><button data-p="${id}" data-d="5">+5</button><span class="sub">基準 ${yen(base)}</span></div>
           <div class="zone" style="background:linear-gradient(90deg,var(--good) 0 ${100 / 3}%,var(--warn) ${100 / 3}% 60%,var(--bad) 60% 100%)"><i style="left:${pos}%"></i></div></div>`;
       }
+      for (const d of DISHES.filter(d => MENU[d].lv > shopLv())) h += `<div class="item locked"><div class="top"><span class="nm">🔒 ${MENU[d].name}</span><span class="sub">店鋪 Lv.${MENU[d].lv} 解鎖</span></div></div>`;
     } else if (phoneApp === 'shop') {
       h += `<p class="muted">下單後馬上送到。錢不夠時可以先賒帳，會記在負債裡。</p>`;
       const btn = (key, price) => G.cash >= price ? `<button class="primary" data-buy="${key}">購買</button>` : `<button data-credit="${key}">錢不夠，賒帳購買</button>`;
@@ -1469,6 +1839,11 @@ function renderPhone() {
       const full = G.tables >= MAX_TABLES;
       h += `<div class="item"><div class="top"><span class="nm">原木矮桌＋坐墊</span><b>${yen(TABLE_PRICE)}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${MAX_TABLES} 張</div>
         <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', TABLE_PRICE)}</div></div>`;
+      for (const [id, F] of Object.entries(FURN)) {
+        const own = hasF(id), locked = F.lv > shopLv();
+        h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(F.price)}</b></div><div class="sub">${F.desc}</div>
+          <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, F.price)}</div></div>`;
+      }
     } else if (phoneApp === 'hire') {
       const blocked = G.debt > 0;
       const wages = G.staff.reduce((a, r) => a + ROLES[r].wage, 0);
@@ -1484,6 +1859,22 @@ function renderPhone() {
         <div class="sub">每天打烊時，會自動拿當天營收的 20% 還債。負債還沒還清前不能雇新員工。</div></div>
         <div class="item"><div class="nm">向阿嬤借 ¥100</div><div class="sub">負債上限 ¥500。</div><div class="row" style="margin:0"><button class="primary" id="borrow" ${G.debt + 100 > 500 ? 'disabled' : ''}>借錢</button></div></div>
         <div class="item"><div class="nm">提早還款</div><div class="row" style="margin:0"><button id="repay50" ${G.debt <= 0 || G.cash < 1 ? 'disabled' : ''}>還 ¥50</button><button id="repayAll" ${G.debt <= 0 || G.cash < G.debt ? 'disabled' : ''}>全部還清</button></div></div>`;
+    } else if (phoneApp === 'music') {
+      h += `<p class="muted">店裡的背景音樂由${G.mgrName}店長決定。${hasF('record') ? '唱片機擺好了，客人更有耐心。' : '店鋪 Lv.2 可以買唱片機，讓客人更有耐心。'}</p>`;
+      for (const [id, T] of Object.entries(MUSIC)) {
+        const on = G.music === id;
+        h += `<div class="item"><div class="top"><span class="nm">${on ? '▶ ' : ''}${T.name}</span>${on ? '<b>播放中</b>' : ''}</div>${T.desc ? `<div class="sub">${T.desc}</div>` : ''}
+          <div class="row" style="margin:0"><button ${on ? 'disabled' : 'class="primary"'} data-music="${id}">${id === 'off' ? '關掉音樂' : on ? '正在播放' : '播這首'}</button></div></div>`;
+      }
+    } else if (phoneApp === 'myshop') {
+      const lv = shopLv(), nx = LV_EXP[lv], pv = LV_EXP[lv - 1];
+      h += `<div class="item"><div class="top"><span class="nm">${G.shopName}</span><b>Lv.${lv}</b></div><div class="sub">店長：${G.mgrName}・${lv < MAX_LV ? `經驗 ${G.exp}/${nx}` : '已經滿級'}</div>
+        <div class="prog"><i style="width:${lv < MAX_LV ? clamp((G.exp - pv) / (nx - pv), 0, 1) * 100 : 100}%"></i></div>
+        <div class="sub">客人給的星星、完美火候、摸摸想撒嬌的貓、每天打烊，都會增加經驗。</div></div>`;
+      for (let l = 2; l <= MAX_LV; l++) h += `<div class="item${l > lv ? ' locked' : ''}"><div class="top"><span class="nm">${l > lv ? '🔒' : '✓'} Lv.${l}</span><span class="sub">${l > lv ? `經驗 ${LV_EXP[l - 1]}` : '已解鎖'}</span></div><div class="sub">${unlockNames(l)}</div></div>`;
+      h += `<div class="item"><div class="top"><span class="nm">開拓新土地</span><b>${yen(G.earned)} / ${yen(LAND_GOAL)}</b></div>
+        <div class="prog"><i style="width:${clamp(G.earned / LAND_GOAL, 0, 1) * 100}%"></i></div>
+        <div class="sub">${G.landReady ? '累計營收已達標！新土地「貓咪庭院」會在下一版開放。' : '累計營收（賣甜點和入場費的收入）達到 ¥100,000，就可以開拓新土地。'}</div></div>`;
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
@@ -1500,6 +1891,7 @@ function renderPhone() {
     G.prices[id] = clamp(G.prices[id] + +b.dataset.d, 5, base * 2); renderPhone();
   });
   sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
+  sc.querySelectorAll('[data-music]').forEach(b => b.onclick = () => { setMusic(b.dataset.music); toast(b.dataset.music === 'off' ? '音樂關掉了' : '現在播放：' + MUSIC[b.dataset.music].name); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-credit]').forEach(b => b.onclick = () => buy(b.dataset.credit, true));
   sc.querySelectorAll('[data-hire]').forEach(b => b.onclick = () => { hire(b.dataset.hire); renderPhone(); });
   sc.querySelectorAll('[data-fire]').forEach(b => b.onclick = () => { fire(b.dataset.fire); renderPhone(); });
@@ -1514,6 +1906,10 @@ function buy(id, credit) {
     if (G.tables >= MAX_TABLES) return;
     name = '原木矮桌'; price = TABLE_PRICE;
     G.tables++; const p = TABLE_POS[G.tables - 1]; S.tables.push({ ...p, cust: null, dirty: false, busy: false });
+  } else if (FURN[id]) {
+    if (hasF(id) || FURN[id].lv > shopLv()) return;
+    name = FURN[id].name; price = FURN[id].price; G.furn.push(id);
+    if (id === 'cushion') S.cushions.push(...CUSHION_EXTRA.map(p => ({ ...p, cust: null })));
   } else {
     const it = SHOP.find(s => s.id === id); name = it.name; price = it.price; G.stock[id] += it.amt;
   }
@@ -1545,24 +1941,83 @@ function decodeSave(code) {
   return {
     day: Math.max(1, Math.floor(num(o.day, 1))), cash: num(o.cash, 100), debt: Math.max(0, num(o.debt, 0)), fans: Math.max(0, num(o.fans, 0)),
     stock: { flour: num(o.stock?.flour, 0), catfood: num(o.stock?.catfood, 0), litter: num(o.stock?.litter, 0) },
-    prices: { cookie: num(o.prices?.cookie, base.prices.cookie), pudding: num(o.prices?.pudding, base.prices.pudding), loft: num(o.prices?.loft, base.prices.loft) },
+    prices: Object.fromEntries(Object.keys(base.prices).map(k => [k, clamp(num(o.prices?.[k], base.prices[k]), 5, (MENU[k]?.base || LOFT_BASE) * 2)])),
     bowl: clamp(num(o.bowl, 0), 0, 6), litterDirt: Math.max(0, num(o.litterDirt, 0)),
     tables: clamp(Math.floor(num(o.tables, 3)), 3, MAX_TABLES),
     staff: Array.isArray(o.staff) ? [...new Set(o.staff.filter(r => ROLES[r]))] : [],
+    exp: Math.max(0, Math.floor(num(o.exp, 0))), earned: Math.max(0, num(o.earned, 0)),
+    furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f]))] : [],
+    keep: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(num(o.keep?.[d], 0)))])),
+    landReady: !!o.landReady, shopName: cleanName(o.shopName, base.shopName, 10), mgrName: cleanName(o.mgrName, base.mgrName, 8),
+    music: MUSIC[o.music] ? o.music : base.music,
   };
 }
+function cleanName(v, d, n) { return String(typeof v === 'string' ? v : '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n) || d; }
 function storeLocal() { try { localStorage.setItem('catloft-save', encodeSave(G)); } catch {} }
+// ---- account save: the viewer's claude.ai account keeps one private save (data/users/<id>/save) ----
+const CLOUD = { db: null, uid: null, name: '', ready: false };
+function saveProgress() {
+  storeLocal();
+  if (!CLOUD.db) return;
+  const code = encodeSave(G);
+  CLOUD.db.doc('data/users/' + CLOUD.uid + '/save').set({ code, day: G.day, savedAt: Date.now() })
+    .catch(() => toast('雲端存檔失敗，進度先存在這台裝置'));
+}
+function showAcct() {
+  const line = $('acctLine'), chip = $('acct');
+  if (CLOUD.db) {
+    const who = CLOUD.name || '你的帳號';
+    line.textContent = `已用 ${who} 登入，進度會自動存在帳號裡，換裝置也能接著玩。`;
+    chip.textContent = `・${who}・自動存檔`;
+  } else {
+    line.textContent = '沒有登入帳號，進度會自動存在這台裝置的瀏覽器裡。';
+    chip.textContent = '・存在這台裝置';
+  }
+}
+function offerContinue(code, src) {
+  let g; try { g = decodeSave(code); } catch { return; }
+  const b = $('contBtn');
+  b.hidden = false; b.textContent = `繼續「${g.shopName}」第 ${g.day} 天（${src}）`;
+  b.onclick = () => begin(g);
+  $('newBtn').textContent = '重新開始';
+}
+async function initCloud() {
+  try {
+    const c = window.claude;
+    if (c && c.use) {
+      const [user, db] = await Promise.all([c.use('user'), c.use('db')]);
+      const uid = user && db ? await user.id() : null;
+      if (uid) {
+        CLOUD.db = db; CLOUD.uid = uid; CLOUD.name = (await user.name()) || '';
+        const snap = await db.doc('data/users/' + uid + '/save').get();
+        if (snap.exists && !started) {
+          const d = snap.data(), localDay = localCode ? (() => { try { return decodeSave(localCode).day; } catch { return 0; } })() : 0;
+          if (typeof d.code === 'string' && (d.day || 0) >= localDay) offerContinue(d.code, '帳號存檔');
+        }
+      }
+    }
+  } catch {}
+  CLOUD.ready = true; showAcct();
+  if (started) saveProgress();
+}
 
 // ---- day flow ----
 function closeDay() {
-  S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; closePhone(); closeChoose();
+  S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; S.cook = null; S.baking = {}; closePhone(); closeChoose();
   let refunds = 0;
   for (const c of S.customers) {
     if (c.state === 'waitFood' && c.order?.dish) { const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; refunds++; S.today.ratings.push(2); }
   }
   const T = S.today;
   const revenue = T.dessert + T.loft;
-  const waste = S.display.cookie + S.display.pudding;
+  let kept = 0;
+  if (hasF('warmer')) for (const d of DISHES) { const k = Math.floor((S.display[d] || 0) / 2); if (k) { G.keep[d] = k; kept += k; } }
+  const waste = dispTotal() - kept;
+  gainExp(10);
+  const lvNow = shopLv(), nx = LV_EXP[lvNow], pv = LV_EXP[lvNow - 1];
+  const lvPct = lvNow < MAX_LV ? clamp((G.exp - pv) / (nx - pv), 0, 1) * 100 : 100;
+  const gained = []; for (let l = S.startLv + 1; l <= lvNow; l++) gained.push(l);
+  const landPct = clamp(G.earned / LAND_GOAL, 0, 1) * 100;
   const wages = G.staff.reduce((a, r) => a + ROLES[r].wage, 0);
   let owedWages = 0;
   if (wages) { const pay = Math.min(wages, Math.max(0, G.cash)); G.cash -= pay; owedWages = wages - pay; G.debt += owedWages; }
@@ -1571,7 +2026,7 @@ function closeDay() {
   const avg = T.ratings.length ? T.ratings.reduce((a, b) => a + b, 0) / T.ratings.length : 0;
   const day = S.day;
   G.day = day + 1;
-  storeLocal();
+  saveProgress();
   const code = encodeSave(G);
   const xq = T.xiaoqing;
   let review = '';
@@ -1580,9 +2035,8 @@ function closeDay() {
       ? `<div class="review"><span class="st">${starsTxt(xq.stars)}</span><br>「貓掌餅乾好可愛！樓上的貓咪也好黏人，我一定會再來！」<br><span class="muted">— 高中生 小晴，留下了這間店的第一則評價</span></div>`
       : `<div class="review"><span class="st">${starsTxt(xq.stars)}</span><br>「店很可愛，可是${xq.notes[0] || '有點可惜'}…」<br><span class="muted">— 高中生 小晴</span></div>`;
   }
-  const lvp = clamp(G.fans / LV2_FANS, 0, 1) * 100;
   $('settleCard').innerHTML = `
-    <h2>第 ${day} 天・打烊結算</h2>
+    <h2>${G.shopName}・第 ${day} 天打烊</h2>
     <p class="muted">今天共接待 ${T.ratings.length} 位客人${T.reorders ? `，${T.reorders} 次加點` : ''}${T.angry ? `，${T.angry} 位生氣離開` : ''}${refunds ? `，${refunds} 位沒等到餐點已退款` : ''}。</p>
     <table class="settle-tab">
       <tr><td>甜點營收</td><td>${yen(T.dessert)}</td></tr>
@@ -1591,16 +2045,21 @@ function closeDay() {
       ${wages ? `<tr><td>員工薪資${owedWages ? `（${yen(owedWages)} 先欠著，記入負債）` : ''}</td><td>−${yen(wages)}</td></tr>` : ''}
       <tr class="tot"><td>今日淨利</td><td>${yen(revenue - T.spent - wages)}</td></tr>
       ${repay ? `<tr><td>自動還款（營收 20%）</td><td>−${yen(repay)}</td></tr>` : ''}
-      <tr><td>沒賣完的甜點報廢</td><td>${waste} 份</td></tr>
+      <tr><td>沒賣完的甜點報廢</td><td>${waste} 份${kept ? `（${kept} 份放進保溫櫃留到明天）` : ''}</td></tr>
       <tr><td>今日平均評價</td><td>${avg ? avg.toFixed(1) + ' ★' : '—'}</td></tr>
       <tr><td>粉絲</td><td>${T.fans >= 0 ? '+' : ''}${T.fans}（共 ${G.fans}）</td></tr>
+      <tr><td>經驗（含打烊 +10）</td><td>+${T.exp}</td></tr>
       <tr><td>現金</td><td>${yen(G.cash)}</td></tr>
       ${G.debt ? `<tr><td>剩餘負債</td><td>${yen(G.debt)}</td></tr>` : ''}
     </table>
     ${review}
-    <p style="margin-top:14px">Lv.1 巷弄無名小店 → Lv.2 街坊秘密基地：粉絲 ${G.fans}/${LV2_FANS}</p>
-    <div class="prog"><i style="width:${lvp}%"></i></div>
-    <p class="muted">${G.fans >= LV2_FANS ? '已達到升級條件！Stage 2 在試玩版還沒開放，可以繼續經營。' : '試玩版只有 Stage 1，粉絲夠了也還不會升級。'}</p>
+    <p style="margin-top:14px">店鋪 Lv.${lvNow}${lvNow < MAX_LV ? `・經驗 ${G.exp}/${nx}` : '・已滿級'}${gained.length ? `　🎉 今天升了 ${gained.length} 級！` : ''}</p>
+    <div class="prog"><i style="width:${lvPct}%"></i></div>
+    ${gained.length ? `<ul class="unl">${gained.map(l => `<li>Lv.${l} 解鎖：${unlockNames(l)}</li>`).join('')}</ul>` : ''}
+    ${lvNow < MAX_LV ? `<p class="muted">下一級解鎖：${unlockNames(lvNow + 1)}</p>` : ''}
+    <p style="margin-top:10px">開拓新土地：累計營收 ${yen(G.earned)} / ${yen(LAND_GOAL)}</p>
+    <div class="prog"><i style="width:${landPct}%"></i></div>
+    <p class="muted">名氣：粉絲 ${G.fans}/${LV2_FANS}（Stage 2「街坊秘密基地」試玩版還沒開放）</p>
     <p class="muted" style="margin-top:12px">存檔碼（第 ${G.day} 天開店前）</p>
     <textarea id="settleCode" readonly>${code}</textarea>
     <div class="row"><button id="settleCopy">複製存檔碼</button><button class="primary" id="nextDay">迎接第 ${G.day} 天</button></div>`;
@@ -1609,11 +2068,33 @@ function closeDay() {
   $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
   updateButtons();
 }
-function begin(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; storeLocal(); }
-$('newBtn').onclick = () => begin(freshG());
+function begin(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; setMusic(G.music); saveProgress(); }
+function openSetup() {
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>幫你的店取名字</h2>
+    <label class="fld">店名（最多 10 個字）<input id="inShop" maxlength="10" value="暖陽貓閣"></label>
+    <label class="fld">店長名字（最多 8 個字）<input id="inMgr" maxlength="8" value="小暖"></label>
+    <div class="row"><button id="setupBack">返回</button><button class="primary" id="setupGo">開店！</button></div>`;
+  $('chooseOv').hidden = false; $('inShop').focus(); $('inShop').select();
+  $('setupBack').onclick = () => { $('chooseOv').hidden = true; };
+  $('setupGo').onclick = () => {
+    const ng = freshG(); ng.shopName = cleanName($('inShop').value, ng.shopName, 10); ng.mgrName = cleanName($('inMgr').value, ng.mgrName, 8);
+    $('chooseOv').hidden = true; begin(ng); toast(`歡迎來到${G.shopName}，${G.mgrName}店長！`);
+  };
+}
+function showPopup(html) {
+  const card = $('chooseCard'); card.innerHTML = html + '<div class="row"><button class="primary" id="popOk">好！</button></div>';
+  $('chooseOv').hidden = false; S.uiPause = true; $('popOk').onclick = closeChoose;
+}
+let confirmNew = false;
+$('newBtn').onclick = () => {
+  if (!$('contBtn').hidden && !confirmNew) { confirmNew = true; $('newBtn').textContent = '確定重新開始？舊進度會被蓋掉'; return; }
+  openSetup();
+};
 $('loadBtn').onclick = () => { try { begin(decodeSave($('loadCode').value)); toast('讀取成功，第 ' + G.day + ' 天'); } catch (e) { toast('讀不到存檔碼：' + e.message); } };
 let localCode = null; try { localCode = localStorage.getItem('catloft-save'); } catch {}
-if (localCode) { $('contBtn').hidden = false; $('contBtn').onclick = () => { try { begin(decodeSave(localCode)); } catch { begin(freshG()); } }; }
+if (localCode) offerContinue(localCode, '這台裝置');
+initCloud();
 
 // ====================== boot ======================
 G = freshG(); startDay(); prerender();
@@ -1622,15 +2103,27 @@ function frame(now) {
   const rdt = Math.min(.05, (now - last) / 1000); last = now;
   if (S) {
     if (S.mini) { S.t += rdt; updMini(rdt); }
+    else if (S.cook) { S.t += rdt; updCook(rdt); }
     else if (started && !S.paused && !S.uiPause && S.phase !== 'settle') update(rdt * S.speed);
     else if (!started) S.t += rdt;
     draw(); hudTick(rdt);
+    if (started && S.phase !== 'settle' && !S.cook && !S.mini && !S.uiPause && $('phoneOv').hidden) {
+      if (shopLv() > S.lvShown) {
+        const l = ++S.lvShown;
+        showPopup(`<h2>🎉 ${G.shopName} 升到 Lv.${l}！</h2><ul class="unl">` +
+          DISHES.filter(d => MENU[d].lv === l).map(d => `<li>新食譜：<b>${MENU[d].name}</b>（已經加進菜單，到烤箱就能做）</li>`).join('') +
+          Object.keys(FURN).filter(f => FURN[f].lv === l).map(f => `<li>新傢俱：<b>${FURN[f].name}</b>，${FURN[f].desc}（手機「喵喵速達」購買）</li>`).join('') + '</ul>');
+      } else if (S.landUp) {
+        S.landUp = false;
+        showPopup(`<h2>🌱 累計營收突破 ${yen(LAND_GOAL)}！</h2><p>${G.shopName}已經可以開拓新土地了。新土地「貓咪庭院」會在下一版開放，進度已經記在存檔裡。</p>`);
+      }
+    }
   }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 if (document.fonts) document.fonts.ready.then(() => prerender());
-window.__game = { get G() { return G; }, get S() { return S; }, closeDay, actBake, actBowl, actPet, actOrder, actServe, actClear, buy, hire, takeOrder };
+window.__game = { get G() { return G; }, get S() { return S; }, closeDay, startCook, cookPress, cookRelease, setMusic, shopLv, actBake, actBowl, actPet, actOrder, actServe, actClear, buy, hire, takeOrder };
 </script>
 </body>
 </html>
