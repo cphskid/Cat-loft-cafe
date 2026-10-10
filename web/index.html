@@ -142,6 +142,8 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   .fld{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-size:14px;text-align:left}
   .fld input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--wood-l);border-radius:10px;background:#fff;color:var(--ink)}
   .item.locked{opacity:.6}
+  #chooseCard{max-height:88vh;overflow:auto}
+  .kh{margin:10px 0 2px;font-size:14px;color:var(--wood-d);text-align:left;font-weight:700}
   .unl{margin:8px 0 0;padding-left:20px;text-align:left;line-height:1.8}
   @media (max-width:560px){.pad{grid-template-columns:auto auto;justify-content:space-between}.pad .controls{grid-column:1/-1;grid-row:2}.joy{width:104px;height:104px}.actbtn{width:76px;height:76px}}
   </style>
@@ -173,7 +175,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
       <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。下面的切換按鈕只換看哪一層。另一層有狀況時，右上角和按鈕會亮起驚嘆號。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
-      <li><b>做甜點</b>：店長到烤箱會照食譜一步一步做，點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
+      <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地（手機「我的店」看進度）。</li>
       <li>貓咪頭上出現「摸摸我」時，走過去摸牠會很開心，會更常去陪客人玩；放著不理牠會鬧脾氣一陣子。手機的「喵音樂」可以換背景音樂。</li>
       <li>手機的「喵喵速達」可以買材料、新桌子（最多 5 張）和解鎖的傢俱。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
@@ -233,7 +235,14 @@ const MENU = {
   pancake: { name: '肉球鬆餅',     short: '鬆餅',   base: 50, batch: 4, bake: 4, lv: 3 },
   mochi:   { name: '雪球大福',     short: '大福',   base: 45, batch: 5, bake: 3, lv: 4 },
   cake:    { name: '三花貓蛋糕',   short: '蛋糕',   base: 80, batch: 3, bake: 5, lv: 7 },
+  // main meals: cooked from 正餐食材 instead of flour
+  omurice: { name: '貓臉蛋包飯',   short: '蛋包飯', base: 90,  batch: 3, bake: 5, lv: 1, meal: true },
+  curry:   { name: '肉球咖哩飯',   short: '咖哩飯', base: 100, batch: 3, bake: 5, lv: 2, meal: true },
+  pasta:   { name: '拿坡里貓貓麵', short: '義大利麵', base: 110, batch: 3, bake: 5, lv: 3, meal: true },
+  hamburg: { name: '貓掌漢堡排',   short: '漢堡排', base: 130, batch: 3, bake: 6, lv: 5, meal: true },
 };
+const RES = d => MENU[d].meal ? 'food' : 'flour';
+const RES_NAME = { flour: '麵粉', food: '正餐食材' };
 const DISHES = Object.keys(MENU);
 // shop level: experience needed to reach Lv.2, Lv.3 ... (customers' stars, perfect bakes, petting cats, each closed day)
 const LV_EXP = [0, 40, 110, 210, 340, 500, 700];
@@ -264,6 +273,7 @@ const MUSIC = {
 const LOFT_BASE = 50;
 const SHOP = [
   { id: 'flour',   name: '麵粉', desc: '一袋 10 份，烤甜點用',   price: 40, amt: 10, unit: '份' },
+  { id: 'food',    name: '正餐食材', desc: '一箱 6 份（米、蛋、肉、蔬菜），做正餐用', price: 90, amt: 6, unit: '份' },
   { id: 'catfood', name: '貓糧', desc: '一包可以裝滿貓碗一次',   price: 20, amt: 1,  unit: '包' },
   { id: 'litter',  name: '貓砂', desc: '一包可以換 3 次貓砂',     price: 15, amt: 3,  unit: '次' },
 ];
@@ -312,7 +322,7 @@ let started = false;
 
 function freshG() {
   const prices = { loft: LOFT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
-  return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, catfood: 0, litter: 1 },
+  return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1 },
            prices, bowl: 0, litterDirt: 0, tables: 3, staff: [],
            exp: 0, earned: 0, furn: [], keep: {}, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano' };
 }
@@ -322,7 +332,7 @@ const hasF = id => G.furn.includes(id);
 const dispTotal = () => DISHES.reduce((a, d) => a + (S.display[d] || 0), 0);
 const patMul = () => hasF('record') ? 1.2 : 1;
 const litterMax = () => hasF('deodor') ? 5 : 3;
-const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv).map(d => '食譜「' + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
+const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv).map(d => (MENU[d].meal ? '正餐「' : '甜點「') + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
 function gainExp(n) { G.exp += n; if (S) S.today.exp += n; }
 function gainEarned(n) { G.earned += n; if (!G.landReady && G.earned >= LAND_GOAL) { G.landReady = true; S.landUp = true; } }
 function makeCats() {
@@ -610,7 +620,26 @@ function drawCake(x, y, s = 1) {
   ell(x - 5 * s, y - 3 * s, 3.5 * s, 3 * s, '#E9A564'); ell(x + 5 * s, y + 2 * s, 3.5 * s, 2.6 * s, '#3B3633');
   line(x - 11 * s, y + 3 * s, x + 11 * s, y + 3 * s, '#F0B9B0', 1.4);
 }
-const DISH_DRAW = { cookie: drawCookie, pudding: drawPudding, taiyaki: drawTaiyaki, pancake: drawPancake, mochi: drawMochi, cake: drawCake };
+function plate(x, y, s) { ell(x, y + 4 * s, 14 * s, 4.5 * s, '#FFFFFF', INK, 1); }
+function drawOmurice(x, y, s = 1) {
+  plate(x, y, s); ell(x, y, 11 * s, 6.5 * s, '#F4D06A', INK, 1.1);
+  ell(x - 3.5 * s, y - 1.5 * s, 1 * s, 1.2 * s, '#C6453A'); ell(x + 3.5 * s, y - 1.5 * s, 1 * s, 1.2 * s, '#C6453A');
+  poly([[x - 7 * s, y - 4 * s], [x - 6 * s, y - 8 * s], [x - 3 * s, y - 5 * s]], '#C6453A', null); poly([[x + 3 * s, y - 5 * s], [x + 6 * s, y - 8 * s], [x + 7 * s, y - 4 * s]], '#C6453A', null);
+}
+function drawCurry(x, y, s = 1) {
+  plate(x, y, s); ell(x, y, 12 * s, 5.5 * s, '#B9782F', INK, 1.1); ell(x - 4 * s, y - 1 * s, 6 * s, 4 * s, '#FFFDF8', null);
+  ell(x - 7 * s, y - 4 * s, 1.8 * s, 2 * s, '#FFFDF8'); ell(x - 1 * s, y - 4 * s, 1.8 * s, 2 * s, '#FFFDF8'); ell(x + 5 * s, y + 1 * s, 1.6 * s, 1.6 * s, '#E58A4A');
+}
+function drawPasta(x, y, s = 1) {
+  plate(x, y, s); ell(x, y, 11 * s, 6 * s, '#E3914E', INK, 1.1);
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(x - 4 * s + i * 4 * s, y - 1 * s, 3 * s, 0, Math.PI); g.strokeStyle = '#C46B2E'; g.lineWidth = 1; g.stroke(); }
+  ell(x + 4 * s, y - 3 * s, 2 * s, 1.5 * s, '#7FA06C'); ell(x - 5 * s, y - 3 * s, 2 * s, 1.5 * s, '#C6453A');
+}
+function drawHamburg(x, y, s = 1) {
+  plate(x, y, s); ell(x, y, 11 * s, 6.5 * s, '#7A4A2E', INK, 1.1); pawPrint(x, y - 1 * s, .42 * s, '#5A2E1A'); ell(x + 9 * s, y + 2 * s, 2.5 * s, 2 * s, '#7FA06C');
+}
+const DISH_DRAW = { cookie: drawCookie, pudding: drawPudding, taiyaki: drawTaiyaki, pancake: drawPancake, mochi: drawMochi, cake: drawCake,
+                    omurice: drawOmurice, curry: drawCurry, pasta: drawPasta, hamburg: drawHamburg };
 const drawDish = (d, x, y, s) => DISH_DRAW[d](x, y, s);
 
 function drawMenuBoard() {
@@ -619,9 +648,10 @@ function drawMenuBoard() {
   const rows = unlockedDishes().map(d => [MENU[d].name, G.prices[d]]).concat([['2F 吸貓入場', G.prices.loft]]);
   if (rows.length <= 3) { rows.forEach((r, i) => { text(r[0], 478, 238 + i * 20, 13, INK, 'left', DFONT); text(yen(r[1]), 644, 238 + i * 20, 13, INK, 'right', DFONT, 700); }); return; }
   // more recipes: two columns with short names
-  const short = unlockedDishes().map(d => [MENU[d].short, G.prices[d]]).concat([['2F 吸貓', G.prices.loft]]), per = Math.ceil(short.length / 2), step = Math.min(18, 56 / Math.max(1, per - 1));
-  short.forEach((r, i) => { const col = Math.floor(i / per), y = 236 + (i % per) * step, x0 = 474 + col * 92;
-    text(r[0], x0, y, 12, INK, 'left', DFONT); text(yen(r[1]), x0 + 84, y, 12, INK, 'right', DFONT, 700); });
+  const short = unlockedDishes().map(d => [MENU[d].short, G.prices[d]]).concat([['2F 吸貓', G.prices.loft]]), per = Math.ceil(short.length / 2);
+  const step = Math.min(17, 52 / Math.max(1, per - 1)), fs = per <= 3 ? 12 : per <= 4 ? 11 : per <= 5 ? 10 : 9;
+  short.forEach((r, i) => { const col = Math.floor(i / per), y = 233 + (i % per) * step, x0 = 474 + col * 92;
+    text(r[0], x0, y, fs, INK, 'left', DFONT); text(yen(r[1]), x0 + 84, y, fs, INK, 'right', DFONT, 700); });
   line(562, 228, 562, 228 + step * (per - 1) + 14, 'rgba(106,75,58,.25)', 1);
 }
 function drawCounter() {
@@ -938,11 +968,12 @@ const isMgr = w => w === S.mgr;
 // ---- task builders, shared by the manager's queue and the staff AI ----
 function bakeTask(dish, byMgr) {
   const M = MENU[dish]; S.baking[dish] = true;
-  const pre = w => { if (G.stock.flour <= 0) { if (isMgr(w)) toast('沒有麵粉了，打開手機的「喵喵速達」買'); return false; } };
+  const res = RES(dish);
+  const pre = w => { if (G.stock[res] <= 0) { if (isMgr(w)) toast(`沒有${RES_NAME[res]}了，打開手機的「喵喵速達」買`); return false; } };
   if (byMgr) return { label: '做' + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: .2, pre, fn: () => startCook(dish) }],
     onEnd: () => { if (!S.cook || S.cook.dish !== dish) S.baking[dish] = false; } };
-  return { label: '烤' + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: M.bake, pre,
-    fn: () => { const n = Math.min(M.batch, G.stock.flour); G.stock.flour -= n; S.display[dish] += n; floatText(1, OVEN_SPOT.x, 360, `+${n} ${M.short}`, '#6E9B4E'); } }],
+  return { label: (M.meal ? '煮' : '烤') + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: M.bake, pre,
+    fn: () => { const n = Math.min(M.batch, G.stock[res]); G.stock[res] -= n; S.display[dish] += n; floatText(1, OVEN_SPOT.x, 360, `+${n} ${M.short}`, '#6E9B4E'); } }],
     onEnd: () => { S.baking[dish] = false; } };
 }
 function serveTask(c, from) {
@@ -957,7 +988,7 @@ function serveTask(c, from) {
       w.carry = null;
       if (c.state !== 'waitFood') { S.display[d]++; return; }
       if (c.wait > 25) { c.stars -= 1; c.notes.push('等餐太久'); }
-      c.state = 'eating'; c.t = rand(10, 14);
+      c.state = 'eating'; c.t = MENU[d].meal ? rand(16, 22) : rand(10, 14);
       say(w, '請慢用～'); later(1.3, () => { if (c.state === 'eating' && !c.say) sayFor(c, pick(['謝謝！', '看起來好好吃', '哇，好可愛！', '捨不得吃了'])); }); } },
   ], onEnd: w => { c.assigned = false; if (w.carry) { S.display[w.carry]++; w.carry = null; } } };
 }
@@ -1022,9 +1053,10 @@ function findJob(s) {
   switch (s.role) {
     case 'cook': {
       if (Object.values(S.baking).some(Boolean) || S.cook) return null;
-      const d = unlockedDishes().sort((a, b) => S.display[a] - S.display[b])[0];
+      const can = unlockedDishes().filter(d => G.stock[RES(d)] > 0);
+      if (!can.length) { warnOnce('flour', '阿杰：麵粉和食材都用完了，沒辦法做'); return null; }
+      const d = can.sort((a, b) => S.display[a] - S.display[b])[0];
       if (S.display[d] >= (unlockedDishes().length > 2 ? 3 : 4)) return null;
-      if (G.stock.flour <= 0) { warnOnce('flour', '阿杰：麵粉用完了，烤不了點心'); return null; }
       return bakeTask(d);
     }
     case 'server': {
@@ -1104,8 +1136,9 @@ function spawnCustomer(special) {
 }
 function updQueue() { S.queue.forEach((c, i) => { if (c.slot !== i) { c.slot = i; routeTo(c, 1, QUEUE[i].x, QUEUE[i].y); } }); }
 function zone(price, base) { const r = price / base; return r <= 1.0001 ? 'green' : r <= 1.4001 ? 'yellow' : 'red'; }
-function pickDish(c) {
-  const want = pick(unlockedDishes());
+function pickDish(c, sweetOnly) {
+  const un = unlockedDishes(), meals = un.filter(d => MENU[d].meal), sweets = un.filter(d => !MENU[d].meal);
+  const want = !sweetOnly && meals.length && Math.random() < .4 ? pick(meals) : pick(sweets);
   const z = zone(G.prices[want], MENU[want].base);
   if (z === 'red') return { dish: null, red: true };
   if (z === 'yellow' && Math.random() < .25 && !c.special) return { dish: null };
@@ -1153,12 +1186,14 @@ function goLoft(c) {
 }
 function afterEat(c) {
   // customers linger: some order a second dessert at the same table
-  if (!c.reordered && Math.random() < .35) {
-    const p = pickDish(c);
+  const hadMeal = MENU[c.order.dish].meal; // after a meal, half of them want dessert
+  if (!c.reordered && Math.random() < (hadMeal ? .5 : .35)) {
+    const p = pickDish(c, hadMeal);
     if (p.dish) {
       c.reordered = true; c.order.dish = p.dish; c.state = 'waitFood'; c.pat = c.maxPat = 55 * patMul(); c.wait = 0;
       G.cash += G.prices[p.dish]; gainEarned(G.prices[p.dish]); S.today.dessert += G.prices[p.dish]; S.today.reorders++;
-      floatText(1, c.x, c.y - 110, '再來一份 +' + yen(G.prices[p.dish]), '#6E9B4E');
+      floatText(1, c.x, c.y - 110, (hadMeal ? '飯後甜點 +' : '再來一份 +') + yen(G.prices[p.dish]), '#6E9B4E');
+      sayFor(c, hadMeal ? `再來一份${MENU[p.dish].short}當甜點` : `${MENU[p.dish].short}也想吃！`);
       return;
     }
   }
@@ -1349,6 +1384,12 @@ const COOK_STEPS = {
   mochi:   [['tap', '倒入糯米粉', 3, '🌾'], ['time', '蒸到 Q 彈時按下', '🔥'], ['hold', '揉成一團', 1.6, '🤲'], ['tap', '包進奶油餡', 3, '🍦'], ['tap', '捏出貓耳朵', 2, '🐾']],
   cake:    [['tap', '打蛋', 3, '🥚'], ['hold', '打發蛋白', 1.8, '🥄'], ['tap', '倒入麵粉', 3, '🌾'], ['time', '烤到膨起來時按下', '🔥'], ['tap', '抹上鮮奶油', 3, '🍦'], ['tap', '點上三花斑點', 3, '🐾']],
 };
+Object.assign(COOK_STEPS, {
+  omurice: [['tap', '把白飯倒進鍋裡', 2, '🍚'], ['tap', '加番茄醬', 3, '🍅'], ['hold', '拌炒到粒粒分明', 1.4, '🍳'], ['tap', '打蛋', 2, '🥚'], ['time', '蛋煎到半熟時按下', '🔥'], ['tap', '用番茄醬畫貓臉', 3, '🐱']],
+  curry:   [['tap', '切紅蘿蔔和洋蔥', 4, '🥕'], ['tap', '放肉下去炒', 2, '🥩'], ['hold', '加咖哩塊攪拌', 1.6, '🥄'], ['time', '燉到濃稠時按下', '🔥'], ['tap', '把白飯捏成貓掌', 3, '🍚']],
+  pasta:   [['tap', '麵放進滾水', 2, '🍝'], ['time', '煮到彈牙時撈起', '🔥'], ['tap', '切香腸和青椒', 4, '🫑'], ['hold', '加番茄醬拌炒', 1.4, '🍳'], ['tap', '撒上起司', 2, '🧀']],
+  hamburg: [['tap', '絞肉加洋蔥', 3, '🥩'], ['hold', '揉成肉團', 1.6, '🤲'], ['tap', '捏出貓掌形狀', 4, '🐾'], ['time', '煎到兩面焦香時翻面', '🔥'], ['tap', '淋上醬汁', 2, '🍯']],
+});
 const COOK_BOX = { x: 220, y: 96, w: 520, h: 410 }, COOK_X = { x: 712, y: 124 };
 function startCook(dish) {
   const steps = COOK_STEPS[dish].map(a => a[0] === 'time' ? { kind: 'time', label: a[1], icon: a[2] } : { kind: a[0], label: a[1], need: a[2], icon: a[3] });
@@ -1383,17 +1424,17 @@ function cookPress() {
 }
 function cookRelease() { if (S && S.cook) S.cook.hold = false; }
 function cookResult(c) {
-  const used = Math.min(MENU[c.dish].batch, G.stock.flour);
+  const used = Math.min(MENU[c.dish].batch, G.stock[RES(c.dish)]);
   const n = used ? Math.max(1, used + (c.grade === 'perfect' ? 1 : 0) - (c.grade === 'burnt' ? 2 : 0)) : 0;
   return { used, n };
 }
 function finishCook() {
   const c = S.cook, r = c.result; S.cook = null; S.baking[c.dish] = false;
-  G.stock.flour -= r.used; S.display[c.dish] += r.n;
+  G.stock[RES(c.dish)] -= r.used; S.display[c.dish] += r.n;
   floatText(1, OVEN_SPOT.x, 360, `+${r.n} ${MENU[c.dish].short}`, '#6E9B4E');
   if (c.grade === 'perfect') { gainExp(3); say(S.mgr, '烤得剛剛好！'); }
 }
-function cancelCook() { const c = S.cook; if (!c || c.done) return; S.cook = null; S.baking[c.dish] = false; toast('不做了，麵粉沒有用掉'); }
+function cancelCook() { const c = S.cook; if (!c || c.done) return; S.cook = null; S.baking[c.dish] = false; toast(`不做了，${RES_NAME[RES(c.dish)]}沒有用掉`); }
 function drawCook() {
   const c = S.cook, M = MENU[c.dish], B = COOK_BOX, cx = B.x + B.w / 2;
   g.fillStyle = 'rgba(60,40,30,.45)'; g.fillRect(0, 0, W, H);
@@ -1414,9 +1455,11 @@ function drawCook() {
     g.globalAlpha = .25 + c.mk * .7; rrect(cx - 66, by - 48, 132, 70, 6, '#F2A65A', null); g.globalAlpha = 1;
     for (let i = 0; i < 4; i++) drawDish(c.dish, cx - 42 + i * 28, by - 6 - c.mk * 4, .9);
   } else {
-    ell(cx, by - 20, 110, 26, '#F4ECE1', INK, 1.6);
-    g.beginPath(); g.moveTo(cx - 110, by - 20); g.quadraticCurveTo(cx - 100, by + 60, cx, by + 62); g.quadraticCurveTo(cx + 100, by + 60, cx + 110, by - 20);
-    g.fillStyle = '#E9D6C2'; g.fill(); g.strokeStyle = INK; g.lineWidth = 1.6; g.stroke();
+    const meal = M.meal;
+    if (meal) line(cx + 100, by - 6, cx + 200, by + 10, '#4A3A32', 9);
+    ell(cx, by - 20, 110, 26, meal ? '#6E6965' : '#F4ECE1', INK, 1.6);
+    g.beginPath(); g.moveTo(cx - 110, by - 20); g.quadraticCurveTo(cx - 100, by + (meal ? 20 : 60), cx, by + (meal ? 22 : 62)); g.quadraticCurveTo(cx + 100, by + (meal ? 20 : 60), cx + 110, by - 20);
+    g.fillStyle = meal ? '#57524F' : '#E9D6C2'; g.fill(); g.strokeStyle = INK; g.lineWidth = 1.6; g.stroke();
     const fill = Math.min(1, (c.i + (st.kind === 'tap' ? c.n / st.need : c.prog)) / n);
     if (fill > 0) ell(cx, by - 18, 100 * (.5 + fill * .5), 20 * (.5 + fill * .5), ['#F3E3C3', '#EBD3A6', '#E2BE85'][Math.min(2, Math.floor(fill * 3))], null);
     for (const b of c.blobs.slice(-10)) { g.globalAlpha = b.a; text(b.icon, cx + b.x, by - 22 + b.y - (1 - b.a) * 30, 20); g.globalAlpha = 1; }
@@ -1425,7 +1468,7 @@ function drawCook() {
   }
   if (c.done) {
     const r = c.result;
-    text(r.n ? `完成！+${r.n} 份${M.short}` : '麵粉不夠，沒做成', cx, B.y + 330, 26, '#6E9B4E', 'center', DFONT, 700);
+    text(r.n ? `完成！+${r.n} 份${M.short}` : `${RES_NAME[RES(c.dish)]}不夠，沒做成`, cx, B.y + 330, 26, '#6E9B4E', 'center', DFONT, 700);
     text(c.grade === 'perfect' ? '火候完美，多做了一份 ✨' : c.grade === 'burnt' ? '火候沒抓好，壞了幾個' : '放進展示櫃了', cx, B.y + 364, 15, c.grade === 'burnt' ? '#C65445' : '#B07E52');
     return;
   }
@@ -1467,6 +1510,7 @@ function chatter(dt) {
   for (const st of S.staff) if (free(st) && free(m) && near(st, m, 420)) opts.push(() => {
     let l = pick(STAFF_TALK);
     if (st.role === 'cook' && G.stock.flour < 4) l = ['麵粉快用完了喔', '好，我等等叫貨'];
+    else if (st.role === 'cook' && G.stock.food < 2 && unlockedDishes().some(d => MENU[d].meal)) l = ['正餐食材快沒了', '我來訂一箱'];
     else if (S.customers.length >= 6) l = ['今天客人好多喔！', '大家加油！'];
     talk(st, G.mgrName + '店長，' + l[0], m, l[1]);
   });
@@ -1665,7 +1709,7 @@ function nearbyActions() {
   const m = S.mgr, f = m.floor, list = [];
   const add = (x, y, label, fn) => list.push({ label, fn, d: Math.hypot(m.x - x, (m.y - y) * 1.6) });
   if (f === 1) {
-    add(OVEN_SPOT.x, OVEN_SPOT.y, '烤箱', chooseBake);
+    add(OVEN_SPOT.x, OVEN_SPOT.y, '廚房（甜點・正餐）', chooseBake);
     if (S.queue.length) { add(MGR_COUNTER.x, MGR_COUNTER.y, '幫客人點餐', actOrder); add(QUEUE[0].x, QUEUE[0].y, '幫客人點餐', actOrder); }
     for (const t of S.tables) {
       if (t.cust && t.cust.state === 'waitFood') add(t.x, t.y, '送餐', () => actServe(t.cust));
@@ -1742,9 +1786,10 @@ function hudTick(dt) {
   const st = G.stock;
   $('inv').innerHTML =
     `<span class="${st.flour < 4 ? 'low' : ''}">麵粉 <b>${st.flour}</b> 份</span>` +
+    `<span class="${st.food < 2 ? 'low' : ''}">正餐食材 <b>${st.food}</b> 份</span>` +
     `<span class="${st.catfood < 1 ? 'low' : ''}">貓糧 <b>${st.catfood}</b> 包</span>` +
     `<span class="${st.litter < 1 ? 'low' : ''}">貓砂 <b>${st.litter}</b> 次</span>` +
-    `<span>展示櫃 ${unlockedDishes().map(d => `${MENU[d].short} <b>${S.display[d]}</b>`).join('・')}</span>` +
+    `<span>展示櫃 ${dispTotal() ? DISHES.filter(d => S.display[d] > 0).map(d => `${MENU[d].short} <b>${S.display[d]}</b>`).join('・') : '<b>空的</b>'}</span>` +
     `<span>貓碗 <b>${G.bowl}</b>/6</span><span>桌子 <b>${S.tables.length}</b> 張</span>`;
   const sp = $('staffPanel');
   sp.hidden = !S.staff.length;
@@ -1767,7 +1812,7 @@ function renderTutorial() {
   let html;
   if (S.phase === 'prep') {
     const items = [
-      [G.stock.flour > 0 || dispTotal() > 0, '打開「店長手機」→「喵喵速達」，買麵粉和貓糧'],
+      [G.stock.flour > 0 || dispTotal() > 0, '打開「店長手機」→「喵喵速達」，買麵粉和貓糧（想賣正餐就加買正餐食材）'],
       [dispTotal() > 0, '點樓梯旁櫃子下面的烤箱，照步驟親手做一批貓掌餅乾'],
       [G.bowl > 0, '上 2F，點貓碗把貓糧裝滿'],
       [S.cats.some(k => k.state !== 'sleep'), '點還在睡的貓咪，把牠摸醒（客人想摸醒著的貓）'],
@@ -1788,9 +1833,10 @@ $('phoneBtn').onclick = () => openPhone('home');
 
 function chooseBake() {
   const card = $('chooseCard');
-  card.innerHTML = `<h2>烤箱</h2><p class="muted">現在有麵粉 ${G.stock.flour} 份，一份麵粉做一份甜點。${G.mgrName}店長會照食譜一步一步親手做，火候抓得完美會多做一份。</p>`;
+  card.innerHTML = `<h2>廚房</h2><p class="muted">現在有麵粉 ${G.stock.flour} 份、正餐食材 ${G.stock.food} 份。一份材料做一份。${G.mgrName}店長會照食譜一步一步親手做，火候抓得完美會多做一份。</p>`;
   const row = document.createElement('div'); row.className = 'row'; row.style.flexDirection = 'column';
-  for (const d of DISHES) {
+  for (const d of [...DISHES.filter(d => MENU[d].meal), ...DISHES.filter(d => !MENU[d].meal)]) {
+    if (d === DISHES.find(d => MENU[d].meal) || d === DISHES.find(d => !MENU[d].meal)) { const hd = document.createElement('div'); hd.className = 'kh'; hd.textContent = MENU[d].meal ? '🍳 正餐（用正餐食材）' : '🧁 甜點（用麵粉）'; row.appendChild(hd); }
     const M = MENU[d], open = M.lv <= shopLv(); const b = document.createElement('button'); b.className = 'opt';
     b.innerHTML = open ? `<span>做${M.name}</span><small>一批 ${M.batch} 份・${COOK_STEPS[d].length} 個步驟・售價 ${yen(G.prices[d])}</small>`
                        : `<span>🔒 ${M.name}</span><small>店鋪 Lv.${M.lv} 解鎖</small>`;
@@ -1940,7 +1986,7 @@ function decodeSave(code) {
   const num = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d);
   return {
     day: Math.max(1, Math.floor(num(o.day, 1))), cash: num(o.cash, 100), debt: Math.max(0, num(o.debt, 0)), fans: Math.max(0, num(o.fans, 0)),
-    stock: { flour: num(o.stock?.flour, 0), catfood: num(o.stock?.catfood, 0), litter: num(o.stock?.litter, 0) },
+    stock: { flour: num(o.stock?.flour, 0), food: num(o.stock?.food, 0), catfood: num(o.stock?.catfood, 0), litter: num(o.stock?.litter, 0) },
     prices: Object.fromEntries(Object.keys(base.prices).map(k => [k, clamp(num(o.prices?.[k], base.prices[k]), 5, (MENU[k]?.base || LOFT_BASE) * 2)])),
     bowl: clamp(num(o.bowl, 0), 0, 6), litterDirt: Math.max(0, num(o.litterDirt, 0)),
     tables: clamp(Math.floor(num(o.tables, 3)), 3, MAX_TABLES),
@@ -2039,7 +2085,7 @@ function closeDay() {
     <h2>${G.shopName}・第 ${day} 天打烊</h2>
     <p class="muted">今天共接待 ${T.ratings.length} 位客人${T.reorders ? `，${T.reorders} 次加點` : ''}${T.angry ? `，${T.angry} 位生氣離開` : ''}${refunds ? `，${refunds} 位沒等到餐點已退款` : ''}。</p>
     <table class="settle-tab">
-      <tr><td>甜點營收</td><td>${yen(T.dessert)}</td></tr>
+      <tr><td>餐點營收（正餐＋甜點）</td><td>${yen(T.dessert)}</td></tr>
       <tr><td>2F 入場費</td><td>${yen(T.loft)}</td></tr>
       <tr><td>採購支出${T.credit ? `（其中賒帳 ${yen(T.credit)}）` : ''}</td><td>−${yen(T.spent)}</td></tr>
       ${wages ? `<tr><td>員工薪資${owedWages ? `（${yen(owedWages)} 先欠著，記入負債）` : ''}</td><td>−${yen(wages)}</td></tr>` : ''}
@@ -2111,7 +2157,7 @@ function frame(now) {
       if (shopLv() > S.lvShown) {
         const l = ++S.lvShown;
         showPopup(`<h2>🎉 ${G.shopName} 升到 Lv.${l}！</h2><ul class="unl">` +
-          DISHES.filter(d => MENU[d].lv === l).map(d => `<li>新食譜：<b>${MENU[d].name}</b>（已經加進菜單，到烤箱就能做）</li>`).join('') +
+          DISHES.filter(d => MENU[d].lv === l).map(d => `<li>${MENU[d].meal ? '新正餐' : '新甜點'}：<b>${MENU[d].name}</b>（已經加進菜單，到廚房就能做）</li>`).join('') +
           Object.keys(FURN).filter(f => FURN[f].lv === l).map(f => `<li>新傢俱：<b>${FURN[f].name}</b>，${FURN[f].desc}（手機「喵喵速達」購買）</li>`).join('') + '</ul>');
       } else if (S.landUp) {
         S.landUp = false;
