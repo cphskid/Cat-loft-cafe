@@ -1,0 +1,38 @@
+# 把 web/ 發佈到 GitHub Pages（https://catloftcafe.ciyulab.com/）。
+# 推 main 就重新發佈；跟時空冒險樂園同一套做法（actions/deploy-pages）。
+# 第一次要在 repo 的 Settings → Pages 把 Source 選成「GitHub Actions」。
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: touch web/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
