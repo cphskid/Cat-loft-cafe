@@ -19,7 +19,7 @@
 }
 html,body{height:100%}
 [hidden]{display:none!important}
-body{background:#F2EBE1;color:var(--ink);font-family:var(--body);padding-inline:16px;padding-block:12px;margin:0;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(ellipse at 20% 0%,#FBF3E4 0,rgba(251,243,228,0) 60%),radial-gradient(ellipse at 90% 100%,#EFE2CF 0,rgba(239,226,207,0) 55%),#F2EBE1;background-attachment:fixed;color:var(--ink);font-family:var(--body);padding-inline:16px;padding-block:12px;margin:0;-webkit-tap-highlight-color:transparent}
 .app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 .hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
 .brand{display:flex;align-items:baseline;gap:10px;min-width:0}
@@ -67,23 +67,32 @@ details.howto ul{margin:6px 0;padding-left:20px}
 .card h2{font-family:var(--display);font-size:24px;margin:0 0 6px;color:var(--wood-d)}
 .card p{line-height:1.7;margin:6px 0}
 .card .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.title-card{text-align:center;max-width:520px}
+.title-card{text-align:center;max-width:620px;padding-top:14px}
+.title-card .key{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;margin:0 0 10px;border:1px solid var(--line);background:var(--sun)}
 .title-card .big{font-family:var(--display);font-size:46px;font-weight:700;color:var(--wood-d);letter-spacing:.1em;margin:4px 0}
 .title-card .en{font-size:13px;letter-spacing:.3em;color:var(--muted)}
 .title-card .row{justify-content:center}
 textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;color:var(--ink);resize:vertical;min-height:60px}
-.phone{max-width:380px;background:#3B2B22;border-radius:34px;padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
-.screen{background:var(--paper);border-radius:22px;min-height:520px;max-height:80vh;overflow:auto;display:flex;flex-direction:column}
+.phone{max-width:380px;width:100%;background:linear-gradient(160deg,#B08A63,#7A5A40 60%,#6A4C36);border:2px solid #5D4037;border-radius:36px;padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,240,220,.4)}
+.screen{background:linear-gradient(rgba(253,251,247,.93),rgba(253,251,247,.93)),url(assets/wall.webp) center/cover,var(--paper);border-radius:24px;min-height:520px;max-height:80vh;overflow:auto;display:flex;flex-direction:column}
 .sbar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px 6px;font-size:12px;color:var(--muted)}
 .ahead{display:flex;align-items:center;gap:8px;padding:6px 14px 10px;border-bottom:1px solid var(--line)}
 .ahead h3{margin:0;font-family:var(--display);font-size:19px;color:var(--wood-d);flex:1}
 .ahead button{padding:4px 10px;font-size:13px}
 .abody{padding:12px 16px 18px;display:flex;flex-direction:column;gap:10px;font-size:14px}
-.apps{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:16px}
-.app-ic{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:16px;background:var(--white);border:1px solid var(--line)}
-.app-ic .ico{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:#fff}
-.app-ic span{font-size:13px;color:var(--ink)}
+.screen.home{background:url(assets/wall.webp) center/cover,var(--paper)}
+.screen.home .ahead{border-bottom:none;background:rgba(253,251,247,.7)}
+.screen.home .sbar{background:rgba(253,251,247,.7)}
+.apps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;padding:14px 12px}
+.app-ic{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px;border-radius:16px;background:rgba(255,253,248,.62);border:1px solid rgba(230,218,203,.7);backdrop-filter:blur(2px)}
+.app-ic:hover{background:rgba(255,248,236,.9)}
+.app-ic .ico{position:relative;width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:#fff;overflow:hidden;box-shadow:0 3px 8px rgba(93,64,55,.22)}
+.app-ic .ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.app-ic span{font-size:13px;color:var(--ink);font-weight:700}
 .app-ic small{font-size:11px;color:var(--muted)}
+.item{background:rgba(255,255,255,.92)}
+.screen.home>p{background:rgba(253,251,247,.85);margin:0 12px 12px!important;border-radius:10px;padding:6px 10px!important}
+.item .thumb{width:54px;height:40px;object-fit:contain;float:left;margin:0 10px 0 0}
 .item{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .item .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .item .nm{font-weight:700}
@@ -192,6 +201,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 
 <div class="overlay" id="titleOv">
   <div class="card title-card">
+    <img class="key" src="assets/title.webp" alt="巷子裡的暖陽貓閣，店長在門口揮手" onerror="this.remove()">
     <div class="en">CAT LOFT CAFE</div>
     <div class="big">暖陽貓閣</div>
     <p>巷子裡一間小小的雙層貓咪咖啡廳。<br>今天開始，你是這間店的店長。</p>
@@ -683,10 +693,39 @@ function plant(x, y, s = 1) {
 }
 function mug(x, y, c) { rrect(x, y - 15, 13, 15, 3, c, INK, 1.2); g.beginPath(); g.arc(x + 14, y - 7.5, 3.5, -1.2, 1.2); g.strokeStyle = INK; g.lineWidth = 1.2; g.stroke(); }
 function coffeeBag(x, y, c) { poly([[x, y - 26], [x + 17, y - 26], [x + 19, y], [x - 2, y]], c, INK, 1.2); rect(x + 4, y - 16, 10, 8, '#FFFDF8', null); ell(x + 9, y - 12, 2, 2, '#6A4B3A'); }
-function cushion(x, y, c = '#E8DCC6') { poly([[x - 30, y - 4], [x - 24, y - 16], [x + 24, y - 16], [x + 30, y - 4], [x + 26, y + 6], [x - 26, y + 6]], c, INK, 1.2); line(x - 16, y - 6, x + 16, y - 6, 'rgba(120,90,60,.3)', 1); }
+function cushion(x, y, c = '#E8DCC6') { if (g === ctx && propArt('cushion', x, y + 7, 62)) return; poly([[x - 30, y - 4], [x - 24, y - 16], [x + 24, y - 16], [x + 30, y - 4], [x + 26, y + 6], [x - 26, y + 6]], c, INK, 1.2); line(x - 16, y - 6, x + 16, y - 6, 'rgba(120,90,60,.3)', 1); }
 function pawPrint(x, y, s, c) {
   ell(x, y + 4 * s, 7 * s, 6 * s, c);
   for (let i = 0; i < 4; i++) ell(x - 8 * s + i * 5.3 * s, y - 5 * s - (i === 1 || i === 2 ? 3 * s : 0), 2.6 * s, 3.2 * s, c);
+}
+
+// ====================== painted art (web/assets, painted with the Gemini image model in the reference style) ======================
+// Every sprite has a hand-drawn canvas fallback, so the game still plays if an image fails to load.
+const ART = {};
+const PEOPLE = ['mgr', 'cook', 'server', 'cashier', 'feeder', 'sitter', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'];
+const GUESTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c8']; // c6 is 小晴 in her school uniform
+(function loadArt() {
+  const names = ['bg1', 'bg2', 'bg3', 'counter', 'table', 'cushion', 'bowl', 'litter', 'basket', 'record', 'warmer', 'petbed', 'deodor', 'lightbox', 'plant'];
+  for (const id of PEOPLE) for (let i = 0; i < 3; i++) names.push(`${id}_${i}`);
+  for (const id of Object.keys(CAT_DEFS)) for (let i = 0; i < 5; i++) names.push(`cat_${id}_${i}`);
+  for (const n of names) { const im = new Image(); im.decoding = 'async'; im.src = `assets/${n}.webp`; ART[n] = im; }
+})();
+const art = n => { const im = ART[n]; return im && im.complete && im.naturalWidth ? im : null; };
+// draw an image with its bottom centre at (x, y), h pixels tall, mirrored when flip
+function sprite(im, x, y, h, flip, w) {
+  w = w || im.naturalWidth * h / im.naturalHeight;
+  g.save(); g.translate(x, y); if (flip) g.scale(-1, 1); g.drawImage(im, -w / 2, -h, w, h); g.restore();
+}
+function propArt(n, x, y, w) { const im = art(n); if (!im) return false; sprite(im, x, y, im.naturalHeight * w / im.naturalWidth, false, w); return true; }
+// small painted name tags for the doors and signs (the painted backgrounds carry no text)
+function tag(t, x, y, size = 11) {
+  g.font = `700 ${size}px ${FONT}`; const w = g.measureText(t).width + 14;
+  rrect(x - w / 2, y - size * .8, w, size * 1.6, 7, 'rgba(255,252,246,.88)', 'rgba(106,75,58,.55)', 1); text(t, x, y, size, '#6B4A35', 'center', FONT, 700);
+}
+function bgLabels(f) {
+  if (f === 1) { tag('烤箱', 390, 470); tag('↑ 2F', 150, 462); }
+  else if (f === 2) { tag('↓ 1F', 66, 352); tag('員工休息室', 557, 290); }
+  else { tag('← 2F 閣樓', 86, 273); text('員工休息室', 480, 40, 22, '#8D6E63', 'center', DFONT, 700); }
 }
 
 // ====================== static backgrounds ======================
@@ -909,6 +948,16 @@ function drawMenuBoard() {
 }
 function drawCounter() {
   const { x, w, top, front } = COUNTER;
+  const ci = art('counter');
+  if (ci) { // painted counter: glass case on the left of its top, register on the right
+    const cw = w + 30, ch = 124, cx = x - 15, cy = front - ch;
+    g.drawImage(ci, cx, cy, cw, ch);
+    const cap = unlockedDishes().length <= 2 ? 4 : 2, shown = [];
+    for (const d of DISHES) for (let i = 0; i < Math.min(cap, S.display[d] || 0); i++) shown.push(d);
+    shown.slice(0, 8).forEach((d, i) => drawDish(d, cx + 18 + (i % 4) * 13, cy + (i < 4 ? 20 : 38), .55));
+    if (S.queue.length && S.phase === 'open') alertMark(x + w / 2, cy - 24);
+    return;
+  }
   wood(x - 6, top, w + 12, 12, '#B9875A', 1.6);
   wood(x, top + 12, w, front - top - 12, '#A9774B', 1.6);
   for (let i = 1; i < 4; i++) line(x + w * i / 4, top + 16, x + w * i / 4 - 2, front - 4, 'rgba(70,45,30,.22)', 1);
@@ -926,9 +975,12 @@ function drawCounter() {
 }
 function drawTable(t) {
   // low wooden table with a floor cushion (like the reference's floor seating)
-  cushion(t.x - 44, t.y + 2);
-  wood(t.x - 26, t.y - 26, 64, 8, '#B98B5F', 1.5);
-  line(t.x - 20, t.y - 18, t.x - 20, t.y, INK, 2.5); line(t.x + 32, t.y - 18, t.x + 32, t.y, INK, 2.5);
+  if (art('table')) { propArt('cushion', t.x - 44, t.y + 8, 62); propArt('table', t.x + 6, t.y + 1, 72); }
+  else {
+    cushion(t.x - 44, t.y + 2);
+    wood(t.x - 26, t.y - 26, 64, 8, '#B98B5F', 1.5);
+    line(t.x - 20, t.y - 18, t.x - 20, t.y, INK, 2.5); line(t.x + 32, t.y - 18, t.x + 32, t.y, INK, 2.5);
+  }
   if (t.cust && t.cust.state === 'eating') { ell(t.x + 4, t.y - 29, 14, 3.5, '#FFFFFF', INK, 1); drawDish(t.cust.order.dish, t.x + 4, t.y - 36, .8); mug(t.x + 20, t.y - 26, '#FFFFFF'); }
   if (t.dirty) {
     ell(t.x + 4, t.y - 29, 14, 3.5, '#FFFFFF', INK, 1);
@@ -948,40 +1000,41 @@ function drawRestroomState() {
   if (d >= 3) alertMark(809, 270);
 }
 function drawFurn1() {
-  if (hasF('record')) { // low cabinet + gramophone between the menu board and the restroom
+  if (hasF('record') && propArt('record', 721, 480, 64)) { if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; } }
+  else if (hasF('record')) { // low cabinet + gramophone between the menu board and the restroom
     wood(690, 438, 62, 40, '#A9774B', 1.3); line(721, 442, 721, 474, 'rgba(70,45,30,.3)', 1);
     rect(694, 426, 46, 12, '#7A5238', INK, 1.1); ell(712, 426, 14, 3.6, '#2E2826', INK, 1); ell(712, 426, 3.5, 1.2, '#D9773E');
     line(732, 426, 738, 408, INK, 1.4); poly([[736, 410], [748, 384], [760, 382], [756, 396], [740, 412]], '#E2B573', INK, 1.1);
     if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; }
   }
   if (hasF('warmer')) { // warm glass box on top of the oven cabinet
-    rrect(376, 330, 50, 36, 5, 'rgba(255,226,180,.85)', INK, 1.3); line(376, 348, 426, 348, INK, .8);
+    if (!propArt('warmer', 401, 366, 54)) { rrect(376, 330, 50, 36, 5, 'rgba(255,226,180,.85)', INK, 1.3); line(376, 348, 426, 348, INK, .8); }
     for (const d of DISHES.slice(0, 3)) if ((S.display[d] || 0) > 0) { drawDish(d, 388 + DISHES.indexOf(d) * 13, 342, .45); }
     text('保溫', 401, 360, 9, '#B07E52', 'center', FONT, 700);
   }
   if (hasF('sign')) { // light box on the wall by the entrance
     g.globalAlpha = .35 + Math.sin(S.t * 2) * .1; ell(34, 352, 46, 34, '#FFE7A8'); g.globalAlpha = 1;
-    rrect(8, 332, 52, 40, 7, '#FFF6DA', INK, 1.4); pawPrint(20, 346, .45, '#D9773E');
+    if (!propArt('lightbox', 34, 376, 54)) { rrect(8, 332, 52, 40, 7, '#FFF6DA', INK, 1.4); pawPrint(20, 346, .45, '#D9773E'); }
     text(G.shopName.slice(0, 4), 38, 362, 10, '#8D5A35', 'center', DFONT, 700);
   }
 }
 function drawFurn2() {
   if (hasF('cushion')) for (const c of CUSHION_EXTRA) cushion(c.x, c.y, '#EAD3C6');
   for (const c of expandCushions()) cushion(c.x, c.y, '#D9E2D0');
-  if (hasF('bed')) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
-  if (hasF('deodor')) { rrect(446, 520, 22, 30, 5, '#E8EEF0', INK, 1.2); ell(457, 530, 4, 4, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); for (let i = 0; i < 3; i++) line(450 + i * 4, 542, 450 + i * 4, 547, 'rgba(90,64,50,.4)', 1); }
+  if (hasF('bed')) { if (!propArt('petbed', 206, 466, 60)) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); } text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
+  if (hasF('deodor') && propArt('deodor', 457, 552, 30)) { ell(457, 530, 3, 3, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); }
+  else if (hasF('deodor')) { rrect(446, 520, 22, 30, 5, '#E8EEF0', INK, 1.2); ell(457, 530, 4, 4, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); for (let i = 0; i < 3; i++) line(450 + i * 4, 542, 450 + i * 4, 547, 'rgba(90,64,50,.4)', 1); }
 }
 function drawBowl() {
   const { x, y } = BOWL;
-  ell(x, y, 22, 7, '#EFE7DB', INK, 1.3); poly([[x - 22, y], [x + 22, y], [x + 16, y + 10], [x - 16, y + 10]], '#E6D2C6', INK, 1.3);
+  if (!propArt('bowl', x, y + 11, 48)) { ell(x, y, 22, 7, '#EFE7DB', INK, 1.3); poly([[x - 22, y], [x + 22, y], [x + 16, y + 10], [x - 16, y + 10]], '#E6D2C6', INK, 1.3); }
   for (let i = 0; i < G.bowl; i++) ell(x - 14 + i * 5.6, y - 2 - (i % 2), 3.2, 2.4, '#A26B3E');
   rrect(x - 16, y - 34, 32, 16, 4, '#FFFFFF', 'rgba(90,64,50,.4)', 1); text(`${G.bowl}/6`, x, y - 26, 10, '#8B776B');
   if (G.bowl === 0 && S.cats.some(k => k.hunger > 70)) alertMark(x, y - 52);
 }
 function drawLitter() {
   const { x, y } = LITTER;
-  rect(x - 30, y - 18, 60, 20, '#D9E0DC', INK, 1.4);
-  rect(x - 26, y - 22, 52, 6, '#EFE4CF', INK, 1);
+  if (!propArt('litter', x, y + 4, 70)) { rect(x - 30, y - 18, 60, 20, '#D9E0DC', INK, 1.4); rect(x - 26, y - 22, 52, 6, '#EFE4CF', INK, 1); }
   for (let i = 0; i < Math.min(G.litterDirt, 5); i++) ell(x - 18 + i * 9, y - 22, 3, 2, '#8A6A4C');
   if (G.litterDirt >= litterMax()) { g.globalAlpha = .5; for (let i = 0; i < 3; i++) text('~', x - 12 + i * 12, y - 34 - Math.sin(S.t * 3 + i) * 3, 14, '#9AA37A'); g.globalAlpha = 1; alertMark(x, y - 58); }
 }
@@ -997,7 +1050,18 @@ function doorSign() {
 
 // ====================== characters ======================
 const PS = 1.35; // people scale
+const PH = 132; // on-screen height of a standing painted person (the sprites are 300 px tall)
+function personArt(p, o) {
+  const walk = p.moving && !o.sit && Math.floor(S.t * 5) % 2;
+  const im = art(`${o.spr}_${o.sit ? 2 : walk ? 1 : 0}`) || art(`${o.spr}_0`); if (!im) return false;
+  const f = p.face || 1, bob = p.moving ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0;
+  ell(p.x, p.y, 18, 4.5, 'rgba(70,45,30,.16)');
+  sprite(im, p.x, p.y - bob, im.naturalHeight * PH / 300, f < 0);
+  if (p.carry) { ell(p.x + 24 * f, p.y - 70, 13, 3.2, '#FFFFFF', INK, 1); drawDish(p.carry, p.x + 24 * f, p.y - 78, .7); }
+  return true;
+}
 function drawPerson(p, o) {
+  if (o.spr && personArt(p, o)) return;
   g.save(); g.translate(p.x, p.y); g.scale(PS, PS);
   drawPersonAt({ x: 0, y: 0, face: p.face, moving: p.moving, carry: p.carry, seed: p.x * .05 }, o);
   g.restore();
@@ -1039,7 +1103,7 @@ function progressRing(w, y) {
 }
 function drawMgr() {
   const m = S.mgr;
-  drawPerson(m, { shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true, sit: m.sitting });
+  drawPerson(m, { spr: 'mgr', shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true, sit: m.sitting });
   const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
   if (hk) { // the manager carries the cat in her arms
     const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
@@ -1058,7 +1122,7 @@ function drawMgr() {
 }
 function drawStaff(s) {
   if (s.hidden) return;
-  drawPerson(s, { shirt: s.shirt, pants: '#4A4542', hair: s.hair, apron: s.apron, long: s.long, sit: s.resting });
+  drawPerson(s, { spr: s.role, shirt: s.shirt, pants: '#4A4542', hair: s.hair, apron: s.apron, long: s.long, sit: s.resting });
   if (s.resting) { const t = (S.t * .7 + s.x) % 1; g.globalAlpha = 1 - t; text('z', s.x + 18 + t * 10, s.y - 120 - t * 18, 13 + t * 6, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1; }
   if (s.task && s.mode === 'act' && s.task.steps[s.si].dur > .3) progressRing(s, s.y - 150);
   if (s.say) bubble(s.x, s.y - 166, s.say.text);
@@ -1068,7 +1132,7 @@ function drawStaff(s) {
 function drawCustomer(c) {
   if (c.hidden) return;
   const sit = c.state === 'waitFood' || c.state === 'eating' || c.state === 'petting';
-  drawPerson(c, { shirt: c.shirt, pants: c.pants, hair: c.hair, sit, long: c.long });
+  drawPerson(c, { spr: c.look, shirt: c.shirt, pants: c.pants, hair: c.hair, sit, long: c.long });
   const hy = c.y - ((sit ? 14 : 36) + 50) * PS;
   if (c.name) text(c.name, c.x, c.y + 12, 11, '#6B4A35', 'center', FONT, 700);
   if (c.say) { bubble(c.x, hy - 18, c.say.text); return; }
@@ -1103,6 +1167,12 @@ function drawCatAnim(k) {
     drawCat(k); const up = Math.sin(a.t * 4) > 0, hx = ox + 19 * of;
     ell(hx + 9 * of, oy - (up ? 52 : 40), 5, 5, k.body, out, 1.1);
     if (up) { pawPrint(hx + 9 * of, oy - 53, .35, '#F2A9A9'); text('啪！', hx + 26 * of, oy - 66, 15, '#D9773E', 'center', DFONT, 700); }
+  } else if (a.kind === 'belly' && art(`cat_${k.id}_4`)) {
+    const im = art(`cat_${k.id}_4`);
+    ell(ox, oy, 26, 4, 'rgba(70,45,30,.16)');
+    g.save(); g.translate(ox, oy); g.rotate(Math.sin(a.t * 9) * .05); sprite(im, 0, 2, im.naturalHeight * CATK, of < 0); g.restore();
+    text('呼嚕～', ox, oy - 46, 12, '#B0705F', 'center', DFONT, 700);
+    text(k.name, ox, oy + 10, 10, '#8B776B', 'center');
   } else if (a.kind === 'belly') {
     const x = ox, y = oy, f = of, wig = Math.sin(a.t * 9) * 3;
     ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
@@ -1119,12 +1189,17 @@ function drawCatAnim(k) {
   k.x = ox; k.y = oy; k.face = of; k._inAnim = false;
   if (a.kind !== 'rub' && a.kind !== 'five' && a.kind !== 'kiss') { g.globalAlpha = clamp(k.hearts, 0, 1); heart(ox, oy - 60 - (1 - k.hearts) * 16, 7); g.globalAlpha = 1; }
 }
+const CATK = 68 / 160; // painted cats: the walking pose is 160 px wide in the sprite, 68 px on screen
 function drawCat(k) {
   if (k.anim && !k._inAnim) { if (k.anim.kind !== 'hug') drawCatAnim(k); return; }
   const x = k.x, y = k.y - (k.state === 'play' ? Math.abs(Math.sin(S.t * 7)) * 10 : 0), f = k.face;
   if (!k.onBed && !k.jumpFrom) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
   const out = k.fluffy ? '#BFAE96' : INK;
+  const pose = k.state === 'sleep' ? 2 : (k.jumpFrom || k.state === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
+  const ci = art(`cat_${k.id}_${pose}`);
+  if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK, f < 0);
   if (k.state === 'sleep') {
+    if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
     g.strokeStyle = k.dark; g.lineWidth = k.fluffy ? 7 : 5; g.lineCap = 'round'; g.stroke();
     ell(x, y - 10, 24, 13, k.body, out, 1.4);
@@ -1136,8 +1211,11 @@ function drawCat(k) {
     if (k.spots) { ell(x - 8, y - 15, 8, 5, k.spots[0]); ell(x + 6, y - 18, 6, 4, k.spots[1]); }
     if (k.tux) ell(x + 16 * f, y - 8, 5, 4, k.belly);
     if (k.points) ell(x + 15 * f, y - 10, 5, 4, k.dark);
+    }
     const t = (S.t * .7 + x) % 1; g.globalAlpha = 1 - t; text('z', x + 20 * f + t * 10, y - 30 - t * 18, 12 + t * 6, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1;
   } else {
+    const hx = x + 19 * f, hy = y - 26;
+    if (!ci) {
     const step = k.moving ? Math.sin(S.t * 16) * 3 : 0;
     g.beginPath(); g.moveTo(x - 16 * f, y - 16); g.quadraticCurveTo(x - 30 * f, y - 22, x - 26 * f, y - 40 + Math.sin(S.t * 3 + x) * 3);
     g.strokeStyle = k.dark; g.lineWidth = k.fluffy ? 8 : 5; g.lineCap = 'round'; g.stroke();
@@ -1146,13 +1224,13 @@ function drawCat(k) {
     ell(x + 3 * f, y - 11, 11, 4, k.belly);
     if (k.stripes) for (let i = 0; i < 3; i++) line(x - 10 + i * 6, y - 25, x - 8 + i * 6, y - 18, k.dark, 1.8);
     if (k.spots) { ell(x - 7, y - 20, 7, 4.5, k.spots[0]); ell(x + 6, y - 22, 5, 3.5, k.spots[1]); }
-    const hx = x + 19 * f, hy = y - 26;
     poly([[hx - 7, hy - 6], [hx - 4, hy - 16], [hx, hy - 8]], k.body, out, 1.1);
     poly([[hx + 1, hy - 8], [hx + 5, hy - 16], [hx + 8, hy - 5]], k.body, out, 1.1);
     ell(hx, hy, 10, 9, k.body, out, 1.3);
     if (k.tux) ell(hx + 2 * f, hy + 4, 6, 4, k.belly);
     if (k.points) ell(hx + 3 * f, hy + 2, 6, 5, k.dark);
     ell(hx + 4 * f, hy - 1, 1.4, 2, k.tux ? '#F2E6A0' : k.points ? '#7FB3D9' : INK);
+    }
     if (k.state === 'eat') text('喀', hx + 14 * f, hy - 16, 11, '#8B776B');
     if (k.say) bubble(hx, hy - 34, k.say.text);
     else if (k.wantPet) {
@@ -1467,7 +1545,7 @@ function spawnCustomer(special) {
   if (S.queue.length >= QUEUE.length) return;
   const c = { id: ++S.cid, floor: 1, x: DOOR.x, y: DOOR.y, path: [], speed: 150, face: 1, state: 'queue', pat: 45 * patMul(), maxPat: 45 * patMul(), wait: 0,
     stars: 5, notes: [], shirt: pick(SHIRTS), pants: pick(['#5E6B7A', '#6B5B4E', '#4D4A48', '#7C8B70']), hair: pick(HAIRS), long: Math.random() < .45,
-    order: null, special: !!special, name: null, sawCat: false };
+    order: null, special: !!special, name: null, sawCat: false, look: special ? 'c6' : pick(GUESTS) };
   if (special) { c.name = '小晴'; c.pat = c.maxPat = 80 * patMul(); c.shirt = '#F2F0EA'; c.pants = '#41556E'; c.hair = '#2E2420'; c.long = true; }
   S.customers.push(c); S.queue.push(c);
   const hr = Math.floor(S.time / 60); S.today.hours[hr] = (S.today.hours[hr] || 0) + 1;
@@ -2050,11 +2128,12 @@ function draw() {
   g = ctx;
   if (!BG[1]) return;
   const f = S.view;
-  ctx.drawImage(BG[f], 0, 0, W, H);
+  const bgi = art('bg' + f);
+  if (bgi) { ctx.drawImage(bgi, 0, 0, W, H); bgLabels(f); } else ctx.drawImage(BG[f], 0, 0, W, H);
   if (f === 1) { drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); drawFurn1(); }
   else if (f === 2) { drawFurn2(); drawBowl(); drawLitter(); }
   else { g.globalAlpha = .4; for (let i = 0; i < 3; i++) ell(855 + Math.sin(S.t * 2 + i) * 3, 330 - i * 10 - (S.t * 8 % 10), 5 + i * 2, 3, '#FFFFFF', '#C9B8A8', .8); g.globalAlpha = 1; }
-  for (const c of G.cats) { const b = BEDS[c.id]; if (b.basket && b.f === f) { ell(b.x, b.y + 4, 30, 9, b.basket, INK, 1.3); ell(b.x, b.y - 1, 24, 6, '#F4EBDD', null); for (let i = -2; i <= 2; i++) line(b.x + i * 11, b.y + 2, b.x + i * 11 + 2, b.y + 11, 'rgba(90,60,40,.35)', 1); } }
+  for (const c of G.cats) { const b = BEDS[c.id]; if (b.basket && b.f === f && propArt('basket', b.x, b.y + 12, 66)) continue; if (b.basket && b.f === f) { ell(b.x, b.y + 4, 30, 9, b.basket, INK, 1.3); ell(b.x, b.y - 1, 24, 6, '#F4EBDD', null); for (let i = -2; i <= 2; i++) line(b.x + i * 11, b.y + 2, b.x + i * 11 + 2, b.y + 11, 'rgba(90,60,40,.35)', 1); } }
   const items = [];
   if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
   if (S.mgr.floor === f) items.push({ y: S.mgr.y, d: drawMgr });
@@ -2358,7 +2437,7 @@ function openPhone(app) { phoneApp = app; S.uiPause = true; $('phoneOv').hidden 
 function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
 $('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
 function renderPhone() {
-  const sc = $('phoneScreen');
+  const sc = $('phoneScreen'); sc.classList.toggle('home', phoneApp === 'home');
   const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
   let h = `<div class="sbar"><span>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span><span>遊戲暫停中</span><span>${yen(G.cash)}</span></div>`;
   if (phoneApp === 'home') {
@@ -2367,7 +2446,7 @@ function renderPhone() {
                   ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存']];
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
-      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
+      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
     const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論' };
@@ -2388,11 +2467,12 @@ function renderPhone() {
       const btn = (key, price) => G.cash >= price ? `<button class="primary" data-buy="${key}">購買</button>` : `<button data-credit="${key}">錢不夠，賒帳購買</button>`;
       for (const it of SHOP) h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(it.price)}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div><div class="row" style="margin:0">${btn(it.id, it.price)}</div></div>`;
       const full = G.tables >= maxTables();
-      h += `<div class="item"><div class="top"><span class="nm">原木矮桌＋坐墊</span><b>${yen(TABLE_PRICE)}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < 1 ? '（擴大店面後可以放 6 張）' : ''}</div>
+      h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(TABLE_PRICE)}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < 1 ? '（擴大店面後可以放 6 張）' : ''}</div>
         <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', TABLE_PRICE)}</div></div>`;
       for (const [id, F] of Object.entries(FURN)) {
         const own = hasF(id), locked = F.lv > shopLv();
-        h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(F.price)}</b></div><div class="sub">${F.desc}</div>
+        const th = { record: 'record', cushion: 'cushion', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox' }[id];
+        h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(F.price)}</b></div><div class="sub">${F.desc}</div>
           <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, F.price)}</div></div>`;
       }
     } else if (phoneApp === 'hire') {
