@@ -17,25 +17,20 @@
   --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   color-scheme:light;
 }
-html,body{height:100%}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 [hidden]{display:none!important}
-body{background:radial-gradient(ellipse at 20% 0%,#FBF3E4 0,rgba(251,243,228,0) 60%),radial-gradient(ellipse at 90% 100%,#EFE2CF 0,rgba(239,226,207,0) 55%),#F2EBE1;background-attachment:fixed;color:var(--ink);font-family:var(--body);padding-inline:16px;padding-block:12px;margin:0;-webkit-tap-highlight-color:transparent}
-.app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
-.hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
-.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
-.logo{font-family:var(--display);font-size:24px;font-weight:700;color:var(--wood-d);letter-spacing:.06em}
+body{background:radial-gradient(ellipse at 20% 0%,#FBF3E4 0,rgba(251,243,228,0) 60%),radial-gradient(ellipse at 90% 100%,#EFE2CF 0,rgba(239,226,207,0) 55%),#F2EBE1;color:var(--ink);font-family:var(--body);margin:0;-webkit-tap-highlight-color:transparent}
+/* Full-screen game: the canvas fills the window and every control floats on top of it. */
+.game{position:fixed;inset:0;background:#2E221B;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0;flex-wrap:wrap}
+.logo{font-family:var(--display);font-size:20px;font-weight:700;color:var(--wood-d);letter-spacing:.06em}
 .lv{font-size:12px;color:var(--muted);letter-spacing:.05em}
-.stats{display:flex;flex-wrap:wrap;gap:6px 16px;font-variant-numeric:tabular-nums}
+.stats{display:flex;flex-wrap:wrap;gap:4px 14px;font-variant-numeric:tabular-nums;margin-top:6px}
 .stat{display:flex;align-items:baseline;gap:4px;font-size:13px;color:var(--muted)}
-.stat b{font-size:17px;color:var(--ink);font-weight:700}
-.stat.clock b{font-family:var(--display);font-size:20px}
-.stat .ph{font-size:12px;background:var(--sun);color:var(--wood-d);border-radius:20px;padding:1px 8px}
+.stat b{font-size:16px;color:var(--ink);font-weight:700}
 .stat.debt b{color:var(--bad)}
-.stage{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--paper);box-shadow:0 6px 20px rgba(93,64,55,.12)}
-canvas{display:block;width:100%;height:auto;aspect-ratio:960/600;touch-action:none;cursor:default}
-#toasts{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:90%}
-.toast{background:rgba(74,52,40,.9);color:#fff;font-size:14px;padding:6px 14px;border-radius:20px;animation:tin .25s ease-out;text-align:center}
-@keyframes tin{from{opacity:0;transform:translateY(-6px)}to{opacity:1}}
+canvas#cv{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none;cursor:default}
+#toasts{position:absolute;left:50%;top:calc(58px + env(safe-area-inset-top));transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:80%;z-index:3}
 .controls{display:flex;flex-wrap:wrap;gap:8px}
 button{font-family:var(--body);font-size:14px;border:1px solid var(--wood-l);background:var(--white);color:var(--wood-d);border-radius:10px;padding:8px 14px;cursor:pointer;position:relative}
 button:hover{background:#FBF4EA}
@@ -45,8 +40,6 @@ button.primary{background:var(--wood);border-color:var(--wood);color:#fff;font-w
 button.primary:hover{background:var(--wood-d)}
 .badge{position:absolute;top:-7px;right:-7px;background:var(--accent);color:#fff;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;font-weight:700;text-align:center;animation:pulse 1s infinite alternate}
 @keyframes pulse{to{transform:scale(1.15)}}
-.lower{display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,1.4fr);gap:10px}
-@media (max-width:700px){.lower{grid-template-columns:1fr}}
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px 12px;min-width:0}
 .panel .lbl{font-size:12px;color:var(--muted);letter-spacing:.08em;margin-right:6px}
 #taskList{display:inline-flex;flex-wrap:wrap;gap:6px;vertical-align:middle}
@@ -115,75 +108,98 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .opt{display:flex;flex-direction:column;align-items:flex-start;text-align:left;width:100%}
 .opt small{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.badge,.toast{animation:none}}
+.fld{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-size:14px;text-align:left}
+.fld input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--wood-l);border-radius:10px;background:#fff;color:var(--ink)}
+.item.locked{opacity:.6}
+#chooseCard{max-height:88vh;overflow:auto}
+.kh{margin:10px 0 2px;font-size:14px;color:var(--wood-d);text-align:left;font-weight:700}
+.unl{margin:8px 0 0;padding-left:20px;text-align:left;line-height:1.8}
+.hudtop{position:absolute;left:calc(10px + env(safe-area-inset-left));top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:4;max-width:calc(100% - 80px)}
+.hudbar{display:flex;align-items:center;gap:8px;border-radius:20px;padding:5px 12px;background:rgba(253,251,247,.92);border:1px solid var(--line);box-shadow:0 2px 8px rgba(60,40,30,.18);font-variant-numeric:tabular-nums;color:var(--ink)}
+.hudbar #clock{font-family:var(--display);font-size:18px}
+.hudbar #cash{font-size:16px}
+.hudbar .ph{font-size:12px;background:var(--sun);color:var(--wood-d);border-radius:20px;padding:1px 8px}
+.hudbar .caret{font-size:12px;color:var(--muted);transition:transform .15s}
+.hudbar[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.hudmore{background:rgba(253,251,247,.95);box-shadow:0 4px 14px rgba(60,40,30,.2)}
+.falert{border-radius:16px;padding:4px 12px 4px 6px;font-size:13px;font-weight:700;color:var(--ink);background:rgba(255,255,255,.95);border:2px solid var(--accent);display:flex;align-items:center;gap:6px;max-width:100%;text-align:left}
+.falert i{flex:none;font-style:normal;width:20px;height:20px;line-height:20px;border-radius:50%;background:var(--accent);color:#fff;text-align:center}
+.rb{width:48px;height:48px;padding:0;border-radius:50%;font-size:13px;font-weight:700;background:rgba(253,251,247,.9);box-shadow:0 2px 8px rgba(60,40,30,.2);display:flex;align-items:center;justify-content:center;line-height:1.1}
+.rb.on{background:var(--sun);border-color:var(--wood)}
+.rbtns{position:absolute;right:calc(10px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:8px;z-index:4}
+.lbtns{position:absolute;left:calc(10px + env(safe-area-inset-left));top:calc(100px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:8px;z-index:4}
+.lbtns .rb{width:44px;height:44px}
+.badge.sm{width:18px;height:18px;line-height:18px;font-size:11px;top:-4px;right:-4px;animation:none}
+.drawer{position:absolute;left:calc(64px + env(safe-area-inset-left));top:calc(100px + env(safe-area-inset-top));width:min(360px,calc(100% - 84px));max-height:calc(100% - 250px);min-height:80px;overflow:auto;z-index:5;background:rgba(253,251,247,.96);box-shadow:0 6px 20px rgba(60,40,30,.28);box-sizing:border-box;padding:8px 12px 12px}
+.dhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.dhead h3{flex:1;margin:0;font-family:var(--display);font-size:17px;color:var(--wood-d)}
+.dhead button{padding:2px 10px}
+.drawer>[data-pane]{display:none}
+.drawer[data-show="tasks"]>[data-pane="tasks"],.drawer[data-show="inv"]>[data-pane="inv"],.drawer[data-show="staff"]>[data-pane="staff"],.drawer[data-show="tips"]>[data-pane="tips"],.drawer[data-show="howto"]>[data-pane="howto"]{display:flex}
+.drawer>[data-pane="tips"],.drawer>[data-pane="howto"]{flex-direction:column}
+.drawer .inv{flex-direction:column;gap:4px}
+.howto{font-size:14px;line-height:1.7}
+.howto ul{margin:0;padding-left:20px}
+.openbtn{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom));z-index:4;font-size:17px;padding:12px 22px;border-radius:24px;box-shadow:0 4px 12px rgba(60,40,30,.3)}
+.joy{position:absolute;left:calc(16px + env(safe-area-inset-left));bottom:calc(16px + env(safe-area-inset-bottom));z-index:4;width:116px;height:116px;border-radius:50%;background:radial-gradient(circle at 50% 45%,rgba(255,255,255,.55) 0,rgba(244,236,225,.4) 70%);border:2px solid rgba(201,162,126,.75);box-shadow:inset 0 2px 8px rgba(93,64,55,.15);touch-action:none;cursor:grab}
+.joy span{position:absolute;color:rgba(141,110,99,.85);font-size:12px;line-height:1}
+.joy .u{top:7px;left:50%;transform:translateX(-50%)}.joy .d{bottom:7px;left:50%;transform:translateX(-50%)}
+.joy .l{left:8px;top:50%;transform:translateY(-50%)}.joy .r{right:8px;top:50%;transform:translateY(-50%)}
+.knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(141,110,99,.85);border:3px solid rgba(255,255,255,.9);box-shadow:0 3px 8px rgba(93,64,55,.35);pointer-events:none}
+.actbtn{position:absolute;right:calc(20px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));z-index:4;width:84px;height:84px;border-radius:50%;padding:0;font-family:var(--display);font-size:20px;font-weight:700;background:rgba(217,119,62,.85);border-color:rgba(217,119,62,.9);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
+.actbtn:hover{background:#C9682F}
+.game.busy .joy,.game.busy .actbtn,.game.busy .lbtns,.game.busy .drawer,.game.busy .openbtn,.game.busy .rbtns{display:none}
+@media (max-height:460px){.joy{width:100px;height:100px}.actbtn{width:72px;height:72px;font-size:18px}.rbtns{gap:6px}.rb{width:42px;height:42px}.lbtns{top:calc(58px + env(safe-area-inset-top));flex-direction:row}.drawer{left:calc(10px + env(safe-area-inset-left));top:calc(108px + env(safe-area-inset-top));max-height:calc(100% - 118px);width:min(440px,55%)}}
 </style>
 </head>
 <body>
 
-<div class="app">
-  <header class="hud">
-    <div class="brand"><span class="logo" id="shopLogo">暖陽貓閣</span><span class="lv" id="lv">Lv.1</span><span class="lv" id="acct"></span></div>
-    <div class="stats">
-      <div class="stat">第<b id="day">1</b>天</div>
-      <div class="stat clock"><b id="clock">07:00</b><span class="ph" id="phase">晨間備料</span></div>
-      <div class="stat">現金<b id="cash">¥100</b></div>
-      <div class="stat debt" id="debtWrap" hidden>負債<b id="debt">¥0</b></div>
-      <div class="stat">今日評價<b id="rating">—</b></div>
-      <div class="stat">留言<b id="revCnt">0</b></div>
-      <div class="stat">粉絲<b id="fans">0</b></div>
+<div class="game" id="game">
+  <canvas id="cv" width="960" height="600" aria-label="咖啡廳畫面，點擊物品讓店長去做事，左右拖曳可以看店裡其他地方"></canvas>
+  <div id="toasts"></div>
+
+  <div class="hudtop">
+    <button class="hudbar" id="hudToggle" aria-expanded="false" aria-controls="hudMore" aria-label="店的狀態，點一下展開更多"><b id="clock">07:00</b><span class="ph" id="phase">晨間備料</span><b id="cash">¥100</b><span class="caret">▾</span></button>
+    <div class="panel hudmore" id="hudMore" hidden>
+      <div class="brand"><span class="logo" id="shopLogo">暖陽貓閣</span><span class="lv" id="lv">Lv.1</span><span class="lv" id="acct"></span></div>
+      <div class="stats">
+        <div class="stat">第<b id="day">1</b>天</div>
+        <div class="stat debt" id="debtWrap" hidden>負債<b id="debt">¥0</b></div>
+        <div class="stat">今日評價<b id="rating">—</b></div>
+        <div class="stat">留言<b id="revCnt">0</b></div>
+        <div class="stat">粉絲<b id="fans">0</b></div>
+      </div>
     </div>
-  </header>
-
-  <div class="stage">
-    <canvas id="cv" width="960" height="600" aria-label="咖啡廳畫面，點擊物品讓店長去做事"></canvas>
-    <div id="toasts"></div>
+    <button class="falert" id="floorAlert" hidden><i>!</i><span id="floorAlertTxt"></span></button>
   </div>
 
-  <style>
-  .pad{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px}
-  .joy{position:relative;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#FFFFFF 0,#F4ECE1 70%);border:2px solid var(--wood-l);box-shadow:inset 0 2px 8px rgba(93,64,55,.15);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
-  .joy span{position:absolute;color:var(--wood-l);font-size:12px;line-height:1}
-  .joy .u{top:7px;left:50%;transform:translateX(-50%)}.joy .d{bottom:7px;left:50%;transform:translateX(-50%)}
-  .joy .l{left:8px;top:50%;transform:translateY(-50%)}.joy .r{right:8px;top:50%;transform:translateY(-50%)}
-  .knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:var(--wood);border:3px solid #fff;box-shadow:0 3px 8px rgba(93,64,55,.35);pointer-events:none}
-  .actbtn{width:84px;height:84px;border-radius:50%;font-family:var(--display);font-size:20px;font-weight:700;background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
-  .actbtn:hover{background:#C9682F}
-  .pad .controls{justify-content:center}
-  .actbtn{justify-self:end}
-  .fld{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-size:14px;text-align:left}
-  .fld input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--wood-l);border-radius:10px;background:#fff;color:var(--ink)}
-  .item.locked{opacity:.6}
-  #chooseCard{max-height:88vh;overflow:auto}
-  .kh{margin:10px 0 2px;font-size:14px;color:var(--wood-d);text-align:left;font-weight:700}
-  .unl{margin:8px 0 0;padding-left:20px;text-align:left;line-height:1.8}
-  @media (max-width:560px){.pad{grid-template-columns:auto auto;justify-content:space-between}.pad .controls{grid-column:1/-1;grid-row:2}.joy{width:104px;height:104px}.actbtn{width:76px;height:76px}}
-  </style>
-  <div class="pad">
-    <div class="joy" id="joy" aria-label="方向搖桿：拖曳移動店長"><span class="u">▲</span><span class="d">▼</span><span class="l">◀</span><span class="r">▶</span><div class="knob" id="knob"></div></div>
-    <div class="controls">
-      <button id="openBtn" class="primary">開店營業</button>
-      <button id="floorBtn">前往 2F 貓咪閣樓<span class="badge" id="floorBadge" hidden>!</span></button>
-      <button id="phoneBtn">店長手機</button>
-      <button id="speedBtn">速度 1×</button>
-      <button id="pauseBtn">暫停</button>
-    </div>
-    <button class="actbtn" id="actBtn" aria-label="動作：和店長旁邊的東西互動">動作</button>
+  <div class="rbtns">
+    <button class="rb" id="phoneBtn" aria-label="店長手機">手機</button>
+    <button class="rb" id="floorBtn"><span id="floorLbl">去 2F</span><span class="badge sm" id="floorBadge" hidden>!</span></button>
+    <button class="rb" id="pauseBtn">暫停</button>
+    <button class="rb" id="speedBtn" aria-label="遊戲速度">1×</button>
   </div>
 
-  <div class="lower">
-    <div class="panel"><span class="lbl">店長待辦</span><div id="taskList"></div></div>
-    <div class="panel inv" id="inv"></div>
+  <div class="lbtns">
+    <button class="rb" data-pane="tasks" aria-label="店長待辦">待辦<span class="badge sm" id="taskBadge" hidden></span></button>
+    <button class="rb" data-pane="inv" aria-label="庫存">庫存<span class="badge sm" id="invBadge" hidden>!</span></button>
+    <button class="rb" data-pane="staff" id="staffTab" aria-label="員工" hidden>員工</button>
+    <button class="rb" data-pane="tips" id="tipsTab" aria-label="今日提示" hidden>提示</button>
+    <button class="rb" data-pane="howto" aria-label="怎麼玩">說明</button>
   </div>
-  <div class="panel inv" id="staffPanel" hidden></div>
-
-  <div class="panel tutorial" id="tutorial" hidden></div>
-
-  <details class="panel howto">
-    <summary>怎麼玩</summary>
+  <div class="panel drawer" id="drawer" hidden>
+    <div class="dhead"><h3 id="drawerTitle"></h3><button id="drawerClose" aria-label="收起">✕</button></div>
+    <div data-pane="tasks"><div id="taskList"></div></div>
+    <div data-pane="inv" class="inv" id="inv"></div>
+    <div data-pane="staff" class="inv" id="staffPanel"></div>
+    <div data-pane="tips" class="tutorial" id="tutorial" hidden></div>
+    <div data-pane="howto" class="howto">
     <ul>
-      <li>兩種操控方式：用左下的<b>圓形搖桿</b>（或鍵盤方向鍵、WASD）走到東西旁邊，按右邊的<b>動作</b>鍵（或 E）；也可以直接點畫面上的東西，店長會自己走過去做。點的動作會排進「店長待辦」，點待辦可以取消。</li>
+      <li>畫面可以用手指左右拖曳，看店裡其他地方；放開一下子後鏡頭會自己回到店長身上。左邊的小圓鈕可以打開待辦、庫存、員工和提示，上方的時間列點一下可以看更多資訊。</li>
+      <li>兩種操控方式：用左下角的<b>圓形搖桿</b>（或鍵盤方向鍵、WASD）走到東西旁邊，按右下角的<b>動作</b>鍵（或 E）；也可以直接點畫面上的東西，店長會自己走過去做。點的動作會排進左邊的「待辦」，打開待辦可以取消。</li>
       <li>1F：點<b>烤箱</b>（樓梯旁的櫃子）烤點心、點<b>吧檯</b>幫排隊的客人點餐、點<b>等餐的客人</b>送餐、點<b>髒桌子</b>收拾、洗手間出現驚嘆號時點<b>洗手間</b>打掃（3 秒內擦掉污漬）。</li>
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
-      <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。下面的切換按鈕只換看哪一層。另一層有狀況時，右上角和按鈕會亮起驚嘆號。</li>
+      <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。右上角的樓層鈕只換看哪一層。另一層有狀況時，左上角會出現提醒，點它就能切過去。</li>
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
       <li>手機的「喵喵宣傳」可以發傳單、發 IG、辦試吃、登報紙，讓今天的客人變多、粉絲增加。「徽章」收集成就，「喵喵接點心」是小遊戲，每天第一次玩有零用錢。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
@@ -196,7 +212,12 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算。每天開店前和打烊後會自動存檔（有登入就存在帳號裡），下次打開按「繼續」就好；營業到一半關掉，會回到當天早上。</li>
       <li>快捷鍵：方向鍵移動、E 動作、F 切換樓層、空白鍵暫停。</li>
     </ul>
-  </details>
+    </div>
+  </div>
+
+  <button id="openBtn" class="primary openbtn">開店營業</button>
+  <div class="joy" id="joy" aria-label="方向搖桿：拖曳移動店長"><span class="u">▲</span><span class="d">▼</span><span class="l">◀</span><span class="r">▶</span><div class="knob" id="knob"></div></div>
+  <button class="actbtn" id="actBtn" aria-label="動作：和店長旁邊的東西互動">動作</button>
 </div>
 
 <div class="overlay" id="titleOv">
@@ -231,8 +252,40 @@ const W = 960, H = 600, FLOOR = 478;
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let g = ctx; // current drawing context (swapped while pre-rendering backgrounds)
-function fit() { const d = Math.min(2, window.devicePixelRatio || 1); cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0); }
+// The canvas fills the window; V maps world (960×600) to screen: screen = world * V.s + (V.tx, V.ty).
+let DPR = 1;
+const V = { s: 1, tx: 0, ty: 0, cx: W / 2 };
+function fit() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(1, Math.round(cv.clientWidth * DPR)), h = Math.max(1, Math.round(cv.clientHeight * DPR));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+}
 fit(); addEventListener('resize', fit);
+// Camera: portrait shows about a third of the shop and follows the manager; drag to look around,
+// it drifts back to the manager CAM_HOLD ms after you let go. Landscape fits the whole shop.
+const CAM = { x: 0, hold: 0, snap: true }, CAM_HOLD = 2500, PORTRAIT_VIEW = 320;
+function updateCam(dt) {
+  const w = cv.clientWidth || 1, h = cv.clientHeight || 1;
+  const box = S && (S.mini ? MINI_BOX : S.cook ? COOK_BOX : S.reg ? REG_BOX : null);
+  if (box) { // mini-games: zoom onto their card
+    const s = Math.min(w / (box.w + 24), h / (box.h + 24));
+    V.s = s; V.tx = w / 2 - (box.x + box.w / 2) * s; V.ty = h / 2 - (box.y + box.h / 2) * s; V.cx = box.x + box.w / 2;
+    return;
+  }
+  const s = h > w ? Math.min(w / PORTRAIT_VIEW, h / H) : Math.min(w / W, h / H), vw = w / s, maxX = W - vw;
+  if (maxX <= 0) CAM.x = maxX / 2;
+  else {
+    const m = S && S.mgr;
+    if (m && m.floor === S.view && !DRAG.moved && performance.now() > CAM.hold) {
+      const tgt = clamp(m.x - vw / 2, 0, maxX);
+      CAM.x = CAM.snap ? tgt : CAM.x + (tgt - CAM.x) * Math.min(1, dt * 5);
+      CAM.snap = false;
+    }
+    CAM.x = clamp(CAM.x, 0, maxX);
+  }
+  V.s = s; V.tx = -CAM.x * s; V.ty = Math.max(0, (h - H * s) / 2); V.cx = CAM.x + vw / 2;
+}
+const DRAG = { id: null, x0: 0, y0: 0, cam0: 0, moved: false };
 
 const INK = '#6A4B3A';
 const FONT = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
@@ -1836,6 +1889,7 @@ Object.assign(COOK_STEPS, {
   pasta:   [['tap', '麵放進滾水', 2, '🍝'], ['time', '煮到彈牙時撈起', '🔥'], ['tap', '切香腸和青椒', 4, '🫑'], ['hold', '加番茄醬拌炒', 1.4, '🍳'], ['tap', '撒上起司', 2, '🧀']],
   hamburg: [['tap', '絞肉加洋蔥', 3, '🥩'], ['hold', '揉成肉團', 1.6, '🤲'], ['tap', '捏出貓掌形狀', 4, '🐾'], ['time', '煎到兩面焦香時翻面', '🔥'], ['tap', '淋上醬汁', 2, '🍯']],
 });
+const MINI_BOX = { x: 260, y: 150, w: 440, h: 340 };
 const COOK_BOX = { x: 220, y: 96, w: 520, h: 410 }, COOK_X = { x: 712, y: 124 };
 function startCook(dish) {
   const steps = COOK_STEPS[dish].map(a => a[0] === 'time' ? { kind: 'time', label: a[1], icon: a[2] } : { kind: a[0], label: a[1], need: a[2], icon: a[3] });
@@ -2124,7 +2178,15 @@ function update(dt) {
   const due = S.later.filter(l => (l.t -= dt) <= 0); S.later = S.later.filter(l => l.t > 0); due.forEach(l => l.fn());
   chatter(dt);
 }
-function draw() {
+function draw(dt = 1 / 60) {
+  fit(); updateCam(dt);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#2E221B'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(DPR * V.s, 0, 0, DPR * V.s, DPR * V.tx, DPR * V.ty);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  drawWorld();
+  ctx.restore();
+}
+function drawWorld() {
   g = ctx;
   if (!BG[1]) return;
   const f = S.view;
@@ -2142,9 +2204,7 @@ function draw() {
   S.customers.forEach(c => { if (c.floor === f) items.push({ y: c.y + (c.table ? 1 : 0), d: () => drawCustomer(c) }); });
   items.sort((a, b) => a.y - b.y).forEach(i => i.d());
   for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
-  drawCornerAlert();
-  if (S.phase === 'prep') { rrect(16, 16, 236, 30, 15, 'rgba(255,255,255,.92)', INK, 1.1); text('晨間備料中・時鐘暫停', 134, 31, 14, '#6B4A35', 'center', DFONT, 700); }
-  if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', W / 2, H / 2, 40, '#FFFFFF', 'center', DFONT, 700); }
+  if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, H / 2, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
   if (S.cook) drawCook();
   if (S.reg) drawReg();
@@ -2164,22 +2224,11 @@ function floorAlerts(f) {
   if (k) a.push(`${k.name}想要店長摸摸`);
   return a;
 }
-const CORNER = { x: W - 300, y: 12, w: 284, h: 34 };
-function drawCornerAlert() {
-  const other = otherFloor(), a = floorAlerts(other);
-  if (!a.length) return;
-  const { x, y, w, h } = CORNER;
-  rrect(x, y, w, h, 17, 'rgba(255,255,255,.95)', '#D9773E', 2);
-  ell(x + 20, y + h / 2, 11, 11, '#D9773E'); text('!', x + 20, y + h / 2 + 1, 14, '#fff', 'center', FONT, 700);
-  text(`${other}F：${a[0]}`, x + 38, y + h / 2, 13, INK, 'left', FONT, 700);
-}
-
 // ====================== input ======================
-function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
+function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left - V.tx) / V.s, y: (e.clientY - r.top - V.ty) / V.s }; }
 function hitPerson(p, x, y, sit) { return Math.abs(x - p.x) < 26 && y < p.y + 6 && y > p.y - (sit ? 80 : 100) * PS; }
 function hitTest(x, y) {
-  const f = S.view, other = otherFloor();
-  if (floorAlerts(other).length && x > CORNER.x && x < CORNER.x + CORNER.w && y > CORNER.y && y < CORNER.y + CORNER.h) return { act: () => { S.view = other; updateButtons(); } };
+  const f = S.view;
   for (const c of S.customers) {
     if (c.floor !== f || c.hidden) continue;
     if (c.state === 'waitFood' && hitPerson(c, x, y, true)) return { act: () => actServe(c) };
@@ -2212,15 +2261,31 @@ function hitTest(x, y) {
 }
 cv.addEventListener('pointerdown', e => {
   if (!started || !S || S.phase === 'settle') return;
+  if (!$('drawer').hidden || !$('hudMore').hidden) { closeDrawer(); setHudMore(false); return; } // tapping the scene folds panels away
   const p = toCanvas(e);
   if (S.mini) { S.mini.last = p; cv.setPointerCapture(e.pointerId); return; }
   if (S.reg) { regClick(p); return; }
   if (S.cook) { if (Math.hypot(p.x - COOK_X.x, p.y - COOK_X.y) < 22) cancelCook(); else { cookPress(); cv.setPointerCapture(e.pointerId); } return; }
-  if (S.paused) return;
-  const h = hitTest(p.x, p.y); if (h) h.act();
+  // a tap acts on release; a drag pans the camera instead
+  DRAG.id = e.pointerId; DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.cam0 = CAM.x; DRAG.moved = false;
+  cv.setPointerCapture(e.pointerId);
 });
-cv.addEventListener('pointerup', cookRelease); cv.addEventListener('pointercancel', cookRelease);
+cv.addEventListener('pointerup', e => {
+  cookRelease();
+  if (DRAG.id !== e.pointerId) return;
+  DRAG.id = null;
+  if (DRAG.moved) { DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; return; }
+  if (!started || !S || S.paused || S.phase === 'settle' || S.mini || S.cook || S.reg) return;
+  const p = toCanvas(e), h = hitTest(p.x, p.y); if (h) h.act();
+});
+cv.addEventListener('pointercancel', e => { cookRelease(); if (DRAG.id === e.pointerId) { DRAG.id = null; DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; } });
 cv.addEventListener('pointermove', e => {
+  if (DRAG.id === e.pointerId) {
+    const dx = e.clientX - DRAG.x0;
+    if (!DRAG.moved && Math.hypot(dx, e.clientY - DRAG.y0) > 10) DRAG.moved = true;
+    if (DRAG.moved) CAM.x = DRAG.cam0 - dx / V.s;
+    return;
+  }
   if (!S || S.cook) return;
   const p = toCanvas(e);
   if (S.mini) { miniRub(p.x, p.y); return; }
@@ -2235,7 +2300,7 @@ const JOY = { x: 0, y: 0 }, KEYV = { x: 0, y: 0 }, KEYS = {};
     const r = joy.getBoundingClientRect(), R = r.width / 2 - 14;
     let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
     const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
-    knob.style.transform = `translate(${dx}px,${dy}px)`; JOY.x = dx / R; JOY.y = dy / R;
+    knob.style.transform = `translate(${dx}px,${dy}px)`; JOY.x = dx / R; JOY.y = dy / R; CAM.hold = 0;
   };
   const reset = () => { pid = null; JOY.x = JOY.y = 0; knob.style.transform = ''; };
   joy.addEventListener('pointerdown', e => { pid = e.pointerId; joy.setPointerCapture(pid); setFrom(e); e.preventDefault(); });
@@ -2310,7 +2375,7 @@ document.getElementById('actBtn').addEventListener('pointerdown', () => { if (S 
 document.getElementById('actBtn').addEventListener('pointerup', cookRelease);
 document.getElementById('actBtn').addEventListener('pointerleave', cookRelease);
 const KEYMAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ArrowDown: 'dn', s: 'dn', S: 'dn' };
-function syncKeys() { KEYV.x = (KEYS.r ? 1 : 0) - (KEYS.l ? 1 : 0); KEYV.y = (KEYS.dn ? 1 : 0) - (KEYS.u ? 1 : 0); }
+function syncKeys() { CAM.hold = 0; KEYV.x = (KEYS.r ? 1 : 0) - (KEYS.l ? 1 : 0); KEYV.y = (KEYS.dn ? 1 : 0) - (KEYS.u ? 1 : 0); }
 addEventListener('keydown', e => {
   if (S && S.reg) return;
   if (!started || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
@@ -2368,24 +2433,30 @@ function hudTick(dt) {
     `<span>肉泥 <b>${st.treat}</b> 條</span>` +
     `<span>展示櫃 ${dispTotal() ? DISHES.filter(d => S.display[d] > 0).map(d => `${MENU[d].short} <b>${S.display[d]}</b>`).join('・') : '<b>空的</b>'}</span>` +
     `<span>貓碗 <b>${G.bowl}</b>/6</span><span>桌子 <b>${S.tables.length}</b> 張</span>`;
+  $('invBadge').hidden = !(st.flour < 4 || st.catfood < 1 || st.litter < 1);
+  const nt = S.tasks.length + (S.mgr.task ? 1 : 0), tb = $('taskBadge'); tb.hidden = !nt; tb.textContent = nt;
   const sp = $('staffPanel');
-  sp.hidden = !S.staff.length;
+  $('staffTab').hidden = !S.staff.length;
+  if (!S.staff.length && $('drawer').dataset.show === 'staff') closeDrawer();
   sp.innerHTML = '<span class="lbl">員工</span>' + S.staff.map(s => `<span class="${s.stamina < 30 ? 'low' : ''}">${s.name}（${s.title}）<b>${s.resting ? '休息中' : '體力 ' + Math.round(s.stamina)}</b>${s.task && !s.resting ? '・' + s.task.label : ''}</span>`).join('');
   updateButtons(); renderTutorial();
 }
 function updateButtons() {
   if (!S) return;
   const other = S.view === 2 ? 1 : 2, fb = $('floorBtn');
-  fb.firstChild.textContent = other === 2 ? '前往 2F 貓咪閣樓' : '回到 1F 店面';
+  $('floorLbl').textContent = `去 ${other}F`; fb.setAttribute('aria-label', other === 2 ? '前往 2F 貓咪閣樓' : '回到 1F 店面');
   const a = floorAlerts(other); $('floorBadge').hidden = !a.length; fb.title = a.join('、');
+  const of = otherFloor(), oa = floorAlerts(of), fa = $('floorAlert');
+  fa.hidden = !started || S.phase === 'settle' || !oa.length; if (oa.length) { fa.dataset.f = of; $('floorAlertTxt').textContent = `${of}F：${oa[0]}`; }
   $('openBtn').hidden = S.phase !== 'prep';
-  $('speedBtn').textContent = `速度 ${S.speed}×`;
+  $('game').classList.toggle('busy', !!(S.mini || S.cook || S.reg));
+  $('speedBtn').textContent = `${S.speed}×`;
   $('pauseBtn').textContent = S.paused ? '繼續' : '暫停';
 }
 function renderTutorial() {
   const el = $('tutorial'); if (!S) return;
-  if (G.day !== 1 || S.phase === 'settle') { el.hidden = true; return; }
-  el.hidden = false;
+  if (G.day !== 1 || S.phase === 'settle') { el.hidden = $('tipsTab').hidden = true; if ($('drawer').dataset.show === 'tips') closeDrawer(); return; }
+  el.hidden = $('tipsTab').hidden = false;
   let html;
   if (S.phase === 'prep') {
     const items = [
@@ -2413,6 +2484,21 @@ $('speedBtn').onclick = () => { S.speed = S.speed === 1 ? 2 : 1; updateButtons()
 $('pauseBtn').onclick = togglePause;
 function togglePause() { if (S.phase === 'settle') return; S.paused = !S.paused; updateButtons(); }
 $('phoneBtn').onclick = () => openPhone('home');
+$('floorAlert').onclick = () => { S.view = +$('floorAlert').dataset.f; updateButtons(); };
+// fold-away panels: open on tap, the game keeps running underneath
+const PANE_TITLE = { tasks: '店長待辦', inv: '庫存', staff: '員工', tips: '今天的提示', howto: '怎麼玩' };
+function openDrawer(k) {
+  const d = $('drawer');
+  if (!d.hidden && d.dataset.show === k) { closeDrawer(); return; }
+  setHudMore(false);
+  d.dataset.show = k; $('drawerTitle').textContent = PANE_TITLE[k]; d.hidden = false;
+  document.querySelectorAll('.lbtns [data-pane]').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
+}
+function closeDrawer() { $('drawer').hidden = true; $('drawer').dataset.show = ''; document.querySelectorAll('.lbtns .on').forEach(b => b.classList.remove('on')); }
+function setHudMore(on) { $('hudMore').hidden = !on; $('hudToggle').setAttribute('aria-expanded', on); }
+document.querySelectorAll('.lbtns [data-pane]').forEach(b => b.onclick = () => openDrawer(b.dataset.pane));
+$('drawerClose').onclick = closeDrawer;
+$('hudToggle').onclick = () => { const on = $('hudMore').hidden; if (on) closeDrawer(); setHudMore(on); };
 
 function chooseBake() {
   const card = $('chooseCard');
@@ -2798,7 +2884,7 @@ function closeDay() {
   $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
   updateButtons();
 }
-function begin(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; setMusic(G.music); saveProgress(); }
+function begin(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; if (G.day === 1) { renderTutorial(); openDrawer('tips'); } setMusic(G.music); saveProgress(); }
 function openSetup() {
   const card = $('chooseCard');
   card.innerHTML = `<h2>幫你的店取名字</h2>
@@ -2837,7 +2923,7 @@ function frame(now) {
     else if (S.reg) { S.t += rdt; updReg(rdt); }
     else if (started && !S.paused && !S.uiPause && S.phase !== 'settle') update(rdt * S.speed);
     else if (!started) S.t += rdt;
-    draw(); hudTick(rdt);
+    draw(rdt); hudTick(rdt);
     if (started && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && $('phoneOv').hidden) {
       if (shopLv() > S.lvShown) {
         const l = ++S.lvShown;
