@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>暖陽貓閣</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
@@ -233,7 +234,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
     </div>
     <p class="muted" style="margin-top:16px">有存檔碼嗎？貼在這裡讀取</p>
     <textarea id="loadCode" placeholder="CAT-..."></textarea>
-    <div class="row"><button id="loadBtn">讀取存檔碼</button></div>
+    <div class="row"><button id="loadBtn">讀取存檔碼</button><button id="loginBtn" hidden>用帳號登入</button></div>
     <p class="muted">試玩版以 Stage 1「新手試營運」為主，另外先開放了員工和桌子。</p>
   </div>
 </div>
@@ -2649,6 +2650,7 @@ function renderPhone() {
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
+      if (CLOUD.sb) h += acctAppHtml();
     }
     h += '</div>';
   }
@@ -2681,6 +2683,8 @@ function renderPhone() {
   q('#repay50') && (q('#repay50').onclick = () => { const r = Math.min(50, G.debt, G.cash); G.cash -= r; G.debt -= r; renderPhone(); });
   q('#repayAll') && (q('#repayAll').onclick = () => { G.cash -= G.debt; G.debt = 0; toast('負債還清了'); renderPhone(); });
   q('#copyCode') && (q('#copyCode').onclick = () => copyText(q('#codeOut')));
+  q('#acctMake') && (q('#acctMake').onclick = () => makeAccount(q('#acctName').value, q('#acctPass').value));
+  q('#acctOut') && (q('#acctOut').onclick = logOut);
 }
 function doExpand() {
   const E = EXPANSIONS[G.expand];
@@ -2753,14 +2757,101 @@ function decodeSave(code) {
 }
 function cleanName(v, d, n) { return String(typeof v === 'string' ? v : '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n) || d; }
 function storeLocal() { try { localStorage.setItem('catloft-save', encodeSave(G)); } catch {} }
-// ---- account save: the viewer's claude.ai account keeps one private save (data/users/<id>/save) ----
-const CLOUD = { db: null, uid: null, name: '', ready: false };
+// ---- account save ----
+// Inside claude.ai the viewer's account keeps one private save (data/users/<id>/save).
+// On the live site the save goes to Supabase (table catloft_saves, one row per auth user, RLS = own row only).
+// Every player starts as an anonymous Supabase user; giving the account a name + password lets them log in on another device.
+const SB_URL = 'https://bxrppdsbhuhjluprohkf.supabase.co', SB_KEY = 'sb_publishable_a99TJ4CiEW14ToPcoyn4KQ_NdoqXg2A';
+const CLOUD = { db: null, sb: null, uid: null, name: '', ready: false };
+let sbSaving = null, sbAgain = false;
 function saveProgress() {
   storeLocal();
-  if (!CLOUD.db) return;
-  const code = encodeSave(G);
-  CLOUD.db.doc('data/users/' + CLOUD.uid + '/save').set({ code, day: G.day, savedAt: Date.now() })
-    .catch(() => toast('雲端存檔失敗，進度先存在這台裝置'));
+  if (CLOUD.db) {
+    CLOUD.db.doc('data/users/' + CLOUD.uid + '/save').set({ code: encodeSave(G), day: G.day, savedAt: Date.now() })
+      .catch(() => toast('雲端存檔失敗，進度先存在這台裝置'));
+  } else if (CLOUD.sb) sbSave();
+}
+// one upload at a time; a save requested meanwhile runs once the current one finishes
+function sbSave() {
+  if (sbSaving) { sbAgain = true; return sbSaving; }
+  sbSaving = (async () => {
+    try {
+      if (!CLOUD.uid) {
+        const { data, error } = await CLOUD.sb.auth.signInAnonymously();
+        if (error) throw error;
+        CLOUD.uid = data.user.id;
+      }
+      const { error } = await CLOUD.sb.from('catloft_saves').upsert({ user_id: CLOUD.uid, code: encodeSave(G), day: G.day, shop_name: G.shopName, updated_at: new Date().toISOString() });
+      if (error) throw error;
+    } catch { toast('雲端存檔失敗，進度先存在這台裝置'); }
+    sbSaving = null;
+    if (sbAgain) { sbAgain = false; return sbSave(); }
+  })();
+  return sbSaving;
+}
+// account names can be any text (Chinese too); Supabase wants an email, so the name is hex-encoded into one
+function acctEmail(name) { return 'u' + [...new TextEncoder().encode(name.trim().toLowerCase())].map(b => b.toString(16).padStart(2, '0')).join('') + '@catloft.player'; }
+function acctAppHtml() {
+  if (CLOUD.name) return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span><b>${CLOUD.name}</b></div><div class="sub">進度會自動存到雲端。換手機時在標題畫面按「用帳號登入」就能接著玩。</div><div class="row" style="margin:6px 0 0"><button id="acctOut">登出</button></div></div>`;
+  return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span></div>
+    <div class="sub">進度已經自動存到雲端了，但只認得這台裝置。設定帳號名稱和密碼，換手機或清掉瀏覽器也能用帳號登入接著玩。</div>
+    <label class="fld">帳號名稱（2–10 個字）<input id="acctName" maxlength="10" autocomplete="username"></label>
+    <label class="fld">密碼（至少 6 個字）<input id="acctPass" type="password" autocomplete="new-password"></label>
+    <div class="row" style="margin:0"><button class="primary" id="acctMake">建立帳號</button></div></div>`;
+}
+async function makeAccount(name, pass) {
+  name = cleanName(name, '', 10);
+  if (name.length < 2) return toast('帳號名稱至少要 2 個字');
+  if (!pass || pass.length < 6) return toast('密碼至少要 6 個字');
+  try {
+    await sbSave();
+    if (!CLOUD.uid) return;
+    const { error } = await CLOUD.sb.auth.updateUser({ email: acctEmail(name), password: pass, data: { name } });
+    if (error) return toast(/already|registered|exists/i.test(error.message) ? '這個帳號名稱有人用了，換一個吧' : '建立帳號失敗：' + error.message);
+    CLOUD.name = name; showAcct(); toast(`帳號「${name}」建好了！記得密碼喔`); renderPhone();
+  } catch (e) { toast('建立帳號失敗，請稍後再試'); }
+}
+async function logOut() {
+  await sbSave();
+  await CLOUD.sb.auth.signOut();
+  try { localStorage.removeItem('catloft-save'); } catch {}
+  location.reload();
+}
+function openLogin() {
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>用帳號登入</h2><p class="muted">輸入在遊戲手機「存檔碼」裡建立的帳號，就能接著玩雲端上的進度。</p>
+    <label class="fld">帳號名稱<input id="inUser" maxlength="10" autocomplete="username"></label>
+    <label class="fld">密碼<input id="inPass" type="password" autocomplete="current-password"></label>
+    <div class="row"><button id="loginBack">返回</button><button class="primary" id="loginGo">登入</button></div>`;
+  $('chooseOv').hidden = false; $('inUser').focus();
+  $('loginBack').onclick = () => { $('chooseOv').hidden = true; };
+  $('loginGo').onclick = async () => {
+    const name = $('inUser').value.trim(), pass = $('inPass').value;
+    if (!name || !pass) return toast('請輸入帳號名稱和密碼');
+    $('loginGo').disabled = true;
+    const { data, error } = await CLOUD.sb.auth.signInWithPassword({ email: acctEmail(name), password: pass });
+    $('loginGo').disabled = false;
+    if (error) return toast('帳號名稱或密碼不對');
+    CLOUD.uid = data.user.id; CLOUD.name = cleanName(data.user.user_metadata?.name, cleanName(name, '玩家', 10), 10); showAcct();
+    const { data: row } = await CLOUD.sb.from('catloft_saves').select('code').eq('user_id', CLOUD.uid).maybeSingle();
+    $('chooseOv').hidden = true;
+    let g = null; try { g = row && decodeSave(row.code); } catch {}
+    if (g) { begin(g); toast(`歡迎回來，${CLOUD.name}！第 ${G.day} 天`); }
+    else toast(`已登入「${CLOUD.name}」，這個帳號還沒有存檔，開始新遊戲吧`);
+  };
+}
+async function initSupabase() {
+  if (!window.supabase) return;
+  const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey: 'catloft-auth', persistSession: true, autoRefreshToken: true } });
+  CLOUD.sb = sb; $('loginBtn').hidden = false;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return; // the anonymous user is made on the first save, so visitors who never play make no account
+  CLOUD.uid = session.user.id; CLOUD.name = session.user.is_anonymous ? '' : cleanName(session.user.user_metadata?.name, '玩家', 10);
+  const { data: row } = await sb.from('catloft_saves').select('code,day').eq('user_id', CLOUD.uid).maybeSingle();
+  if (row && !started) {
+    const localDay = localCode ? (() => { try { return decodeSave(localCode).day; } catch { return 0; } })() : 0;
+    if ((row.day || 0) >= localDay) offerContinue(row.code, CLOUD.name ? '帳號 ' + CLOUD.name : '雲端存檔');
+  }
 }
 function showAcct() {
   const line = $('acctLine'), chip = $('acct');
@@ -2768,6 +2859,12 @@ function showAcct() {
     const who = CLOUD.name || '你的帳號';
     line.textContent = `已用 ${who} 登入，進度會自動存在帳號裡，換裝置也能接著玩。`;
     chip.textContent = `・${who}・自動存檔`;
+  } else if (CLOUD.sb && CLOUD.name) {
+    line.textContent = `已用帳號「${CLOUD.name}」登入，進度會自動存到雲端，換裝置也能接著玩。`;
+    chip.textContent = `・${CLOUD.name}・雲端存檔`;
+  } else if (CLOUD.sb) {
+    line.textContent = '進度會自動存到雲端。想換手機玩，可以在遊戲手機的「存檔碼」建立帳號。';
+    chip.textContent = '・雲端存檔';
   } else {
     line.textContent = '沒有登入帳號，進度會自動存在這台裝置的瀏覽器裡。';
     chip.textContent = '・存在這台裝置';
@@ -2795,6 +2892,7 @@ async function initCloud() {
         }
       }
     }
+    if (!CLOUD.db) await initSupabase();
   } catch {}
   CLOUD.ready = true; showAcct();
   if (started) saveProgress();
@@ -2907,6 +3005,7 @@ $('newBtn').onclick = () => {
   if (!$('contBtn').hidden && !confirmNew) { confirmNew = true; $('newBtn').textContent = '確定重新開始？舊進度會被蓋掉'; return; }
   openSetup();
 };
+$('loginBtn').onclick = () => { if (CLOUD.sb) openLogin(); };
 $('loadBtn').onclick = () => { try { begin(decodeSave($('loadCode').value)); toast('讀取成功，第 ' + G.day + ' 天'); } catch (e) { toast('讀不到存檔碼：' + e.message); } };
 let localCode = null; try { localCode = localStorage.getItem('catloft-save'); } catch {}
 if (localCode) offerContinue(localCode, '這台裝置');
