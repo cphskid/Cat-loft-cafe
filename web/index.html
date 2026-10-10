@@ -174,9 +174,12 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>1F：點<b>烤箱</b>（樓梯旁的櫃子）烤點心、點<b>吧檯</b>幫排隊的客人點餐、點<b>等餐的客人</b>送餐、點<b>髒桌子</b>收拾、洗手間出現驚嘆號時點<b>洗手間</b>打掃（3 秒內擦掉污漬）。</li>
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
       <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。下面的切換按鈕只換看哪一層。另一層有狀況時，右上角和按鈕會亮起驚嘆號。</li>
+      <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地（手機「我的店」看進度）。</li>
+      <li><b>貓咪親密度</b>：店長每摸一次頭，那隻貓的親密度 +1（名字下面的愛心數字）。到 10、25、45、70、100 會解鎖蹭蹭腳、擊掌、翻肚子、抱抱、碰鼻子，點貓咪就能選。</li>
+      <li><b>收銀台</b>：店長幫客人點餐時要自己找錢，點錢幣和鈔票放進找零盤，再按「找錢給客人」。少找客人會不開心，多找會虧錢。</li>
       <li>貓咪頭上出現「摸摸我」時，走過去摸牠會很開心，會更常去陪客人玩；放著不理牠會鬧脾氣一陣子。手機的「喵音樂」可以換背景音樂。</li>
       <li>手機的「喵喵速達」可以買材料、新桌子（最多 5 張）和解鎖的傢俱。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
       <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算。每天開店前和打烊後會自動存檔（有登入就存在帳號裡），下次打開按「繼續」就好；營業到一半關掉，會回到當天早上。</li>
@@ -298,7 +301,11 @@ const WC = { door: { x: 808, y: 498 }, inside: { x: 808, y: 486 } };
 const CUSHION_POS = [{ x: 640, y: 548 }, { x: 735, y: 580 }, { x: 830, y: 548 }, { x: 905, y: 582 }];
 const BOWL = { x: 300, y: 556, staff: { x: 342, y: 562 } };
 const LITTER = { x: 412, y: 578, staff: { x: 462, y: 582 } };
-const REST_SPOT = { f: 2, x: 556, y: 488 };
+// ---- staff room (its own scene, "floor 3"), entered through the door on 2F
+const ROOM_DOOR2 = { x: 556, y: 488 }, ROOM_IN = { x: 150, y: 540 };
+const SOFA_SEATS = [{ x: 440, y: 520 }, { x: 505, y: 520 }, { x: 570, y: 520 }, { x: 706, y: 566 }, { x: 790, y: 566 }];
+const COFFEE = { x: 850, y: 512 };
+const otherFloor = () => S.view === 1 ? 2 : S.view === 2 ? 1 : (floorAlerts(1).length ? 1 : 2);
 const BEDS = {
   orange: { f: 2, x: 206, y: 230, ground: { x: 236, y: 522 } },
   tux:    { f: 2, x: 452, y: 206, ground: { x: 452, y: 508 } },
@@ -324,7 +331,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1 },
            prices, bowl: 0, litterDirt: 0, tables: 3, staff: [],
-           exp: 0, earned: 0, furn: [], keep: {}, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano' };
+           exp: 0, earned: 0, furn: [], keep: {}, bond: {}, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano' };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
@@ -333,6 +340,23 @@ const dispTotal = () => DISHES.reduce((a, d) => a + (S.display[d] || 0), 0);
 const patMul = () => hasF('record') ? 1.2 : 1;
 const litterMax = () => hasF('deodor') ? 5 : 3;
 const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv).map(d => (MENU[d].meal ? '正餐「' : '甜點「') + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
+// ---- bond between the manager and each cat ----
+const BOND = [
+  { at: 0,   title: '有點害羞', act: 'pet',   name: '摸摸頭',     desc: '每摸一次親密度 +1' },
+  { at: 10,  title: '熟悉',     act: 'rub',   name: '蹭蹭腳',     desc: '貓咪繞著店長的腳蹭來蹭去' },
+  { at: 25,  title: '喜歡',     act: 'five',  name: '擊掌',       desc: '貓咪舉起肉球跟店長擊掌' },
+  { at: 45,  title: '好朋友',   act: 'belly', name: '翻肚子',     desc: '露出肚子給店長摸，回復體力' },
+  { at: 70,  title: '最愛',     act: 'hug',   name: '抱抱',       desc: '店長抱著貓走一段路，貓會很開心' },
+  { at: 100, title: '家人',     act: 'kiss',  name: '碰鼻子',     desc: '用鼻子碰碰店長，愛心滿出來' },
+];
+const bondOf = k => G.bond[k.id] || 0;
+const bondLv = k => BOND.filter(b => bondOf(k) >= b.at).length - 1;
+function addBond(k, n) {
+  const before = bondLv(k); G.bond[k.id] = Math.min(100, bondOf(k) + n);
+  floatText(k.floor, k.x, k.y - 96, `親密度 +${n}`, '#E07A7A');
+  const after = bondLv(k);
+  if (after > before) { toast(`${k.name}跟${G.mgrName}更親了！解鎖「${BOND[after].name}」`); floatText(k.floor, k.x, k.y - 120, `♥ ${BOND[after].title}`, '#E07A7A'); }
+}
 function gainExp(n) { G.exp += n; if (S) S.today.exp += n; }
 function gainEarned(n) { G.earned += n; if (!G.landReady && G.earned >= LAND_GOAL) { G.landReady = true; S.landUp = true; } }
 function makeCats() {
@@ -470,10 +494,10 @@ function pawPrint(x, y, s, c) {
 // ====================== static backgrounds ======================
 const BG = {};
 function prerender() {
-  for (const f of [1, 2]) {
+  for (const f of [1, 2, 3]) {
     const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2;
     const cx = c.getContext('2d'); cx.scale(2, 2); g = cx;
-    f === 1 ? bg1() : bg2();
+    f === 1 ? bg1() : f === 2 ? bg2() : bg3();
     paperGrain(cx, 6000);
     BG[f] = c;
   }
@@ -550,6 +574,32 @@ function bg1() {
   rect(640, 548, 92, 22, 'rgba(230,212,170,.85)', INK, 1);
   for (let x = 646; x < 728; x += 6) line(x, 551, x, 567, 'rgba(160,120,80,.35)', .8);
   plant(282, FLOOR + 4, .9);
+}
+function bg3() {
+  wallBase();
+  wash(480, 200, 300, '#FFF1D6', .5);
+  text('員工休息室', 480, 40, 22, '#8D6E63', 'center', DFONT, 700);
+  // door back to 2F
+  rect(40, 290, 96, FLOOR - 290, '#D9C6A6', INK, 1.5); ell(122, 390, 4, 4, '#B07E52', INK, 1);
+  rrect(48, 262, 80, 22, 8, '#FFFFFF', INK, 1.1); text('← 2F 閣樓', 88, 273, 11, '#6B4A35', 'center', FONT, 700);
+  // lockers
+  for (let i = 0; i < 3; i++) { rect(170 + i * 44, 270, 42, FLOOR - 270, ['#BFD3CC', '#E8C9B4', '#C9D2E3'][i], INK, 1.3); for (let j = 0; j < 3; j++) line(178 + i * 44, 290 + j * 6, 204 + i * 44, 290 + j * 6, 'rgba(90,64,50,.35)', 1); ell(204 + i * 44, 380, 2.5, 2.5, '#8B776B'); }
+  // window + schedule board
+  windowFrame(330, 110, 150, 150, 2, 2);
+  rect(560, 140, 150, 110, '#E9D8BE', INK, 1.4);
+  text('本週班表', 635, 160, 13, '#6B4A35', 'center', DFONT, 700);
+  for (let j = 0; j < 4; j++) { line(574, 180 + j * 16, 696, 180 + j * 16, 'rgba(90,64,50,.25)', 1); pawPrint(584 + j * 30, 176 + j * 16, .3, '#D9773E'); }
+  // sofa
+  rrect(392, 440, 230, 66, 16, '#C98B6B', INK, 1.5); rect(392, 500, 230, 24, '#B57A5C', INK, 1.4);
+  rrect(378, 468, 24, 58, 10, '#B57A5C', INK, 1.4); rrect(612, 468, 24, 58, 10, '#B57A5C', INK, 1.4);
+  for (const sx of [440, 505, 570]) rrect(sx - 26, 452, 52, 40, 12, '#D9A285', 'rgba(90,64,50,.4)', 1);
+  // two beanbags
+  for (const b of [706, 790]) { ell(b, 552, 34, 22, b === 706 ? '#9FB8AD' : '#E3AE97', INK, 1.4); ell(b - 8, 540, 14, 8, 'rgba(255,255,255,.25)'); }
+  // counter with coffee machine and snacks
+  wood(810, 400, 140, 14, '#B98A5C', 1.4); rect(820, 414, 120, FLOOR - 414, '#E8DCC6', INK, 1.3);
+  rrect(830, 342, 50, 58, 6, '#4A4340', INK, 1.3); rrect(838, 352, 34, 12, 3, '#8FB0C9', null); mug(846, 398, '#FFFFFF');
+  for (let i = 0; i < 3; i++) ell(905 + i * 12, 395, 6, 4, ['#E2B573', '#F4D376', '#E9A5A5'][i], INK, 1);
+  plant(960 - 22, FLOOR + 2, .8);
 }
 function bg2() {
   wallBase();
@@ -760,7 +810,7 @@ function drawPersonAt(p, o) {
     rect(x - 8 + sw * .3, hip, 7, 32, o.pants, INK, 1.1); rect(x + 1 - sw * .3, hip, 7, 32, o.pants, INK, 1.1);
     ell(x - 4 + sw * .3, y - 2, 6, 3, '#4A3A32'); ell(x + 5 - sw * .3, y - 2, 6, 3, '#4A3A32');
   }
-  const top = hip - 36 + bob, hy = top - 13;
+  const top = hip - 36 + bob, hy = top - 15;
   if (o.long) { g.fillStyle = o.hair; g.beginPath(); g.ellipse(x - f * 3, hy + 9, 15, 21, 0, 0, Math.PI * 2); g.fill(); }
   // shirt with rolled sleeves feel
   poly([[x - 13, hip + 2], [x + 13, hip + 2], [x + 12, top + 4], [x - 12, top + 4]], o.shirt, INK, 1.3);
@@ -771,12 +821,27 @@ function drawPersonAt(p, o) {
     line(x + 6 * f, top + 10, x + 18 * f, top + 20, armC, 1.4);
     ell(x + 20 * f, top + 18, 12, 3, '#FFFFFF', INK, 1); drawDish(p.carry, x + 20 * f, top + 10, .7);
   } else { line(x - 12, top + 8, x - 14, top + 30, armC, 1.4); line(x + 12, top + 8, x + 14, top + 30, armC, 1.4); ell(x - 14, top + 31, 2.5, 2.5, SKIN); ell(x + 14, top + 31, 2.5, 2.5, SKIN); }
-  ell(x, hy, 12.5, 13.5, SKIN, INK, 1.3);
-  g.fillStyle = o.hair; g.beginPath(); g.ellipse(x - f * 2, hy - 4, 13.5, 11, 0, Math.PI, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(x - f * 8, hy - 1, 6, 10, 0, 0, Math.PI * 2); g.fill();
-  if (o.long) { g.beginPath(); g.ellipse(x - f * 15, hy + 8, 4.5, 11, f * .4, 0, Math.PI * 2); g.fill(); }
-  ell(x + f * 5, hy + 1, 1.5, 1.7, INK);
-  g.fillStyle = 'rgba(230,140,120,.3)'; g.beginPath(); g.arc(x + f * 7, hy + 6, 3, 0, Math.PI * 2); g.fill();
+  // anime-style head: big round face, bangs, shiny hair, large sparkly eyes
+  const hr = 15;
+  ell(x, hy, hr, hr + .5, SKIN, INK, 1.2);
+  g.fillStyle = o.hair;
+  g.beginPath(); g.ellipse(x - f * 1.5, hy - 4, hr + 1.6, hr - 2, 0, Math.PI, Math.PI * 2); g.fill();
+  g.beginPath(); g.moveTo(x - hr - 1, hy - 4); // zig-zag bangs
+  for (let i = 0; i < 4; i++) { const bx = x - hr + i * hr / 2; g.lineTo(bx + hr / 4, hy + (i % 2 ? -2 : 1)); g.lineTo(bx + hr / 2, hy - 5); }
+  g.lineTo(x + hr + 1, hy - 4); g.closePath(); g.fill();
+  g.beginPath(); g.ellipse(x - f * 11, hy + 2, 5.5, 12, 0, 0, Math.PI * 2); g.fill();
+  if (o.long) { g.beginPath(); g.ellipse(x - f * 16, hy + 10, 5, 13, f * .4, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2; g.lineCap = 'round';
+  g.beginPath(); g.arc(x - f * 2, hy - 4, 10, Math.PI * 1.18, Math.PI * 1.5); g.stroke();
+  for (const ex of [x + f * 7.5, x - f * .5]) {
+    ell(ex, hy + 4.5, 2.7, 3.8, '#3A2A24'); ell(ex, hy + 6, 1.8, 1.6, '#7A5A48');
+    ell(ex - .9, hy + 3, 1.1, 1.2, '#FFFFFF'); ell(ex + .8, hy + 6.6, .5, .5, '#FFFFFF');
+    g.strokeStyle = '#2E211C'; g.lineWidth = 1.4; g.beginPath(); g.ellipse(ex, hy + 4.5, 3.3, 4.2, 0, Math.PI * 1.12, Math.PI * 1.88); g.stroke();
+  }
+  g.fillStyle = 'rgba(240,120,120,.4)';
+  g.beginPath(); g.ellipse(x + f * 10, hy + 10, 3.2, 1.7, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(x - f * 3.5, hy + 10, 3.2, 1.7, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = INK; g.lineWidth = 1; g.beginPath(); g.arc(x + f * 4, hy + 10, 1.8, .2, Math.PI - .2); g.stroke();
 }
 function progressRing(w, y) {
   const st = w.task.steps[w.si], p = clamp(w.actT / st.dur, 0, 1);
@@ -786,6 +851,13 @@ function progressRing(w, y) {
 function drawMgr() {
   const m = S.mgr;
   drawPerson(m, { shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true });
+  const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
+  if (hk) { // the manager carries the cat in her arms
+    const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
+    g.save(); g.translate(cx, cy); g.scale(.8, .8); g.translate(-cx, -cy);
+    hk.x = cx; hk.y = cy; hk._inAnim = true; drawCat(hk); hk._inAnim = false; hk.x = ox; hk.y = oy; g.restore();
+    g.globalAlpha = clamp(hk.hearts, 0, 1); heart(m.x + 18, m.y - 150 - (1 - hk.hearts) * 16, 8); g.globalAlpha = 1;
+  }
   if (m.task && m.mode === 'act' && m.task.steps[m.si].dur > .3) progressRing(m, m.y - 150);
   else if (!m.task && started && S.phase !== 'settle') {
     const a = nearbyActions()[0];
@@ -797,7 +869,8 @@ function drawMgr() {
 }
 function drawStaff(s) {
   if (s.hidden) return;
-  drawPerson(s, { shirt: s.shirt, pants: '#4A4542', hair: s.hair, apron: s.apron, long: s.long });
+  drawPerson(s, { shirt: s.shirt, pants: '#4A4542', hair: s.hair, apron: s.apron, long: s.long, sit: s.resting });
+  if (s.resting) { const t = (S.t * .7 + s.x) % 1; g.globalAlpha = 1 - t; text('z', s.x + 18 + t * 10, s.y - 120 - t * 18, 13 + t * 6, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1; }
   if (s.task && s.mode === 'act' && s.task.steps[s.si].dur > .3) progressRing(s, s.y - 150);
   if (s.say) bubble(s.x, s.y - 166, s.say.text);
   text(s.name, s.x, s.y + 12, 10, '#6B4A35', 'center', FONT, 700);
@@ -833,7 +906,32 @@ function heart(x, y, s) {
   g.bezierCurveTo(x - s * 2, y - s * .2, x - s * .8, y - s * 1.6, x, y - s * .4);
   g.bezierCurveTo(x + s * .8, y - s * 1.6, x + s * 2, y - s * .2, x, y + s); g.fill();
 }
+function drawCatAnim(k) {
+  const a = k.anim, ox = k.x, oy = k.y, of = k.face, out = k.fluffy ? '#BFAE96' : INK;
+  k._inAnim = true;
+  if (a.kind === 'rub') { k.x = ox + Math.sin(a.t * 5) * 18; k.face = Math.cos(a.t * 5) > 0 ? 1 : -1; drawCat(k); }
+  else if (a.kind === 'five') {
+    drawCat(k); const up = Math.sin(a.t * 4) > 0, hx = ox + 19 * of;
+    ell(hx + 9 * of, oy - (up ? 52 : 40), 5, 5, k.body, out, 1.1);
+    if (up) { pawPrint(hx + 9 * of, oy - 53, .35, '#F2A9A9'); text('啪！', hx + 26 * of, oy - 66, 15, '#D9773E', 'center', DFONT, 700); }
+  } else if (a.kind === 'belly') {
+    const x = ox, y = oy, f = of, wig = Math.sin(a.t * 9) * 3;
+    ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
+    g.beginPath(); g.moveTo(x - 18 * f, y - 8); g.quadraticCurveTo(x - 30 * f, y - 2, x - 34 * f, y - 10 + wig); g.strokeStyle = k.dark; g.lineWidth = k.fluffy ? 7 : 5; g.lineCap = 'round'; g.stroke();
+    for (const lx of [-12, -5, 6, 12]) line(x + lx * f, y - 14, x + lx * f + wig * .5, y - 27 - (lx > 0 ? wig : -wig) * .4, k.id === 'tux' ? '#2A2522' : k.dark, 3.4);
+    ell(x, y - 10, 21, 10, k.body, out, 1.4); ell(x, y - 15, 14, 5, k.belly);
+    const hx = x + 20 * f, hy = y - 9;
+    ell(hx, hy, 10, 9, k.body, out, 1.3);
+    poly([[hx - 7, hy + 5], [hx - 4, hy + 15], [hx, hy + 7]], k.body, out, 1.1); poly([[hx + 1, hy + 7], [hx + 5, hy + 15], [hx + 8, hy + 4]], k.body, out, 1.1);
+    g.strokeStyle = INK; g.lineWidth = 1.2; g.beginPath(); g.arc(hx - 3, hy - 1, 2, Math.PI, 0); g.stroke(); g.beginPath(); g.arc(hx + 4, hy - 1, 2, Math.PI, 0); g.stroke();
+    text('呼嚕～', x, y - 46, 12, '#B0705F', 'center', DFONT, 700);
+    text(k.name, x, y + 10, 10, '#8B776B', 'center');
+  } else if (a.kind === 'kiss') { k.y = oy - Math.abs(Math.sin(a.t * 3)) * 36; drawCat(k); heart(ox + 19 * of, oy - 96, 11); }
+  k.x = ox; k.y = oy; k.face = of; k._inAnim = false;
+  if (a.kind !== 'rub' && a.kind !== 'five' && a.kind !== 'kiss') { g.globalAlpha = clamp(k.hearts, 0, 1); heart(ox, oy - 60 - (1 - k.hearts) * 16, 7); g.globalAlpha = 1; }
+}
 function drawCat(k) {
+  if (k.anim && !k._inAnim) { if (k.anim.kind !== 'hug') drawCatAnim(k); return; }
   const x = k.x, y = k.y - (k.state === 'play' ? Math.abs(Math.sin(S.t * 7)) * 10 : 0), f = k.face;
   if (!k.onBed && !k.jumpFrom) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
   const out = k.fluffy ? '#BFAE96' : INK;
@@ -861,7 +959,9 @@ function drawCat(k) {
     poly([[hx + 1, hy - 8], [hx + 5, hy - 16], [hx + 8, hy - 5]], k.body, out, 1.1);
     ell(hx, hy, 10, 9, k.body, out, 1.3);
     if (k.id === 'tux') ell(hx + 2 * f, hy + 4, 6, 4, k.belly);
-    ell(hx + 4 * f, hy - 1, 1.4, 2, k.id === 'tux' ? '#F2E6A0' : INK);
+    ell(hx + 4 * f, hy - 1, 2.4, 3, k.id === 'tux' ? '#E8D46A' : '#3A2A24'); ell(hx + 3.4 * f, hy - 2.2, .9, .9, '#FFFFFF');
+    ell(hx - 3 * f, hy - 1, 1.9, 2.6, k.id === 'tux' ? '#E8D46A' : '#3A2A24'); ell(hx - 3.4 * f, hy - 2, .7, .7, '#FFFFFF');
+    g.fillStyle = 'rgba(240,120,120,.45)'; g.beginPath(); g.ellipse(hx + 6 * f, hy + 3, 2.4, 1.3, 0, 0, Math.PI * 2); g.fill();
     if (k.state === 'eat') text('喀', hx + 14 * f, hy - 16, 11, '#8B776B');
     if (k.say) bubble(hx, hy - 34, k.say.text);
     else if (k.wantPet) {
@@ -873,7 +973,9 @@ function drawCat(k) {
     }
   }
   if (k.hearts > 0) { g.globalAlpha = clamp(k.hearts, 0, 1); heart(x, y - 52 - (1 - k.hearts) * 16, 7); g.globalAlpha = 1; }
+  if (k.anim && k.anim.kind === 'hug') return;
   text(k.name, x, y + 10, 10, '#8B776B');
+  if (bondOf(k) > 0 && !k.onBed) { heart(x - 6, y + 22, 3.6); text(String(bondOf(k)), x + 4, y + 22, 9, '#C65A5A', 'left', FONT, 700); }
 }
 
 // ====================== movement ======================
@@ -901,6 +1003,11 @@ function moveAlong(e, dt) {
 const behindCounter = (f, x, y) => f === 1 && x > 440 && x < 640 && y < 494;
 function routeTo(e, f, x, y) {
   const path = []; let cf = e.floor, cx = e.x, cy = e.y;
+  if (cf === 3 && f !== 3) { path.push({ f: 3, ...ROOM_IN }, { f: 2, ...ROOM_DOOR2 }); cf = 2; cx = ROOM_DOOR2.x; cy = ROOM_DOOR2.y; }
+  if (f === 3 && cf !== 3) {
+    const tmp = { floor: cf, x: cx, y: cy, path: [] }; routeTo(tmp, 2, ROOM_DOOR2.x, ROOM_DOOR2.y);
+    e.path = path.concat(tmp.path, [{ f: 3, ...ROOM_IN }, { f: 3, x, y }]); return;
+  }
   if (f !== cf) {
     leg(path, cf, cx, cy, STAIRS[cf].x, STAIRS[cf].y);
     if (cf === 1) path.push({ f: 1, ...STAIR_BOTTOM }, { f: 1, ...STAIR_TOP }, { f: 2, ...WELL_2F }, { f: 2, ...STAIRS[2] });
@@ -922,6 +1029,8 @@ function addTask(label, steps, opts = {}) {
 }
 function updMgr(dt) {
   const m = S.mgr;
+  if (m.boost > 0) m.boost -= dt; if (m.coffeeCool > 0) m.coffeeCool -= dt;
+  m.speed = m.boost > 0 ? 380 : 270;
   const jx = JOY.x || KEYV.x, jy = JOY.y || KEYV.y, mag = Math.hypot(jx, jy);
   if (m.climb) { // walking the stairs (from the joystick or the action button)
     const done = moveAlong(m, dt);
@@ -930,6 +1039,8 @@ function updMgr(dt) {
     return;
   }
   if (mag > .15 && ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 150 && (jy > .5 || jx < -.6)))) { climbStairs(); return; }
+  if (mag > .15 && m.floor === 2 && Math.abs(m.x - ROOM_DOOR2.x) < 46 && m.y < 500 && jy < -.5) { enterRoom(); return; }
+  if (mag > .15 && m.floor === 3 && m.x < 130 && jx < -.6) { leaveRoom(); return; }
   if (mag > .15) { // joystick / arrow keys drive the manager directly; a queued task resumes on release
     m.manual = true; m.path = [];
     const sp = m.speed * Math.min(1, mag);
@@ -1006,12 +1117,25 @@ function litterTask() {
     pre: w => { if (G.litterDirt <= 0) { if (isMgr(w)) toast('貓砂盆很乾淨'); return false; } if (G.stock.litter <= 0) { if (isMgr(w)) toast('沒有貓砂了，打開手機的「喵喵速達」買'); return false; } },
     fn: () => { G.stock.litter--; G.litterDirt = 0; floatText(2, LITTER.x, LITTER.y - 50, '乾淨了', '#6E9B4E'); } }] };
 }
-function petTask(k, label) {
+function petTask(k, label, act = 'pet') {
   k.hold = true;
-  return { label: label || ((k.state === 'sleep' ? '叫醒' : '摸摸') + k.name), steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? BEDS[k.id].ground.x + 30 : k.x + (k.x > 480 ? -36 : 36), 150, 880), y: k.onBed ? BEDS[k.id].ground.y : clamp(k.y + 6, 490, 594) }), dur: .8,
+  const B = BOND.find(b => b.act === act);
+  return { label: label || (k.state === 'sleep' ? '叫醒' + k.name : act === 'pet' ? '摸摸' + k.name : `跟${k.name}${B.name}`), steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? BEDS[k.id].ground.x + 30 : k.x + (k.x > 480 ? -36 : 36), 150, 880), y: k.onBed ? BEDS[k.id].ground.y : clamp(k.y + 6, 490, 594) }), dur: .8,
     fn: w => {
       k.hearts = 1.2;
       if (k.state === 'sleep') { wakeCat(k); if (isMgr(w)) toast(`${k.name}醒來了`); say(w, '起床囉～'); return; }
+      if (isMgr(w) && act !== 'pet' && bondOf(k) >= B.at) {
+        if (k.wantPet) { k.wantPet = 0; k.petCool = 45; k.sulk = 0; gainExp(2); }
+        endPlay(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? 5 : 3.2 };
+        k.face = S.mgr.x > k.x ? 1 : -1; S.mgr.face = -k.face;
+        const lines = { rub: ['好癢喔～', '呼嚕呼嚕'], five: ['耶！擊掌！', '喵！'], belly: ['肚子好軟～', '呼嚕～'], hug: ['抱抱～好溫暖', '喵嗚～'], kiss: ['碰碰鼻子～', '啾～'] }[act];
+        talk(w, lines[0], k, lines[1]);
+        if (act === 'belly') k.energy = Math.min(100, k.energy + 20);
+        if (act === 'hug' || act === 'kiss') k.happy = 90;
+        addBond(k, act === 'hug' || act === 'kiss' ? 3 : 2); gainExp(1);
+        return;
+      }
+      if (isMgr(w)) addBond(k, k.wantPet ? 3 : 1);
       if (k.wantPet && isMgr(w)) {
         k.wantPet = 0; k.petCool = 45; k.happy = 60; k.sulk = 0; gainExp(2);
         say(w, pick(['乖乖～好舒服吧', '最喜歡你了', '好軟喔～'])); say(k, '呼嚕呼嚕～');
@@ -1037,7 +1161,23 @@ function actRestroom() {
 }
 function actBowl() { queueTask(bowlTask()); }
 function actLitter() { queueTask(litterTask()); }
-function actPet(k) { if (!k.hold) queueTask(petTask(k)); }
+function actPet(k) {
+  if (k.hold || k.anim) return;
+  if (k.state !== 'sleep' && bondLv(k) >= 1) chooseBond(k); else queueTask(petTask(k));
+}
+function chooseBond(k) {
+  const card = $('chooseCard'), v = bondOf(k), lv = bondLv(k);
+  card.innerHTML = `<h2>${k.name}</h2><p class="muted">跟${G.mgrName}店長的親密度 <b>${v}</b>/100・${BOND[lv].title}</p><div class="prog"><i style="width:${v}%"></i></div>`;
+  const row = document.createElement('div'); row.className = 'row'; row.style.flexDirection = 'column';
+  for (const b of BOND) {
+    const open = v >= b.at, bt = document.createElement('button'); bt.className = 'opt';
+    bt.innerHTML = open ? `<span>${b.name}</span><small>${b.desc}</small>` : `<span>🔒 ${b.name}</span><small>親密度 ${b.at} 解鎖</small>`;
+    if (open) bt.onclick = () => { closeChoose(); queueTask(petTask(k, null, b.act)); }; else bt.disabled = true;
+    row.appendChild(bt);
+  }
+  const c = document.createElement('button'); c.textContent = '取消'; c.onclick = closeChoose; row.appendChild(c);
+  card.appendChild(row); $('chooseOv').hidden = false; S.uiPause = true;
+}
 function actStairs() {
   const to = S.view === 1 ? 2 : 1;
   S.view = to; updateButtons();
@@ -1105,7 +1245,8 @@ function updStaff(s, dt) {
   s.cool -= dt;
   if (s.task) { runTask(s, dt); return; }
   if (s.stamina < 20) {
-    s.task = { label: '休息', steps: [{ ...REST_SPOT, dur: 0, fn: w => { w.resting = true; w.hidden = true; toast(`${w.name}去休息室休息了`); } }] };
+    const seat = SOFA_SEATS[Math.max(0, G.staff.indexOf(s.role)) % SOFA_SEATS.length];
+    s.task = { label: '休息', steps: [{ f: 3, ...seat, dur: 0, fn: w => { w.resting = true; w.face = 1; toast(`${w.name}去員工休息室休息了`); } }] };
     s.si = 0; beginStep(s); return;
   }
   const job = findJob(s);
@@ -1173,6 +1314,7 @@ function takeOrder(quiet, w) {
   if (o.dish) { paid += G.prices[o.dish]; S.today.dessert += G.prices[o.dish]; }
   if (o.loft) { paid += G.prices.loft; S.today.loft += G.prices.loft; }
   G.cash += paid; gainEarned(paid); floatText(1, 560, 300, '+' + yen(paid), '#6E9B4E');
+  if (w && isMgr(w) && paid > 0) openReg(c, o, paid);
   if (o.say) sayFor(c, o.say);
   else if (w) talk(w, pick(['歡迎光臨～', '您好，要點什麼呢？', '歡迎來到' + G.shopName]), c, o.dish ? `我要一份${MENU[o.dish].short}${o.loft ? '，等等上樓看貓' : ''}` : '我想上樓看貓咪');
   return true;
@@ -1275,6 +1417,12 @@ function wander(k) {
 }
 function updCat(k, dt) {
   if (k.hearts > 0) k.hearts -= dt * .8;
+  if (k.anim) {
+    const a = k.anim, m = S.mgr; a.t -= dt; k.hearts = Math.max(k.hearts, .9); k.moving = false;
+    if (a.kind === 'hug') { k.floor = m.floor; k.x = m.x; k.y = m.y; }
+    if (a.t <= 0) { if (a.kind === 'hug') { k.x = clamp(m.x + 36, 160, 900); k.y = clamp(m.y + 6, 490, 594); } k.anim = null; k.state = 'idle'; k.t = rand(1, 3); }
+    return;
+  }
   if (k.hold) { k.moving = false; return; }
   const open = S.phase === 'open';
   for (const key of ['happy', 'sulk', 'petCool']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
@@ -1491,6 +1639,90 @@ function drawCook() {
   if (c.flash) { g.globalAlpha = .95; text(c.flash, cx, by - 70, 30, c.grade === 'burnt' && st.kind === 'time' ? '#C65445' : '#D9773E', 'center', DFONT, 700); g.globalAlpha = 1; }
 }
 
+// ====================== cash register: the manager counts the change ======================
+const MONEY = [500, 100, 50, 10, 5];
+const REG_BOX = { x: 190, y: 70, w: 580, h: 460 };
+const regBtn = i => ({ x: REG_BOX.x + 30 + i * 106, y: REG_BOX.y + 262, w: 98, h: 62 });
+const REG_CLEAR = { x: REG_BOX.x + 60, y: REG_BOX.y + 398, w: 170, h: 44 }, REG_OK = { x: REG_BOX.x + 330, y: REG_BOX.y + 398, w: 200, h: 44 };
+const inBox = (p, b) => p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h;
+function openReg(c, o, total) {
+  const up100 = Math.ceil(total / 100) * 100, up50 = Math.ceil(total / 50) * 50, opts = [];
+  if (up100 > total) opts.push(up100);
+  if (up50 > total && up50 !== up100) opts.push(up50);
+  if (total < 500 && up100 < 500) opts.push(500);
+  if (total > 150 && total < 1000) opts.push(1000);
+  const given = !opts.length || Math.random() < .12 ? total : pick(opts);
+  S.reg = { c, items: [o.dish, o.loft ? 'loft' : null].filter(Boolean), total, given, tray: [], msg: null, msgT: 0, wrong: false, done: 0, ok: false };
+}
+function regClick(p) {
+  const r = S.reg; if (!r || r.done) return;
+  for (let i = 0; i < MONEY.length; i++) if (inBox(p, regBtn(i))) { if (r.tray.length < 14) r.tray.push(MONEY[i]); return; }
+  if (inBox(p, REG_CLEAR)) { r.tray = []; return; }
+  if (inBox(p, REG_OK)) regConfirm();
+  // tap a coin in the tray to put it back
+  const ty = REG_BOX.y + 352;
+  r.tray.forEach((v, i) => { if (Math.abs(p.x - (REG_BOX.x + 60 + i * 34)) < 16 && Math.abs(p.y - ty) < 18) r.tray.splice(i, 1); });
+}
+function regConfirm() {
+  const r = S.reg, need = r.given - r.total, got = r.tray.reduce((a, b) => a + b, 0);
+  if (got < need) {
+    r.msg = `客人：「還差 ¥${need - got} 喔」`; r.msgT = 2.4;
+    if (!r.wrong) { r.wrong = true; r.c.stars -= 1; r.c.notes.push('找錢找錯'); }
+    return;
+  }
+  G.cash += need - got; // giving too much comes out of the till
+  if (got > need) { r.msg = `多找了 ¥${got - need}，客人開心地收下了`; r.ok = false; }
+  else { r.msg = need ? '找錢正確！' : '剛剛好，不用找錢'; r.ok = true; if (!r.wrong) gainExp(1); }
+  r.msgT = 1.6; r.done = 1.4;
+  sayFor(r.c, r.ok ? '謝謝店長！' : '欸？好像多找了…謝謝！');
+}
+function updReg(dt) { const r = S.reg; if (r.msgT > 0) r.msgT -= dt; if (r.done) { r.done -= dt; if (r.done <= 0) S.reg = null; } }
+function drawMoney(v, x, y, s = 1) {
+  if (v >= 100) {
+    rrect(x - 30 * s, y - 15 * s, 60 * s, 30 * s, 4 * s, v === 500 ? '#D7B6D0' : '#A9CDB0', INK, 1.2);
+    ell(x + 16 * s, y, 7 * s, 7 * s, 'rgba(255,255,255,.55)'); text('¥' + v, x - 6 * s, y + 1, 13 * s, INK, 'center', FONT, 700);
+  } else {
+    const rr = { 5: 12, 10: 14, 50: 16 }[v] * s;
+    ell(x, y, rr, rr, { 5: '#E3C066', 10: '#CF9363', 50: '#D5D8DC' }[v], INK, 1.2); ell(x, y, rr - 3 * s, rr - 3 * s, null, 'rgba(90,64,50,.3)', 1);
+    text(String(v), x, y + 1, 11 * s, INK, 'center', FONT, 700);
+  }
+}
+function drawReg() {
+  const r = S.reg, B = REG_BOX, cx = B.x + B.w / 2;
+  g.fillStyle = 'rgba(60,40,30,.45)'; g.fillRect(0, 0, W, H);
+  rrect(B.x, B.y, B.w, B.h, 18, '#FFFDF8', INK, 2);
+  text('收銀台・幫客人找錢', cx, B.y + 30, 21, INK, 'center', DFONT, 700);
+  // order
+  rrect(B.x + 24, B.y + 56, 250, 132, 12, '#F7F0E6', null);
+  text('客人點了', B.x + 40, B.y + 76, 13, '#8B776B', 'left');
+  r.items.forEach((it, i) => {
+    const y = B.y + 106 + i * 30;
+    if (it === 'loft') text('🐾', B.x + 54, y, 16); else drawDish(it, B.x + 54, y, 1);
+    text(it === 'loft' ? '2F 吸貓入場' : MENU[it].name, B.x + 76, y, 14, INK, 'left'); text(yen(G.prices[it]), B.x + 258, y, 14, INK, 'right', FONT, 700);
+  });
+  text('合計', B.x + 40, B.y + 172, 15, INK, 'left', FONT, 700); text(yen(r.total), B.x + 258, B.y + 172, 20, '#D9773E', 'right', DFONT, 700);
+  // payment
+  rrect(B.x + 300, B.y + 56, 256, 132, 12, '#F7F0E6', null);
+  text('客人付了', B.x + 316, B.y + 76, 13, '#8B776B', 'left');
+  let left = r.given, px = B.x + 350; const pieces = [];
+  for (const v of [1000, ...MONEY]) while (left >= v && pieces.length < 6) { pieces.push(v); left -= v; }
+  pieces.forEach((v, i) => { if (v === 1000) { rrect(px + i * 30 - 30, B.y + 100 + i * 4, 64, 32, 4, '#B9C7E3', INK, 1.2); text('¥1000', px + i * 30 + 2, B.y + 117 + i * 4, 12, INK, 'center', FONT, 700); } else drawMoney(v, px + i * 30, B.y + 114 + i * 4, .9); });
+  text(yen(r.given), B.x + 540, B.y + 172, 20, INK, 'right', DFONT, 700);
+  text(r.given === r.total ? '客人剛好付整數，按「找錢給客人」就好' : '應該找多少呢？點下面的錢放進找零盤', cx, B.y + 222, 15, '#6B4A35', 'center', DFONT, 700);
+  MONEY.forEach((v, i) => { const b = regBtn(i); rrect(b.x, b.y, b.w, b.h, 12, '#FFFFFF', 'rgba(106,75,58,.4)', 1.2); drawMoney(v, b.x + b.w / 2, b.y + b.h / 2, 1); });
+  // tray
+  rrect(B.x + 30, B.y + 334, B.w - 60, 38, 19, '#EFE4D4', null);
+  r.tray.forEach((v, i) => drawMoney(v, B.x + 60 + i * 34, B.y + 352, v >= 100 ? .5 : .9));
+  const got = r.tray.reduce((a, b) => a + b, 0);
+  text(`找零盤 ${yen(got)}`, B.x + B.w - 46, B.y + 353, 15, INK, 'right', FONT, 700);
+  rrect(REG_CLEAR.x, REG_CLEAR.y, REG_CLEAR.w, REG_CLEAR.h, 12, '#FFFFFF', 'rgba(106,75,58,.5)', 1.2); text('清空找零盤', REG_CLEAR.x + REG_CLEAR.w / 2, REG_CLEAR.y + 23, 15, INK);
+  rrect(REG_OK.x, REG_OK.y, REG_OK.w, REG_OK.h, 12, '#8D6E63', null); text('找錢給客人', REG_OK.x + REG_OK.w / 2, REG_OK.y + 23, 16, '#FFFFFF', 'center', FONT, 700);
+  if (r.msg && r.msgT > 0) {
+    rrect(cx - 200, B.y + 196, 400, 44, 14, r.done ? (r.ok ? '#E5F1DC' : '#FCEBD9') : '#FBE1DC', null);
+    text(r.msg, cx, B.y + 218, 17, r.done ? (r.ok ? '#4F7A3A' : '#B0702F') : '#C65445', 'center', DFONT, 700);
+  }
+}
+
 // ====================== conversations ======================
 function say(e, t, d = 2.6) { e.say = { text: t, t: d }; }
 function later(t, fn) { S.later.push({ t, fn }); }
@@ -1600,7 +1832,8 @@ function draw() {
   const f = S.view;
   ctx.drawImage(BG[f], 0, 0, W, H);
   if (f === 1) { drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); drawFurn1(); }
-  else { drawFurn2(); drawBowl(); drawLitter(); }
+  else if (f === 2) { drawFurn2(); drawBowl(); drawLitter(); }
+  else { g.globalAlpha = .4; for (let i = 0; i < 3; i++) ell(855 + Math.sin(S.t * 2 + i) * 3, 330 - i * 10 - (S.t * 8 % 10), 5 + i * 2, 3, '#FFFFFF', '#C9B8A8', .8); g.globalAlpha = 1; }
   const items = [];
   if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
   if (S.mgr.floor === f) items.push({ y: S.mgr.y, d: drawMgr });
@@ -1614,6 +1847,7 @@ function draw() {
   if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', W / 2, H / 2, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
   if (S.cook) drawCook();
+  if (S.reg) drawReg();
 }
 function floorAlerts(f) {
   const a = [];
@@ -1632,7 +1866,7 @@ function floorAlerts(f) {
 }
 const CORNER = { x: W - 300, y: 12, w: 284, h: 34 };
 function drawCornerAlert() {
-  const other = S.view === 1 ? 2 : 1, a = floorAlerts(other);
+  const other = otherFloor(), a = floorAlerts(other);
   if (!a.length) return;
   const { x, y, w, h } = CORNER;
   rrect(x, y, w, h, 17, 'rgba(255,255,255,.95)', '#D9773E', 2);
@@ -1644,7 +1878,7 @@ function drawCornerAlert() {
 function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
 function hitPerson(p, x, y, sit) { return Math.abs(x - p.x) < 26 && y < p.y + 6 && y > p.y - (sit ? 80 : 100) * PS; }
 function hitTest(x, y) {
-  const f = S.view, other = f === 1 ? 2 : 1;
+  const f = S.view, other = otherFloor();
   if (floorAlerts(other).length && x > CORNER.x && x < CORNER.x + CORNER.w && y > CORNER.y && y < CORNER.y + CORNER.h) return { act: () => { S.view = other; updateButtons(); } };
   for (const c of S.customers) {
     if (c.floor !== f || c.hidden) continue;
@@ -1662,10 +1896,15 @@ function hitTest(x, y) {
     if (x > 440 && x < 636 && y > 300 && y < 520) return { act: actOrder };
     if (x > 766 && x < 852 && y > 280 && y < 500) return { act: actRestroom };
     if (x < 300 && y > 160 && y < 500) return { act: actStairs };
+  } else if (f === 3) {
+    for (const s of S.staff) if (s.floor === 3 && s.resting && hitPerson(s, x, y, true)) return { act: () => actCheer(s) };
+    if (x < 150 && y > 280) return { act: () => addTask('回 2F', [{ f: 2, x: ROOM_DOOR2.x, y: ROOM_DOOR2.y + 30, dur: 0 }]) };
+    if (x > 820 && x < 950 && y > 330 && y < 480) return { act: actCoffee };
   } else {
     if (Math.abs(x - BOWL.x) < 40 && y > BOWL.y - 50 && y < BOWL.y + 20) return { act: actBowl };
     if (Math.abs(x - LITTER.x) < 44 && y > LITTER.y - 50 && y < LITTER.y + 16) return { act: actLitter };
     if (x < 145 && y > 300) return { act: actStairs };
+    if (x > 516 && x < 598 && y > 296 && y < 480) return { act: actEnterRoom };
   }
   if (y > FLOOR + 8) return { act: () => actWalk(x, y), weak: true };
   return null;
@@ -1674,6 +1913,7 @@ cv.addEventListener('pointerdown', e => {
   if (!started || !S || S.phase === 'settle') return;
   const p = toCanvas(e);
   if (S.mini) { S.mini.last = p; cv.setPointerCapture(e.pointerId); return; }
+  if (S.reg) { regClick(p); return; }
   if (S.cook) { if (Math.hypot(p.x - COOK_X.x, p.y - COOK_X.y) < 22) cancelCook(); else { cookPress(); cv.setPointerCapture(e.pointerId); } return; }
   if (S.paused) return;
   const h = hitTest(p.x, p.y); if (h) h.act();
@@ -1701,6 +1941,22 @@ const JOY = { x: 0, y: 0 }, KEYV = { x: 0, y: 0 }, KEYS = {};
   joy.addEventListener('pointermove', e => { if (e.pointerId === pid) setFrom(e); });
   joy.addEventListener('pointerup', reset); joy.addEventListener('pointercancel', reset); joy.addEventListener('lostpointercapture', reset);
 })();
+function enterRoom() { const m = S.mgr; m.climb = true; m.manual = false; routeTo(m, 3, ROOM_IN.x + 60, ROOM_IN.y); }
+function leaveRoom() { const m = S.mgr; m.climb = true; m.manual = false; routeTo(m, 2, ROOM_DOOR2.x, ROOM_DOOR2.y + 30); }
+function actEnterRoom() { addTask('進休息室', [{ f: 3, x: ROOM_IN.x + 60, y: ROOM_IN.y, dur: 0 }]); }
+function actCoffee() {
+  addTask('喝咖啡', [{ f: 3, ...COFFEE, dur: 1.2, fn: w => {
+    if (w.coffeeCool > 0) { toast(`剛喝過了，${Math.ceil(w.coffeeCool)} 秒後再喝吧`); return; }
+    w.boost = 60; w.coffeeCool = 150; say(w, '精神來了！'); floatText(3, COFFEE.x, 330, '店長走路變快 60 秒', '#6E9B4E');
+  } }]);
+}
+function actCheer(s) {
+  addTask('幫' + s.name + '打氣', [{ pos: () => ({ f: 3, x: clamp(s.x + 50, 160, 900), y: clamp(s.y + 8, 490, 594) }), dur: .6, fn: w => {
+    if (!s.resting) return;
+    s.stamina = Math.min(100, s.stamina + 40); talk(w, pick(['辛苦了，加油！', '喝點東西休息一下', '你今天做得很好']), s, '謝謝店長！我好多了');
+    floatText(3, s.x, s.y - 140, '體力 +40', '#6E9B4E');
+  } }]);
+}
 function climbStairs() {
   const m = S.mgr, to = m.floor === 1 ? 2 : 1;
   m.climb = true; m.manual = false; routeTo(m, to, STAIRS[to].x + 70, STAIRS[to].y + 6);
@@ -1716,19 +1972,24 @@ function nearbyActions() {
       else if (t.dirty) add(t.x, t.y, '收桌子', () => actClear(t));
     }
     if (S.restroomDirt > 0) add(WC.door.x, WC.door.y, '打掃洗手間', actRestroom);
-  } else {
+  } else if (f === 2) {
     add(BOWL.staff.x, BOWL.staff.y, '補貓糧', actBowl);
     add(LITTER.staff.x, LITTER.staff.y, '清貓砂', actLitter);
+    add(ROOM_DOOR2.x, ROOM_DOOR2.y, '進入員工休息室', enterRoom);
+  } else {
+    add(ROOM_IN.x - 40, ROOM_IN.y, '回 2F', leaveRoom);
+    add(COFFEE.x, COFFEE.y, '喝杯咖啡', actCoffee);
+    for (const s of S.staff) if (s.floor === 3 && s.resting) add(s.x, s.y, `幫${s.name}打氣`, () => actCheer(s));
   }
   for (const k of S.cats) if (k.floor === f) {
     const p = k.onBed ? BEDS[k.id].ground : k;
     add(p.x, p.y, (k.state === 'sleep' ? '叫醒' : '摸摸') + k.name, () => actPet(k));
   }
-  add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
+  if (f !== 3) add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
   return list.filter(a => a.d < 100).sort((a, b) => a.d - b.d);
 }
 function doAction() {
-  if (!started || !S || S.phase === 'settle' || S.paused || S.uiPause || S.mini || S.cook) return;
+  if (!started || !S || S.phase === 'settle' || S.paused || S.uiPause || S.mini || S.cook || S.reg) return;
   const a = nearbyActions()[0];
   if (a) a.fn(); else toast('附近沒有可以做的事，再走近一點');
 }
@@ -1739,6 +2000,7 @@ document.getElementById('actBtn').addEventListener('pointerleave', cookRelease);
 const KEYMAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ArrowDown: 'dn', s: 'dn', S: 'dn' };
 function syncKeys() { KEYV.x = (KEYS.r ? 1 : 0) - (KEYS.l ? 1 : 0); KEYV.y = (KEYS.dn ? 1 : 0) - (KEYS.u ? 1 : 0); }
 addEventListener('keydown', e => {
+  if (S && S.reg) return;
   if (!started || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
   if (S.cook) {
     if (e.key === 'Escape') cancelCook();
@@ -1747,7 +2009,7 @@ addEventListener('keydown', e => {
   }
   if (KEYMAP[e.key]) { KEYS[KEYMAP[e.key]] = true; syncKeys(); e.preventDefault(); return; }
   if (e.key === 'e' || e.key === 'E' || e.key === 'Enter') { e.preventDefault(); doAction(); }
-  if (e.key === 'f' || e.key === 'F') { S.view = S.view === 1 ? 2 : 1; updateButtons(); }
+  if (e.key === 'f' || e.key === 'F') { S.view = S.view === 2 ? 1 : 2; updateButtons(); }
   if (e.key === ' ') { e.preventDefault(); togglePause(); }
 });
 addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'e' || e.key === 'E' || e.key === 'Enter') cookRelease(); if (KEYMAP[e.key]) { KEYS[KEYMAP[e.key]] = false; syncKeys(); } });
@@ -1798,7 +2060,7 @@ function hudTick(dt) {
 }
 function updateButtons() {
   if (!S) return;
-  const other = S.view === 1 ? 2 : 1, fb = $('floorBtn');
+  const other = S.view === 2 ? 1 : 2, fb = $('floorBtn');
   fb.firstChild.textContent = other === 2 ? '前往 2F 貓咪閣樓' : '回到 1F 店面';
   const a = floorAlerts(other); $('floorBadge').hidden = !a.length; fb.title = a.join('、');
   $('openBtn').hidden = S.phase !== 'prep';
@@ -1825,7 +2087,7 @@ function renderTutorial() {
   if (el.dataset.h !== html) { el.innerHTML = html; el.dataset.h = html; }
 }
 $('openBtn').onclick = () => { if (S.phase !== 'prep') return; S.phase = 'open'; S.time = 480; S.lastHour = 8; toast('08:00 開門營業！'); updateButtons(); };
-$('floorBtn').onclick = () => { S.view = S.view === 1 ? 2 : 1; updateButtons(); };
+$('floorBtn').onclick = () => { S.view = S.view === 2 ? 1 : 2; updateButtons(); };
 $('speedBtn').onclick = () => { S.speed = S.speed === 1 ? 2 : 1; updateButtons(); };
 $('pauseBtn').onclick = togglePause;
 function togglePause() { if (S.phase === 'settle') return; S.paused = !S.paused; updateButtons(); }
@@ -1917,6 +2179,8 @@ function renderPhone() {
       h += `<div class="item"><div class="top"><span class="nm">${G.shopName}</span><b>Lv.${lv}</b></div><div class="sub">店長：${G.mgrName}・${lv < MAX_LV ? `經驗 ${G.exp}/${nx}` : '已經滿級'}</div>
         <div class="prog"><i style="width:${lv < MAX_LV ? clamp((G.exp - pv) / (nx - pv), 0, 1) * 100 : 100}%"></i></div>
         <div class="sub">客人給的星星、完美火候、摸摸想撒嬌的貓、每天打烊，都會增加經驗。</div></div>`;
+      h += '<p class="kh">貓咪親密度</p>' + S.cats.map(k => { const v = bondOf(k), b = BOND[bondLv(k)], nb = BOND[bondLv(k) + 1];
+        return `<div class="item"><div class="top"><span class="nm">${k.name}・${b.title}</span><b>♥ ${v}/100</b></div><div class="prog"><i style="width:${v}%"></i></div><div class="sub">${nb ? `親密度 ${nb.at} 解鎖「${nb.name}」` : '所有親密動作都解鎖了'}</div></div>`; }).join('');
       for (let l = 2; l <= MAX_LV; l++) h += `<div class="item${l > lv ? ' locked' : ''}"><div class="top"><span class="nm">${l > lv ? '🔒' : '✓'} Lv.${l}</span><span class="sub">${l > lv ? `經驗 ${LV_EXP[l - 1]}` : '已解鎖'}</span></div><div class="sub">${unlockNames(l)}</div></div>`;
       h += `<div class="item"><div class="top"><span class="nm">開拓新土地</span><b>${yen(G.earned)} / ${yen(LAND_GOAL)}</b></div>
         <div class="prog"><i style="width:${clamp(G.earned / LAND_GOAL, 0, 1) * 100}%"></i></div>
@@ -1994,6 +2258,7 @@ function decodeSave(code) {
     exp: Math.max(0, Math.floor(num(o.exp, 0))), earned: Math.max(0, num(o.earned, 0)),
     furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f]))] : [],
     keep: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(num(o.keep?.[d], 0)))])),
+    bond: Object.fromEntries(['orange', 'tux', 'fluffy'].map(id => [id, clamp(Math.floor(num(o.bond?.[id], 0)), 0, 100)])),
     landReady: !!o.landReady, shopName: cleanName(o.shopName, base.shopName, 10), mgrName: cleanName(o.mgrName, base.mgrName, 8),
     music: MUSIC[o.music] ? o.music : base.music,
   };
@@ -2049,7 +2314,7 @@ async function initCloud() {
 
 // ---- day flow ----
 function closeDay() {
-  S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; S.cook = null; S.baking = {}; closePhone(); closeChoose();
+  S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; S.cook = null; S.reg = null; S.baking = {}; closePhone(); closeChoose();
   let refunds = 0;
   for (const c of S.customers) {
     if (c.state === 'waitFood' && c.order?.dish) { const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; refunds++; S.today.ratings.push(2); }
@@ -2150,10 +2415,11 @@ function frame(now) {
   if (S) {
     if (S.mini) { S.t += rdt; updMini(rdt); }
     else if (S.cook) { S.t += rdt; updCook(rdt); }
+    else if (S.reg) { S.t += rdt; updReg(rdt); }
     else if (started && !S.paused && !S.uiPause && S.phase !== 'settle') update(rdt * S.speed);
     else if (!started) S.t += rdt;
     draw(); hudTick(rdt);
-    if (started && S.phase !== 'settle' && !S.cook && !S.mini && !S.uiPause && $('phoneOv').hidden) {
+    if (started && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && $('phoneOv').hidden) {
       if (shopLv() > S.lvShown) {
         const l = ++S.lvShown;
         showPopup(`<h2>🎉 ${G.shopName} 升到 Lv.${l}！</h2><ul class="unl">` +
