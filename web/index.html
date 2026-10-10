@@ -128,12 +128,29 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
     <div id="toasts"></div>
   </div>
 
-  <div class="controls">
-    <button id="openBtn" class="primary">開店營業</button>
-    <button id="floorBtn">前往 2F 貓咪閣樓<span class="badge" id="floorBadge" hidden>!</span></button>
-    <button id="phoneBtn">店長手機</button>
-    <button id="speedBtn">速度 1×</button>
-    <button id="pauseBtn">暫停</button>
+  <style>
+  .pad{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px}
+  .joy{position:relative;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#FFFFFF 0,#F4ECE1 70%);border:2px solid var(--wood-l);box-shadow:inset 0 2px 8px rgba(93,64,55,.15);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+  .joy span{position:absolute;color:var(--wood-l);font-size:12px;line-height:1}
+  .joy .u{top:7px;left:50%;transform:translateX(-50%)}.joy .d{bottom:7px;left:50%;transform:translateX(-50%)}
+  .joy .l{left:8px;top:50%;transform:translateY(-50%)}.joy .r{right:8px;top:50%;transform:translateY(-50%)}
+  .knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:var(--wood);border:3px solid #fff;box-shadow:0 3px 8px rgba(93,64,55,.35);pointer-events:none}
+  .actbtn{width:84px;height:84px;border-radius:50%;font-family:var(--display);font-size:20px;font-weight:700;background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
+  .actbtn:hover{background:#C9682F}
+  .pad .controls{justify-content:center}
+  .actbtn{justify-self:end}
+  @media (max-width:560px){.pad{grid-template-columns:auto auto;justify-content:space-between}.pad .controls{grid-column:1/-1;grid-row:2}.joy{width:104px;height:104px}.actbtn{width:76px;height:76px}}
+  </style>
+  <div class="pad">
+    <div class="joy" id="joy" aria-label="方向搖桿：拖曳移動店長"><span class="u">▲</span><span class="d">▼</span><span class="l">◀</span><span class="r">▶</span><div class="knob" id="knob"></div></div>
+    <div class="controls">
+      <button id="openBtn" class="primary">開店營業</button>
+      <button id="floorBtn">前往 2F 貓咪閣樓<span class="badge" id="floorBadge" hidden>!</span></button>
+      <button id="phoneBtn">店長手機</button>
+      <button id="speedBtn">速度 1×</button>
+      <button id="pauseBtn">暫停</button>
+    </div>
+    <button class="actbtn" id="actBtn" aria-label="動作：和店長旁邊的東西互動">動作</button>
   </div>
 
   <div class="lower">
@@ -147,14 +164,14 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   <details class="panel howto">
     <summary>怎麼玩</summary>
     <ul>
-      <li>點畫面上的東西，店長會自己走過去做。動作會排進「店長待辦」，點待辦可以取消。</li>
+      <li>兩種操控方式：用左下的<b>圓形搖桿</b>（或鍵盤方向鍵、WASD）走到東西旁邊，按右邊的<b>動作</b>鍵（或 E）；也可以直接點畫面上的東西，店長會自己走過去做。點的動作會排進「店長待辦」，點待辦可以取消。</li>
       <li>1F：點<b>烤箱</b>（樓梯旁的櫃子）烤點心、點<b>吧檯</b>幫排隊的客人點餐、點<b>等餐的客人</b>送餐、點<b>髒桌子</b>收拾、洗手間出現驚嘆號時點<b>洗手間</b>打掃（3 秒內擦掉污漬）。</li>
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
       <li>點<b>樓梯</b>或下面的切換按鈕看另一層。另一層有狀況時，右上角和按鈕會亮起驚嘆號。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
       <li>手機的「喵喵速達」可以買材料和新桌子（最多 5 張）。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
       <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算，結算畫面有存檔碼。</li>
-      <li>快捷鍵：F 切換樓層、空白鍵暫停。</li>
+      <li>快捷鍵：方向鍵移動、E 動作、F 切換樓層、空白鍵暫停。</li>
     </ul>
   </details>
 </div>
@@ -586,15 +603,21 @@ function doorSign() {
 }
 
 // ====================== characters ======================
+const PS = 1.35; // people scale
 function drawPerson(p, o) {
+  g.save(); g.translate(p.x, p.y); g.scale(PS, PS);
+  drawPersonAt({ x: 0, y: 0, face: p.face, moving: p.moving, carry: p.carry, seed: p.x * .05 }, o);
+  g.restore();
+}
+function drawPersonAt(p, o) {
   const { x, y } = p; const f = p.face || 1;
-  const sit = o.sit; const bob = p.moving ? Math.sin(S.t * 14 + x) * 1.5 : 0;
+  const sit = o.sit; const bob = p.moving ? Math.sin(S.t * 14 + p.seed) * 1.5 : 0;
   ell(x, y, 16, 4, 'rgba(70,45,30,.16)');
   const hip = sit ? y - 14 : y - 36;
   if (sit) {
     poly([[x - 10, hip - 4], [x + 18 * f, hip - 4], [x + 20 * f, hip + 7], [x - 10, hip + 7]].map(([a, b]) => [Math.min(a, x + 20), b]), o.pants, INK, 1.1);
   } else {
-    const sw = p.moving ? Math.sin(S.t * 14 + x) * 5 : 0;
+    const sw = p.moving ? Math.sin(S.t * 14 + p.seed) * 5 : 0;
     rect(x - 8 + sw * .3, hip, 7, 32, o.pants, INK, 1.1); rect(x + 1 - sw * .3, hip, 7, 32, o.pants, INK, 1.1);
     ell(x - 4 + sw * .3, y - 2, 6, 3, '#4A3A32'); ell(x + 5 - sw * .3, y - 2, 6, 3, '#4A3A32');
   }
@@ -624,13 +647,17 @@ function progressRing(w, y) {
 function drawMgr() {
   const m = S.mgr;
   drawPerson(m, { shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true });
-  if (m.task && m.mode === 'act' && m.task.steps[m.si].dur > .3) progressRing(m, m.y - 112);
+  if (m.task && m.mode === 'act' && m.task.steps[m.si].dur > .3) progressRing(m, m.y - 150);
+  else if (!m.task && started && S.phase !== 'settle') {
+    const a = nearbyActions()[0];
+    if (a) { g.font = `700 13px ${FONT}`; const w = g.measureText('動作：' + a.label).width + 20; rrect(m.x - w / 2, m.y - 172, w, 24, 12, '#D9773E', null); text('動作：' + a.label, m.x, m.y - 160, 13, '#FFFFFF', 'center', FONT, 700); }
+  }
   text('店長', m.x, m.y + 12, 11, '#6B4A35', 'center', FONT, 700);
 }
 function drawStaff(s) {
   if (s.hidden) return;
   drawPerson(s, { shirt: s.shirt, pants: '#4A4542', hair: s.hair, apron: s.apron, long: s.long });
-  if (s.task && s.mode === 'act' && s.task.steps[s.si].dur > .3) progressRing(s, s.y - 112);
+  if (s.task && s.mode === 'act' && s.task.steps[s.si].dur > .3) progressRing(s, s.y - 150);
   text(s.name, s.x, s.y + 12, 10, '#6B4A35', 'center', FONT, 700);
   if (s.stamina < 40) { rrect(s.x - 14, s.y + 20, 28, 4, 2, '#EEE4D8', null); rrect(s.x - 14, s.y + 20, 28 * s.stamina / 100, 4, 2, '#C65445', null); }
 }
@@ -638,7 +665,7 @@ function drawCustomer(c) {
   if (c.hidden) return;
   const sit = c.state === 'waitFood' || c.state === 'eating' || c.state === 'petting';
   drawPerson(c, { shirt: c.shirt, pants: c.pants, hair: c.hair, sit, long: c.long });
-  const hy = (sit ? c.y - 14 : c.y - 36) - 50;
+  const hy = c.y - ((sit ? 14 : 36) + 50) * PS;
   if (c.name) text(c.name, c.x, c.y + 12, 11, '#6B4A35', 'center', FONT, 700);
   if (c.say) { bubble(c.x, hy - 18, c.say.text); return; }
   if (c.state === 'queue') { patBar(c, hy - 6); if (c.order) bubbleOrder(c, hy - 26); }
@@ -747,6 +774,18 @@ function addTask(label, steps, opts = {}) {
 }
 function updMgr(dt) {
   const m = S.mgr;
+  const jx = JOY.x || KEYV.x, jy = JOY.y || KEYV.y, mag = Math.hypot(jx, jy);
+  if (mag > .15) { // joystick / arrow keys drive the manager directly; a queued task resumes on release
+    m.manual = true; m.path = [];
+    const sp = m.speed * Math.min(1, mag);
+    m.x = clamp(m.x + jx / mag * sp * dt, 12, 948);
+    m.y = clamp(m.y + jy / mag * sp * dt * .6, 484, 594);
+    if (Math.abs(jx) > .1) m.face = jx > 0 ? 1 : -1;
+    m.moving = true;
+    if (S.view !== m.floor) { S.view = m.floor; updateButtons(); }
+    return;
+  }
+  if (m.manual) { m.manual = false; m.moving = false; if (m.task) beginStep(m); }
   if (!m.task) {
     if (!S.tasks.length) { moveAlong(m, dt); return; }
     m.task = S.tasks.shift(); m.si = 0; beginStep(m); renderTasks();
@@ -1205,7 +1244,7 @@ function drawCornerAlert() {
 
 // ====================== input ======================
 function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
-function hitPerson(p, x, y, sit) { return Math.abs(x - p.x) < 20 && y < p.y + 6 && y > p.y - (sit ? 80 : 100); }
+function hitPerson(p, x, y, sit) { return Math.abs(x - p.x) < 26 && y < p.y + 6 && y > p.y - (sit ? 80 : 100) * PS; }
 function hitTest(x, y) {
   const f = S.view, other = f === 1 ? 2 : 1;
   if (floorAlerts(other).length && x > CORNER.x && x < CORNER.x + CORNER.w && y > CORNER.y && y < CORNER.y + CORNER.h) return { act: () => { S.view = other; updateButtons(); } };
@@ -1247,11 +1286,63 @@ cv.addEventListener('pointermove', e => {
   const h = started && hitTest(p.x, p.y);
   cv.style.cursor = h && !h.weak ? 'pointer' : 'default';
 });
+// ---- circular joystick + action button + keyboard ----
+const JOY = { x: 0, y: 0 }, KEYV = { x: 0, y: 0 }, KEYS = {};
+(() => {
+  const joy = document.getElementById('joy'), knob = document.getElementById('knob'); let pid = null;
+  const setFrom = e => {
+    const r = joy.getBoundingClientRect(), R = r.width / 2 - 14;
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
+    knob.style.transform = `translate(${dx}px,${dy}px)`; JOY.x = dx / R; JOY.y = dy / R;
+  };
+  const reset = () => { pid = null; JOY.x = JOY.y = 0; knob.style.transform = ''; };
+  joy.addEventListener('pointerdown', e => { pid = e.pointerId; joy.setPointerCapture(pid); setFrom(e); e.preventDefault(); });
+  joy.addEventListener('pointermove', e => { if (e.pointerId === pid) setFrom(e); });
+  joy.addEventListener('pointerup', reset); joy.addEventListener('pointercancel', reset); joy.addEventListener('lostpointercapture', reset);
+})();
+function nearbyActions() {
+  const m = S.mgr, f = m.floor, list = [];
+  const add = (x, y, label, fn) => list.push({ label, fn, d: Math.hypot(m.x - x, (m.y - y) * 1.6) });
+  if (f === 1) {
+    add(OVEN_SPOT.x, OVEN_SPOT.y, '烤箱', chooseBake);
+    if (S.queue.length) { add(MGR_COUNTER.x, MGR_COUNTER.y, '幫客人點餐', actOrder); add(QUEUE[0].x, QUEUE[0].y, '幫客人點餐', actOrder); }
+    for (const t of S.tables) {
+      if (t.cust && t.cust.state === 'waitFood') add(t.x, t.y, '送餐', () => actServe(t.cust));
+      else if (t.dirty) add(t.x, t.y, '收桌子', () => actClear(t));
+    }
+    if (S.restroomDirt > 0) add(WC.door.x, WC.door.y, '打掃洗手間', actRestroom);
+  } else {
+    add(BOWL.staff.x, BOWL.staff.y, '補貓糧', actBowl);
+    add(LITTER.staff.x, LITTER.staff.y, '清貓砂', actLitter);
+  }
+  for (const k of S.cats) if (k.floor === f) {
+    const p = k.onBed ? BEDS[k.id].ground : k;
+    add(p.x, p.y, (k.state === 'sleep' ? '叫醒' : '摸摸') + k.name, () => actPet(k));
+  }
+  add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', () => {
+    m.floor = f === 1 ? 2 : 1; m.x = STAIRS[m.floor].x + 60; m.y = STAIRS[m.floor].y; m.path = [];
+    S.view = m.floor; updateButtons(); if (m.task) beginStep(m);
+  });
+  return list.filter(a => a.d < 100).sort((a, b) => a.d - b.d);
+}
+function doAction() {
+  if (!started || !S || S.phase === 'settle' || S.paused || S.uiPause || S.mini) return;
+  const a = nearbyActions()[0];
+  if (a) a.fn(); else toast('附近沒有可以做的事，再走近一點');
+}
+document.getElementById('actBtn').onclick = doAction;
+const KEYMAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ArrowDown: 'dn', s: 'dn', S: 'dn' };
+function syncKeys() { KEYV.x = (KEYS.r ? 1 : 0) - (KEYS.l ? 1 : 0); KEYV.y = (KEYS.dn ? 1 : 0) - (KEYS.u ? 1 : 0); }
 addEventListener('keydown', e => {
   if (!started || e.target.tagName === 'TEXTAREA') return;
+  if (KEYMAP[e.key]) { KEYS[KEYMAP[e.key]] = true; syncKeys(); e.preventDefault(); return; }
+  if (e.key === 'e' || e.key === 'E' || e.key === 'Enter') { e.preventDefault(); doAction(); }
   if (e.key === 'f' || e.key === 'F') { S.view = S.view === 1 ? 2 : 1; updateButtons(); }
   if (e.key === ' ') { e.preventDefault(); togglePause(); }
 });
+addEventListener('keyup', e => { if (KEYMAP[e.key]) { KEYS[KEYMAP[e.key]] = false; syncKeys(); } });
+addEventListener('blur', () => { for (const k in KEYS) KEYS[k] = false; syncKeys(); });
 
 // ====================== DOM UI ======================
 const $ = id => document.getElementById(id);
