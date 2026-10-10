@@ -1014,6 +1014,8 @@ function updMgr(dt) {
   const m = S.mgr;
   if (m.boost > 0) m.boost -= dt; if (m.coffeeCool > 0) m.coffeeCool -= dt;
   m.speed = m.boost > 0 ? 380 : 270;
+  // walking through the staff-room door (by tapping, a task or the stick) always takes the view along
+  if (m.lastFloor !== m.floor) { if (m.lastFloor === 3 || m.floor === 3) { S.view = m.floor; updateButtons(); } m.lastFloor = m.floor; }
   const jx = JOY.x || KEYV.x, jy = JOY.y || KEYV.y, mag = Math.hypot(jx, jy);
   if (m.climb) { // walking the stairs (from the joystick or the action button)
     const done = moveAlong(m, dt);
@@ -1021,9 +1023,11 @@ function updMgr(dt) {
     if (done) { m.climb = false; if (m.task) beginStep(m); }
     return;
   }
-  if (mag > .15 && ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 150 && (jy > .5 || jx < -.6)))) { climbStairs(); return; }
+  // looking at the other floor and pushing the stick: the manager walks over there instead of the view snapping back
+  if (mag > .15 && S.view !== m.floor && S.view !== 3 && m.floor !== 3) { climbStairs(); return; }
+  if (mag > .15 && ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 120 && (jy > .5 || jx < -.6)))) { climbStairs(); return; }
   if (mag > .15 && m.floor === 2 && Math.abs(m.x - ROOM_DOOR2.x) < 46 && m.y < 500 && jy < -.5) { enterRoom(); return; }
-  if (mag > .15 && m.floor === 3 && m.x < 130 && jx < -.6) { leaveRoom(); return; }
+  if (mag > .15 && m.floor === 3 && m.x < 175 && jx < -.6) { leaveRoom(); return; }
   if (mag > .15) { // joystick / arrow keys drive the manager directly; a queued task resumes on release
     m.manual = true; m.path = [];
     const sp = m.speed * Math.min(1, mag);
@@ -1942,7 +1946,7 @@ function actCheer(s) {
 }
 function climbStairs() {
   const m = S.mgr, to = m.floor === 1 ? 2 : 1;
-  m.climb = true; m.manual = false; routeTo(m, to, STAIRS[to].x + 70, STAIRS[to].y + 6);
+  m.climb = true; m.manual = false; routeTo(m, to, STAIRS[to].x + (to === 2 ? 120 : 70), STAIRS[to].y + 6);
 }
 function nearbyActions() {
   const m = S.mgr, f = m.floor, list = [];
@@ -1960,7 +1964,7 @@ function nearbyActions() {
     add(LITTER.staff.x, LITTER.staff.y, '清貓砂', actLitter);
     add(ROOM_DOOR2.x, ROOM_DOOR2.y, '進入員工休息室', enterRoom);
   } else {
-    add(ROOM_IN.x - 40, ROOM_IN.y, '回 2F', leaveRoom);
+    add(ROOM_IN.x, ROOM_IN.y, '回 2F 閣樓', leaveRoom);
     add(COFFEE.x, COFFEE.y, '喝杯咖啡', actCoffee);
     for (const s of S.staff) if (s.floor === 3 && s.resting) add(s.x, s.y, `幫${s.name}打氣`, () => actCheer(s));
   }
@@ -2070,7 +2074,13 @@ function renderTutorial() {
   if (el.dataset.h !== html) { el.innerHTML = html; el.dataset.h = html; }
 }
 $('openBtn').onclick = () => { if (S.phase !== 'prep') return; S.phase = 'open'; S.time = 480; S.lastHour = 8; toast('08:00 開門營業！'); updateButtons(); };
-$('floorBtn').onclick = () => { S.view = S.view === 2 ? 1 : 2; updateButtons(); };
+$('floorBtn').onclick = () => {
+  const m = S.mgr, to = S.view === 2 ? 1 : 2;
+  S.view = to; updateButtons();
+  // an idle manager walks to the floor you switch to
+  if (!started || S.phase === 'settle' || m.task || S.tasks.length || m.climb) return;
+  if (m.floor === 3) leaveRoom(); else if (m.floor !== to) climbStairs();
+};
 $('speedBtn').onclick = () => { S.speed = S.speed === 1 ? 2 : 1; updateButtons(); };
 $('pauseBtn').onclick = togglePause;
 function togglePause() { if (S.phase === 'settle') return; S.paused = !S.paused; updateButtons(); }
