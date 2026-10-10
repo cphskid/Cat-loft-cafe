@@ -299,8 +299,16 @@ const CASHIER_SPOT = { x: 586, y: 484 };
 const SERVER_PICK = { x: 650, y: 504 };
 const OVEN_SPOT = { x: 336, y: 506 };
 const KGATE = { x: 648, y: 500 };
-const TABLE_POS = [{ x: 690, y: 524 }, { x: 880, y: 524 }, { x: 785, y: 594 }, { x: 625, y: 594 }, { x: 925, y: 594 }];
+const TABLE_POS = [{ x: 690, y: 524 }, { x: 880, y: 524 }, { x: 785, y: 594 }, { x: 625, y: 594 }, { x: 925, y: 594 }, { x: 262, y: 594 }];
 const TABLE_PRICE = 150, MAX_TABLES = TABLE_POS.length;
+// expanding the shop: each step needs a shop level and money, and makes room for more guests
+const EXPANSIONS = [
+  { lv: 3, price: 1500, name: '一樓座位區加大', desc: '1F 多一張桌子的位置、2F 多 2 個坐墊，客人上門速度 ×1.2', cushions: [{ x: 700, y: 522 }, { x: 800, y: 524 }], flow: 1.2 },
+  { lv: 5, price: 4000, name: '打通隔壁、門口掛大招牌', desc: '2F 再多 2 個坐墊、排隊不容易滿，客人上門速度 ×1.45', cushions: [{ x: 640, y: 596 }, { x: 836, y: 598 }], flow: 1.45 },
+];
+const maxTables = () => G.expand >= 1 ? MAX_TABLES : MAX_TABLES - 1;
+const expandFlow = () => G.expand ? EXPANSIONS[G.expand - 1].flow : 1;
+const expandCushions = () => EXPANSIONS.slice(0, G.expand).flatMap(e => e.cushions);
 const WC = { door: { x: 808, y: 498 }, inside: { x: 808, y: 486 } };
 // ---- 2F layout
 const CUSHION_POS = [{ x: 640, y: 548 }, { x: 735, y: 580 }, { x: 830, y: 548 }, { x: 905, y: 582 }];
@@ -352,7 +360,7 @@ let started = false;
 function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
-           prices, bowl: 0, litterDirt: 0, tables: 3, staff: [],
+           prices, bowl: 0, litterDirt: 0, tables: 3, expand: 0, staff: [],
            exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano' };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
@@ -379,6 +387,30 @@ function addBond(k, n) {
   floatText(k.floor, k.x, k.y - 96, `親密度 +${n}`, '#E07A7A');
   const after = bondLv(k);
   if (after > before) { toast(`${k.name}跟${G.mgrName}更親了！解鎖「${BOND[after].name}」`); floatText(k.floor, k.x, k.y - 120, `♥ ${BOND[after].title}`, '#E07A7A'); }
+}
+// ---- phone calls (app 電話): each contact can be called once a day and does something for the shop
+const CALLS = [
+  { id: 'grandma', name: '阿嬤', who: '最疼你的阿嬤', lines: ['喂～乖孫喔！', '店裡生意好不好？有沒有好好吃飯？', '阿嬤種的菜寄一箱給你，拿去煮飯！'], ok: () => true,
+    fx: () => { G.stock.food += 4; return '阿嬤寄來的菜到了：正餐食材 +4'; } },
+  { id: 'qing', name: '小晴', who: '第一位客人，高中生', lines: ['店長好！我是小晴～', '我跟同學說你們家的貓超可愛', '我們等一下一起過去喔！'], ok: () => S.phase === 'open',
+    no: '店還沒開門，小晴說開門後再打給她', fx: () => { for (let i = 0; i < 3; i++) later(4 + i * 3, () => spawnCustomer(false)); return '小晴的同學們等一下就會上門（3 位客人）'; } },
+  { id: 'delivery', name: '喵喵外送', who: '外送平台訂單', lines: ['您好，這裡是喵喵外送～', '有一筆團購訂單，要 3 份甜點', '外送員馬上到店取餐！'], ok: () => dispTotal() >= 3,
+    no: '展示櫃的甜點不到 3 份，接不了外送單', fx: () => { let got = 0; for (let n = 0; n < 3; n++) { const d = DISHES.find(d => S.display[d] > 0); S.display[d]--; got += Math.round(G.prices[d] * 1.2); }
+      G.cash += got; gainEarned(got); S.today.dessert += got; return `外送 3 份甜點，收入 ${yen(got)}（外送價 ×1.2）`; } },
+  { id: 'vet', name: '貓咪醫生', who: '附近的動物醫院（看診 ¥80）', lines: ['這裡是喵喵動物醫院', '好的，我們等一下過去幫貓咪做健康檢查', '大家都很健康喔！'], ok: () => G.cash >= 80,
+    no: '現金不到 ¥80', fx: () => { G.cash -= 80; S.today.spent += 80; for (const k of S.cats) { k.hunger = Math.max(0, k.hunger - 20); addBond(k, 2); } return '貓咪健檢完成，每隻貓親密度 +2、不那麼餓了（−¥80）'; } },
+  { id: 'staff', name: '員工群組', who: '打給休息中的員工', lines: ['喂？店長～', '好，我馬上回去幫忙！'], ok: () => S.staff.some(s => s.resting),
+    no: '現在沒有員工在休息', fx: () => { const r = S.staff.filter(s => s.resting); for (const s of r) { s.stamina = Math.max(s.stamina, 60); s.resting = false; s.hidden = false; s.task = null; } return `${r.map(s => s.name).join('、')}回來上班了（體力補到 60）`; } },
+];
+let CALL = null;
+function startCall(id) {
+  const C = CALLS.find(c => c.id === id); if (!C || S.calls[id]) return;
+  if (!C.ok()) { toast(C.no); return; }
+  S.calls[id] = true; CALL = { C, shown: 0, result: null }; renderPhone();
+  const step = () => { if (!CALL || CALL.C !== C || phoneApp !== 'phone') return;
+    if (CALL.shown < C.lines.length) { CALL.shown++; renderPhone(); setTimeout(step, 900); }
+    else { CALL.result = C.fx(); toast(CALL.result); renderPhone(); } };
+  setTimeout(step, 700);
 }
 // ---- customer comments (phone app 喵評論): about half the guests leave one when they go
 const NICKS = ['貓奴阿宏', '甜點控小安', '路過的上班族', '大學生 Yuki', '愛貓的阿姨', '攝影師小林', '吃貨小胖', '隔壁鄰居', '咖啡廳巡禮', '帶女兒來的爸爸', '社畜 Amy', '貓咪部落客'];
@@ -549,10 +581,10 @@ function startDay() {
     mgr: { floor: 1, x: MGR_COUNTER.x, y: MGR_COUNTER.y, path: [], speed: 270, face: 1, task: null, carry: null, mode: 'idle', actT: 0, si: 0 },
     tasks: [], customers: [], queue: [], cid: 0,
     tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })),
-    cushions: CUSHION_POS.concat(hasF('cushion') ? CUSHION_EXTRA : []).map(p => ({ ...p, cust: null })),
+    cushions: CUSHION_POS.concat(hasF('cushion') ? CUSHION_EXTRA : [], expandCushions()).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
-    startLv: shopLv(), lvShown: shopLv(), landUp: false, promos: {}, promoMul: 1, gamePaid: false,
+    startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false,
     today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0 },
     daily: pickDaily(), base: { ...G.stats, pets: G.cats.reduce((a, c) => a + c.pets, 0) },
     cats: makeCats(),
@@ -935,6 +967,7 @@ function drawFurn1() {
 }
 function drawFurn2() {
   if (hasF('cushion')) for (const c of CUSHION_EXTRA) cushion(c.x, c.y, '#EAD3C6');
+  for (const c of expandCushions()) cushion(c.x, c.y, '#D9E2D0');
   if (hasF('bed')) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
   if (hasF('deodor')) { rrect(446, 520, 22, 30, 5, '#E8EEF0', INK, 1.2); ell(457, 530, 4, 4, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); for (let i = 0; i < 3; i++) line(450 + i * 4, 542, 450 + i * 4, 547, 'rgba(90,64,50,.4)', 1); }
 }
@@ -1006,7 +1039,7 @@ function progressRing(w, y) {
 }
 function drawMgr() {
   const m = S.mgr;
-  drawPerson(m, { shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true });
+  drawPerson(m, { shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true, sit: m.sitting });
   const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
   if (hk) { // the manager carries the cat in her arms
     const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
@@ -1198,6 +1231,7 @@ function updMgr(dt) {
     if (done) { m.climb = false; if (m.task) beginStep(m); }
     return;
   }
+  if (m.sitting) { if (mag > .15 || S.tasks.length) { m.sitting = false; m.y = Math.min(594, m.y + 14); } else { m.moving = false; return; } }
   // looking at the other floor and pushing the stick: the manager walks over there instead of the view snapping back
   if (mag > .15 && S.view !== m.floor && S.view !== 3 && m.floor !== 3) { climbStairs(); return; }
   if (mag > .15 && ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 120 && (jy > .5 || jx < -.6)))) { climbStairs(); return; }
@@ -1532,8 +1566,9 @@ function leave(c) {
   if (c.played && !c.angry) c.stars++; // a cat came over to play: best part of the visit
   const s = clamp(c.stars, 1, 5); c.final = s;
   S.today.ratings.push(s); gainExp(s);
-  let df = [-3, -2, -1, 0, 2][s - 1];
-  if (!c.order || (!c.order.dish && !c.order.loft && !c.order.beans)) df = Math.min(df, -1); // walked out without buying anything
+  // fans never drop: an unhappy guest just doesn't become one
+  let df = [0, 0, 0, 1, 2][s - 1];
+  if (!c.order || (!c.order.dish && !c.order.loft && !c.order.beans)) df = 0; // walked out without buying anything
   G.fans = Math.max(0, G.fans + df); S.today.fans += df;
   if (c.special) S.today.xiaoqing = { stars: s, notes: c.notes.slice() };
   writeReview(c, s);
@@ -1995,7 +2030,7 @@ function update(dt) {
     S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
-      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul * rand(.7, 1.3); }
+      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() * rand(.7, 1.3); }
       else S.spawnT = 5;
     }
     if (S.time >= 1260) { closeDay(); return; }
@@ -2086,6 +2121,7 @@ function hitTest(x, y) {
     for (const s of S.staff) if (s.floor === 3 && s.resting && hitPerson(s, x, y, true)) return { act: () => actCheer(s) };
     if (x < 150 && y > 280) return { act: () => addTask('回 2F', [{ f: 2, x: ROOM_DOOR2.x, y: ROOM_DOOR2.y + 30, dur: 0 }]) };
     if (x > 820 && x < 950 && y > 330 && y < 480) return { act: actCoffee };
+    if ((x > 376 && x < 640 && y > 436 && y < 530) || (x > 670 && x < 826 && y > 526 && y < 578)) return { act: () => actSit(x) };
   } else {
     if (Math.abs(x - BOWL.x) < 40 && y > BOWL.y - 50 && y < BOWL.y + 20) return { act: actBowl };
     if (Math.abs(x - LITTER.x) < 44 && y > LITTER.y - 50 && y < LITTER.y + 16) return { act: actLitter };
@@ -2136,6 +2172,16 @@ function actCoffee() {
     w.boost = 60; w.coffeeCool = 150; say(w, '精神來了！'); floatText(3, COFFEE.x, 330, '店長走路變快 60 秒', '#6E9B4E');
   } }]);
 }
+// the manager takes a free seat (one no resting staff member is using) and sits until she moves again
+function freeSeat(x) {
+  const used = S.staff.filter(s => s.floor === 3 && (s.resting || s.task?.label === '休息')).map(s => SOFA_SEATS[Math.max(0, G.staff.indexOf(s.role)) % SOFA_SEATS.length]);
+  return SOFA_SEATS.filter(p => !used.includes(p)).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
+}
+function actSit(x = S.mgr.x) {
+  const seat = freeSeat(x);
+  if (!seat) { toast('位子都被休息的員工坐滿了'); return; }
+  addTask('坐下休息', [{ f: 3, ...seat, dur: 0, fn: w => { w.sitting = true; w.face = 1; say(w, pick(['呼～坐一下真舒服', '休息一下再繼續', '這張沙發好軟喔'])); } }]);
+}
 function actCheer(s) {
   addTask('幫' + s.name + '打氣', [{ pos: () => ({ f: 3, x: clamp(s.x + 50, 160, 900), y: clamp(s.y + 8, 490, 594) }), dur: .6, fn: w => {
     if (!s.resting) return;
@@ -2165,6 +2211,7 @@ function nearbyActions() {
   } else {
     add(ROOM_IN.x, ROOM_IN.y, '回 2F 閣樓', leaveRoom);
     add(COFFEE.x, COFFEE.y, '喝杯咖啡', actCoffee);
+    if (!m.sitting) for (const p of SOFA_SEATS) add(p.x, p.y, '坐下休息', () => actSit(p.x));
     for (const s of S.staff) if (s.floor === 3 && s.resting) add(s.x, s.y, `幫${s.name}打氣`, () => actCheer(s));
   }
   for (const k of S.cats) if (k.floor === f) {
@@ -2308,7 +2355,7 @@ function closeChoose() { $('chooseOv').hidden = true; if (S) S.uiPause = false; 
 // ---- phone ----
 let phoneApp = 'home';
 function openPhone(app) { phoneApp = app; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
-function closePhone() { PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
+function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
 $('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
 function renderPhone() {
   const sc = $('phoneScreen');
@@ -2316,14 +2363,14 @@ function renderPhone() {
   let h = `<div class="sbar"><span>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span><span>遊戲暫停中</span><span>${yen(G.cash)}</span></div>`;
   if (phoneApp === 'home') {
     const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '喵喵速達', '材料・傢俱', '#D9773E', '送'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
-                  ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・新土地', '#6F9A9A', '店'],
-                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
+                  ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
+                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存']];
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', daily: '每日任務', review: '喵評論' };
+    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -2340,8 +2387,8 @@ function renderPhone() {
       h += `<p class="muted">下單後馬上送到。錢不夠時可以先賒帳，會記在負債裡。</p>`;
       const btn = (key, price) => G.cash >= price ? `<button class="primary" data-buy="${key}">購買</button>` : `<button data-credit="${key}">錢不夠，賒帳購買</button>`;
       for (const it of SHOP) h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(it.price)}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div><div class="row" style="margin:0">${btn(it.id, it.price)}</div></div>`;
-      const full = G.tables >= MAX_TABLES;
-      h += `<div class="item"><div class="top"><span class="nm">原木矮桌＋坐墊</span><b>${yen(TABLE_PRICE)}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${MAX_TABLES} 張</div>
+      const full = G.tables >= maxTables();
+      h += `<div class="item"><div class="top"><span class="nm">原木矮桌＋坐墊</span><b>${yen(TABLE_PRICE)}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < 1 ? '（擴大店面後可以放 6 張）' : ''}</div>
         <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', TABLE_PRICE)}</div></div>`;
       for (const [id, F] of Object.entries(FURN)) {
         const own = hasF(id), locked = F.lv > shopLv();
@@ -2377,6 +2424,9 @@ function renderPhone() {
         <div class="sub">客人給的星星、完美火候、摸摸想撒嬌的貓、每天打烊，都會增加經驗。</div></div>`;
       h += '<p class="kh">貓咪親密度</p>' + S.cats.map(k => { const v = bondOf(k), b = BOND[bondLv(k)], nb = BOND[bondLv(k) + 1];
         return `<div class="item"><div class="top"><span class="nm">${k.name}・${b.title}</span><b>♥ ${v}/100</b></div><div class="prog"><i style="width:${v}%"></i></div><div class="sub">${nb ? `親密度 ${nb.at} 解鎖「${nb.name}」` : '所有親密動作都解鎖了'}</div></div>`; }).join('');
+      h += '<p class="kh">擴大店面</p>' + EXPANSIONS.map((E, i) => { const done = G.expand > i, next = G.expand === i, locked = E.lv > lv;
+        return `<div class="item${locked && !done ? ' locked' : ''}"><div class="top"><span class="nm">${done ? '✓ ' : locked ? '🔒 ' : ''}第 ${i + 1} 次擴建：${E.name}</span><b>${yen(E.price)}</b></div><div class="sub">${E.desc}</div>
+          <div class="row" style="margin:0">${done ? '<button disabled>已完成</button>' : !next ? '<button disabled>先完成上一次擴建</button>' : locked ? `<button disabled>店鋪 Lv.${E.lv} 才能擴建</button>` : G.cash < E.price ? '<button disabled>現金不夠</button>' : `<button class="primary" id="expandBtn" ${S.phase === 'settle' ? 'disabled' : ''}>開始擴建</button>`}</div></div>`; }).join('');
       for (let l = 2; l <= MAX_LV; l++) h += `<div class="item${l > lv ? ' locked' : ''}"><div class="top"><span class="nm">${l > lv ? '🔒' : '✓'} Lv.${l}</span><span class="sub">${l > lv ? `經驗 ${LV_EXP[l - 1]}` : '已解鎖'}</span></div><div class="sub">${unlockNames(l)}</div></div>`;
       h += `<div class="item"><div class="top"><span class="nm">開拓新土地</span><b>${yen(G.earned)} / ${yen(LAND_GOAL)}</b></div>
         <div class="prog"><i style="width:${clamp(G.earned / LAND_GOAL, 0, 1) * 100}%"></i></div>
@@ -2411,6 +2461,16 @@ function renderPhone() {
         h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}<i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${d.body};border:1px solid var(--line);margin-right:6px;vertical-align:-1px"></i>${d.name}</span><b>${yen(d.price)}</b></div><div class="sub">${d.desc}・睡在 ${BEDS[id].f}F ${BEDS[id].basket ? '貓窩' : '層板'}</div>
           <div class="row" style="margin:0">${locked ? `<button disabled>店鋪 Lv.${d.lv} 解鎖</button>` : G.cash < d.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-adopt="${id}" ${S.phase === 'settle' ? 'disabled' : ''}>領養${d.name}</button>`}</div></div>`;
       }
+    } else if (phoneApp === 'phone') {
+      if (CALL) {
+        const C = CALL.C;
+        h += `<div style="text-align:center;padding:10px 0"><div style="font-size:40px">☎</div><div class="nm" style="font-size:18px">${C.name}</div><div class="sub">${CALL.result ? '通話結束' : CALL.shown < C.lines.length ? '通話中…' : '通話中'}</div></div>` +
+          C.lines.slice(0, CALL.shown).map(t => `<div class="item" style="margin:0 0 6px;border-radius:14px 14px 14px 4px">「${t}」</div>`).join('') +
+          (CALL.result ? `<p style="color:var(--good);margin:8px 0">${CALL.result}</p><div class="row" style="margin:0;justify-content:center"><button class="primary" id="hangUp">掛斷</button></div>` : '');
+      } else {
+        h += `<p class="muted">每個人一天可以打一次，對方會幫上一點忙。</p>` + CALLS.map(C => `<div class="item"><div class="top"><span class="nm">☎ ${C.name}</span>${S.calls[C.id] ? '<span class="sub">今天打過了</span>' : ''}</div><div class="sub">${C.who}</div>
+          <div class="row" style="margin:0"><button ${S.calls[C.id] || S.phase === 'settle' ? 'disabled' : 'class="primary"'} data-call="${C.id}">打電話</button></div></div>`).join('');
+      }
     } else if (phoneApp === 'daily') {
       h += `<p class="muted">每天 3 個任務，明天會換新的。完成後在這裡領獎勵，三個都領完再加 ¥100。</p>`;
       S.daily.forEach((q, i) => { const D = DAILY.find(d => d.id === q.id), v = Math.min(q.n, Math.max(0, D.prog()));
@@ -2430,12 +2490,15 @@ function renderPhone() {
   sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { phoneApp = b.dataset.app; renderPhone(); });
   const q = s => sc.querySelector(s);
   q('#pClose') && (q('#pClose').onclick = closePhone);
-  q('#pBack') && (q('#pBack').onclick = () => { phoneApp = 'home'; renderPhone(); });
+  q('#pBack') && (q('#pBack').onclick = () => { if (CALL && CALL.result) CALL = null; if (!CALL) { phoneApp = 'home'; renderPhone(); } });
   sc.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
     const id = b.dataset.p, base = baseOf(id);
     G.prices[id] = clamp(G.prices[id] + +b.dataset.d, 5, base * 2); renderPhone();
   });
   sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
+  q('#expandBtn') && (q('#expandBtn').onclick = () => { doExpand(); renderPhone(); });
+  sc.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(b.dataset.call));
+  q('#hangUp') && (q('#hangUp').onclick = () => { CALL = null; renderPhone(); });
   sc.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { claimDaily(+b.dataset.claim); renderPhone(); });
   sc.querySelectorAll('[data-adopt]').forEach(b => b.onclick = () => { adoptCat(b.dataset.adopt); renderPhone(); });
   sc.querySelectorAll('[data-promo]').forEach(b => b.onclick = () => { doPromo(b.dataset.promo); renderPhone(); });
@@ -2453,10 +2516,17 @@ function renderPhone() {
   q('#repayAll') && (q('#repayAll').onclick = () => { G.cash -= G.debt; G.debt = 0; toast('負債還清了'); renderPhone(); });
   q('#copyCode') && (q('#copyCode').onclick = () => copyText(q('#codeOut')));
 }
+function doExpand() {
+  const E = EXPANSIONS[G.expand];
+  if (!E || E.lv > shopLv() || G.cash < E.price || S.phase === 'settle') return;
+  G.cash -= E.price; S.today.spent += E.price; G.expand++;
+  S.cushions.push(...E.cushions.map(p => ({ ...p, cust: null })));
+  toast(`擴建完成：${E.name}！`); say(S.mgr, '店變大了，好開心！'); gainExp(15); saveProgress();
+}
 function buy(id, credit) {
   let name, price;
   if (id === 'table') {
-    if (G.tables >= MAX_TABLES) return;
+    if (G.tables >= maxTables()) return;
     name = '原木矮桌'; price = TABLE_PRICE;
     G.tables++; const p = TABLE_POS[G.tables - 1]; S.tables.push({ ...p, cust: null, dirty: false, busy: false });
   } else if (FURN[id]) {
@@ -2496,7 +2566,7 @@ function decodeSave(code) {
     stock: { flour: num(o.stock?.flour, 0), food: num(o.stock?.food, 0), catfood: num(o.stock?.catfood, 0), litter: num(o.stock?.litter, 0), beans: Math.max(0, Math.floor(num(o.stock?.beans, 0))), treat: Math.max(0, Math.floor(num(o.stock?.treat, 0))) },
     prices: Object.fromEntries(Object.keys(base.prices).map(k => [k, clamp(num(o.prices?.[k], base.prices[k]), 5, baseOf(k) * 2)])),
     bowl: clamp(num(o.bowl, 0), 0, 6), litterDirt: Math.max(0, num(o.litterDirt, 0)),
-    tables: clamp(Math.floor(num(o.tables, 3)), 3, MAX_TABLES),
+    tables: clamp(Math.floor(num(o.tables, 3)), 3, MAX_TABLES), expand: clamp(Math.floor(num(o.expand, 0)), 0, EXPANSIONS.length),
     staff: Array.isArray(o.staff) ? [...new Set(o.staff.filter(r => ROLES[r]))] : [],
     exp: Math.max(0, Math.floor(num(o.exp, 0))), earned: Math.max(0, num(o.earned, 0)),
     furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f]))] : [],
@@ -2566,7 +2636,7 @@ async function initCloud() {
 
 // ---- day flow ----
 function closeDay() {
-  S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; S.cook = null; S.reg = null; S.baking = {}; closePhone(); closeChoose();
+  S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; S.cook = null; S.reg = null; S.baking = {}; closePhone(true); closeChoose();
   let refunds = 0;
   for (const c of S.customers) {
     if (c.state === 'waitFood' && c.order?.dish) { const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; refunds++; S.today.ratings.push(2); }
@@ -2590,11 +2660,7 @@ function closeDay() {
   let repay = 0;
   if (G.debt > 0 && !owedWages) { repay = Math.min(G.debt, Math.round(revenue * .2), Math.max(0, G.cash)); G.cash -= repay; G.debt -= repay; }
   const avg = T.ratings.length ? T.ratings.reduce((a, b) => a + b, 0) / T.ratings.length : 0;
-  // a bad day spreads by word of mouth: fans unfollow on top of the per-guest changes
-  let fanLoss = 0;
-  if (T.ratings.length && avg < 4) fanLoss = Math.max(avg < 2.5 ? 3 : 1, Math.round(G.fans * (avg < 2.5 ? .2 : avg < 3.5 ? .1 : .05)));
-  fanLoss += T.angry; fanLoss = Math.min(fanLoss, G.fans);
-  if (fanLoss) { G.fans -= fanLoss; T.fans -= fanLoss; }
+  const fanLoss = 0;
   const day = S.day;
   G.day = day + 1;
   saveProgress();
@@ -2708,7 +2774,7 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 if (document.fonts) document.fonts.ready.then(() => prerender());
-window.__game = { get G() { return G; }, get S() { return S; }, closeDay, startCook, cookPress, cookRelease, setMusic, shopLv, actBake, actBowl, actPet, actOrder, actServe, actClear, buy, hire, takeOrder, adoptCat };
+window.__game = { get G() { return G; }, get S() { return S; }, closeDay, startCook, cookPress, cookRelease, setMusic, shopLv, actBake, actBowl, actPet, actOrder, actServe, actClear, buy, hire, takeOrder, adoptCat, actSit, doExpand, startCall };
 </script>
 </body>
 </html>
