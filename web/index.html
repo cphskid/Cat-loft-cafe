@@ -1,0 +1,1379 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>暖陽貓閣</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: one sunlit shop window (canvas) framed by a paper HUD; deliberately a single warm light look. */
+:root{
+  --wood:#8D6E63; --wood-d:#5D4037; --wood-l:#C9A27E;
+  --paper:#FDFBF7; --white:#FFFFFF; --ink:#4A3428; --muted:#8B776B; --line:#E6DACB;
+  --sun:#F6E7C8; --accent:#D9773E; --good:#6E9B4E; --warn:#D9A23A; --bad:#C65445;
+  --display:"LXGW WenKai TC","Noto Sans TC","PingFang TC","Microsoft JhengHei",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:#F2EBE1;color:var(--ink);font-family:var(--body);padding-inline:16px;padding-block:12px;margin:0;-webkit-tap-highlight-color:transparent}
+.app{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.logo{font-family:var(--display);font-size:24px;font-weight:700;color:var(--wood-d);letter-spacing:.06em}
+.lv{font-size:12px;color:var(--muted);letter-spacing:.05em}
+.stats{display:flex;flex-wrap:wrap;gap:6px 16px;font-variant-numeric:tabular-nums}
+.stat{display:flex;align-items:baseline;gap:4px;font-size:13px;color:var(--muted)}
+.stat b{font-size:17px;color:var(--ink);font-weight:700}
+.stat.clock b{font-family:var(--display);font-size:20px}
+.stat .ph{font-size:12px;background:var(--sun);color:var(--wood-d);border-radius:20px;padding:1px 8px}
+.stat.debt b{color:var(--bad)}
+.stage{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--paper);box-shadow:0 6px 20px rgba(93,64,55,.12)}
+canvas{display:block;width:100%;height:auto;aspect-ratio:960/600;touch-action:none;cursor:default}
+#toasts{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:90%}
+.toast{background:rgba(74,52,40,.9);color:#fff;font-size:14px;padding:6px 14px;border-radius:20px;animation:tin .25s ease-out;text-align:center}
+@keyframes tin{from{opacity:0;transform:translateY(-6px)}to{opacity:1}}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+button{font-family:var(--body);font-size:14px;border:1px solid var(--wood-l);background:var(--white);color:var(--wood-d);border-radius:10px;padding:8px 14px;cursor:pointer;position:relative}
+button:hover{background:#FBF4EA}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
+button.primary:hover{background:var(--wood-d)}
+.badge{position:absolute;top:-7px;right:-7px;background:var(--accent);color:#fff;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;font-weight:700;text-align:center;animation:pulse 1s infinite alternate}
+@keyframes pulse{to{transform:scale(1.15)}}
+.lower{display:grid;grid-template-columns:1fr auto;gap:10px}
+@media (max-width:700px){.lower{grid-template-columns:1fr}}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px 12px;min-width:0}
+.panel .lbl{font-size:12px;color:var(--muted);letter-spacing:.08em;margin-right:6px}
+#taskList{display:inline-flex;flex-wrap:wrap;gap:6px;vertical-align:middle}
+.chip{font-size:13px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:2px 10px;cursor:pointer}
+.chip.now{background:var(--sun);border-color:var(--wood-l);cursor:default}
+.inv{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.inv b{color:var(--ink)}
+.inv .low b{color:var(--bad)}
+.tutorial{font-size:14px}
+.tutorial h3{font-family:var(--display);font-size:16px;margin:0 0 4px;color:var(--wood-d)}
+.tutorial ol{margin:0;padding-left:20px;display:grid;gap:2px}
+.tutorial li.done{color:var(--muted);text-decoration:line-through}
+details.howto{font-size:14px;line-height:1.7}
+details.howto summary{cursor:pointer;font-family:var(--display);color:var(--wood-d)}
+details.howto ul{margin:6px 0;padding-left:20px}
+.overlay{position:fixed;inset:0;background:rgba(74,52,40,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.card{background:var(--paper);border-radius:16px;max-width:460px;width:100%;max-height:92vh;overflow:auto;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.card h2{font-family:var(--display);font-size:24px;margin:0 0 6px;color:var(--wood-d)}
+.card p{line-height:1.7;margin:6px 0}
+.card .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.title-card{text-align:center;max-width:520px}
+.title-card .big{font-family:var(--display);font-size:46px;font-weight:700;color:var(--wood-d);letter-spacing:.1em;margin:4px 0}
+.title-card .en{font-size:13px;letter-spacing:.3em;color:var(--muted)}
+.title-card .row{justify-content:center}
+textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;color:var(--ink);resize:vertical;min-height:60px}
+.phone{max-width:380px;background:#3B2B22;border-radius:34px;padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.screen{background:var(--paper);border-radius:22px;min-height:520px;max-height:80vh;overflow:auto;display:flex;flex-direction:column}
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px 6px;font-size:12px;color:var(--muted)}
+.ahead{display:flex;align-items:center;gap:8px;padding:6px 14px 10px;border-bottom:1px solid var(--line)}
+.ahead h3{margin:0;font-family:var(--display);font-size:19px;color:var(--wood-d);flex:1}
+.ahead button{padding:4px 10px;font-size:13px}
+.abody{padding:12px 16px 18px;display:flex;flex-direction:column;gap:10px;font-size:14px}
+.apps{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:16px}
+.app-ic{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:16px;background:var(--white);border:1px solid var(--line)}
+.app-ic .ico{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:#fff}
+.app-ic span{font-size:13px;color:var(--ink)}
+.app-ic small{font-size:11px;color:var(--muted)}
+.item{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.item .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.item .nm{font-weight:700}
+.item .sub{font-size:12px;color:var(--muted)}
+.price-ctl{display:flex;align-items:center;gap:8px}
+.price-ctl b{font-size:20px;min-width:62px;text-align:center;font-variant-numeric:tabular-nums}
+.price-ctl button{padding:4px 12px}
+.zone{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--good) 0 50%,var(--warn) 50% 70%,var(--bad) 70% 100%);position:relative}
+.zone i{position:absolute;top:-4px;width:4px;height:16px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
+.zl{font-size:12px}
+.settle-tab{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+.settle-tab td{padding:4px 0;border-bottom:1px dashed var(--line)}
+.settle-tab td:last-child{text-align:right}
+.settle-tab tr.tot td{font-weight:700;border-bottom:none;font-size:16px}
+.review{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px;font-family:var(--display);line-height:1.6}
+.review .st{color:var(--warn);letter-spacing:2px}
+.prog{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--wood)}
+.muted{color:var(--muted);font-size:12px}
+.opt{display:flex;flex-direction:column;align-items:flex-start;text-align:left;width:100%}
+.opt small{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.badge,.toast{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="hud">
+    <div class="brand"><span class="logo">暖陽貓閣</span><span class="lv" id="lv">Lv.1 巷弄無名小店</span></div>
+    <div class="stats">
+      <div class="stat">第<b id="day">1</b>天</div>
+      <div class="stat clock"><b id="clock">07:00</b><span class="ph" id="phase">晨間備料</span></div>
+      <div class="stat">現金<b id="cash">¥100</b></div>
+      <div class="stat debt" id="debtWrap" hidden>負債<b id="debt">¥0</b></div>
+      <div class="stat">今日評價<b id="rating">—</b></div>
+      <div class="stat">粉絲<b id="fans">0</b></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <canvas id="cv" width="960" height="600" aria-label="咖啡廳畫面，點擊物品讓店長去做事"></canvas>
+    <div id="toasts"></div>
+  </div>
+
+  <div class="controls">
+    <button id="openBtn" class="primary">開店營業</button>
+    <button id="floorBtn">前往 2F 貓咪閣樓<span class="badge" id="floorBadge" hidden>!</span></button>
+    <button id="phoneBtn">店長手機</button>
+    <button id="speedBtn">速度 1×</button>
+    <button id="pauseBtn">暫停</button>
+  </div>
+
+  <div class="lower">
+    <div class="panel"><span class="lbl">店長待辦</span><div id="taskList"></div></div>
+    <div class="panel inv" id="inv"></div>
+  </div>
+
+  <div class="panel tutorial" id="tutorial" hidden></div>
+
+  <details class="panel howto">
+    <summary>怎麼玩</summary>
+    <ul>
+      <li>點畫面上的東西，店長會自己走過去做。動作會排進「店長待辦」，點待辦可以取消。</li>
+      <li>1F：點<b>烤箱</b>烤點心、點<b>櫃檯</b>幫排隊的客人點餐、點<b>等餐的客人</b>送餐、點<b>髒桌子</b>收拾、洗手間出現驚嘆號時點<b>洗手間</b>打掃（3 秒內擦掉污漬）。</li>
+      <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
+      <li>點<b>樓梯</b>或下面的切換按鈕看另一層。另一層有狀況時，右上角和按鈕會亮起驚嘆號。</li>
+      <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算。</li>
+      <li>手機裡可以調價格、叫外送買材料、借錢或賒帳，還能拿存檔碼。錢不夠不會倒店。</li>
+      <li>快捷鍵：F 切換樓層、空白鍵暫停。</li>
+    </ul>
+  </details>
+</div>
+
+<div class="overlay" id="titleOv">
+  <div class="card title-card">
+    <div class="en">CAT LOFT CAFE</div>
+    <div class="big">暖陽貓閣</div>
+    <p>巷子裡一間小小的雙層貓咪咖啡廳。<br>今天開始，你是一個人包辦一切的店長。</p>
+    <div class="row">
+      <button class="primary" id="newBtn">開始新遊戲</button>
+      <button id="contBtn" hidden>繼續上次</button>
+    </div>
+    <p class="muted" style="margin-top:16px">有存檔碼嗎？貼在這裡讀取</p>
+    <textarea id="loadCode" placeholder="CAT-..."></textarea>
+    <div class="row"><button id="loadBtn">讀取存檔碼</button></div>
+    <p class="muted">試玩版只包含 Stage 1「新手試營運」。</p>
+  </div>
+</div>
+
+<div class="overlay" id="phoneOv" hidden>
+  <div class="phone"><div class="screen" id="phoneScreen"></div></div>
+</div>
+
+<div class="overlay" id="settleOv" hidden><div class="card" id="settleCard"></div></div>
+<div class="overlay" id="chooseOv" hidden><div class="card" id="chooseCard"></div></div>
+
+<script>
+'use strict';
+// ====================== constants ======================
+const W = 960, H = 600;
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let g = ctx; // current drawing context (swapped while pre-rendering backgrounds)
+function fit() { const d = Math.min(2, window.devicePixelRatio || 1); cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0); }
+fit(); addEventListener('resize', fit);
+
+const INK = '#5A4032';
+const FONT = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+const DFONT = '"LXGW WenKai TC","Noto Sans TC",serif';
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const yen = n => '¥' + Math.round(n).toLocaleString();
+const starsTxt = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+
+const MENU = {
+  cookie:  { name: '貓掌奶油餅乾', short: '餅乾', base: 30, batch: 6, bake: 3 },
+  pudding: { name: '焦糖貓耳布丁', short: '布丁', base: 40, batch: 4, bake: 4 },
+};
+const LOFT_BASE = 50;
+const SHOP = [
+  { id: 'flour',   name: '麵粉',   desc: '一袋 10 份，烤甜點用',       price: 40, amt: 10, unit: '份' },
+  { id: 'catfood', name: '貓糧',   desc: '一包可以裝滿貓碗一次',       price: 20, amt: 1,  unit: '包' },
+  { id: 'litter',  name: '貓砂',   desc: '一包可以換 3 次貓砂',         price: 15, amt: 3,  unit: '次' },
+];
+const LV_NAMES = ['巷弄無名小店', '街坊秘密基地', '全城熱門名店'];
+const LV2_FANS = 60;
+
+const STAIRS = { 1: { x: 905, y: 566 }, 2: { x: 900, y: 505 } };
+const DOOR = { x: -40, y: 566 };
+const QUEUE = [{ x: 250, y: 568 }, { x: 196, y: 580 }, { x: 142, y: 568 }, { x: 88, y: 580 }, { x: 36, y: 568 }];
+const COUNTER = { x: 150, y: 470, w: 185, front: 540 };
+const MGR_COUNTER = { x: 240, y: 466 };
+const OVEN_SPOT = { x: 126, y: 470 };
+const KGATE = { x: 360, y: 478 };
+const TABLE_POS = [{ x: 450, y: 520 }, { x: 595, y: 520 }, { x: 740, y: 520 }];
+const WC = { door: { x: 826, y: 470 }, inside: { x: 826, y: 452 } };
+const CUSHION_POS = [{ x: 470, y: 548 }, { x: 590, y: 578 }, { x: 705, y: 548 }, { x: 812, y: 578 }];
+const BOWL = { x: 228, y: 552, staff: { x: 270, y: 558 } };
+const LITTER = { x: 338, y: 572, staff: { x: 392, y: 576 } };
+const BEDS = {
+  orange: { f: 2, x: 92, y: 236, ground: { x: 120, y: 520 } },
+  tux:    { f: 2, x: 262, y: 206, ground: { x: 262, y: 500 } },
+  fluffy: { f: 1, x: 512, y: 200, ground: { x: 512, y: 470 } },
+};
+const SHIRTS = ['#9FB8AD', '#E3AE97', '#A7B5D6', '#D8C27A', '#C9A3C1', '#8FB0C9', '#E0C7A8', '#B9C99A'];
+const HAIRS = ['#3E2C23', '#6B4A3A', '#2B2420', '#A0703F', '#4C3A30'];
+const SKIN = '#F6DCC6';
+
+// ====================== state ======================
+let G = null; // persistent between days
+let S = null; // per-day session
+let started = false;
+
+function freshG() {
+  return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, catfood: 0, litter: 1 },
+           prices: { cookie: 30, pudding: 40, loft: 50 }, bowl: 0, litterDirt: 0 };
+}
+function makeCats() {
+  const defs = [
+    { id: 'orange', name: '橘子', body: '#EBA160', dark: '#C9783A', belly: '#FFF6EC' },
+    { id: 'tux',    name: '黑豆', body: '#3B3633', dark: '#24201E', belly: '#FAF7F2' },
+    { id: 'fluffy', name: '雪球', body: '#F4ECDF', dark: '#D8C6AE', belly: '#FFFFFF', fluffy: true },
+  ];
+  return defs.map(d => {
+    const b = BEDS[d.id];
+    return { ...d, floor: b.f, x: b.x, y: b.y, path: [], speed: 95, face: d.id === 'tux' ? -1 : 1,
+             state: 'sleep', onBed: true, energy: 70, hunger: 25 + Math.random() * 15, t: 0, hold: false, hearts: 0 };
+  });
+}
+function startDay() {
+  S = {
+    day: G.day, phase: 'prep', time: 420, view: 1, speed: S ? S.speed : 1, paused: false, uiPause: false,
+    mgr: { floor: 1, x: MGR_COUNTER.x, y: MGR_COUNTER.y, path: [], speed: 270, face: 1, task: null, carry: null, mode: 'idle', actT: 0, si: 0 },
+    tasks: [], customers: [], queue: [], cid: 0,
+    tables: TABLE_POS.map(p => ({ ...p, cust: null, dirty: false, busy: false })),
+    cushions: CUSHION_POS.map(p => ({ ...p, cust: null })),
+    display: { cookie: 0, pudding: 0 }, restroomDirt: 0, ovenT: 0,
+    spawnT: 2.5, lastHour: 7, effects: [], mini: null, t: 0,
+    today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, borrowed: 0 },
+    cats: makeCats(),
+  };
+  renderTasks(); updateButtons(); renderTutorial();
+}
+
+// ====================== drawing helpers ======================
+function hash(a, b) { const h = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return h - Math.floor(h); }
+function wob(x, y, a = 1.4) { return [x + (hash(x, y) - .5) * a * 2, y + (hash(y + 3, x) - .5) * a * 2]; }
+function poly(pts, fill, stroke, lw = 2) {
+  g.beginPath();
+  pts.forEach((p, i) => { const [a, b] = wob(p[0], p[1]); i ? g.lineTo(a, b) : g.moveTo(a, b); });
+  g.closePath();
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.lineJoin = 'round'; g.stroke(); }
+}
+function rect(x, y, w, h, fill, stroke = INK, lw = 2) { poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], fill, stroke, lw); }
+function rrect(x, y, w, h, r, fill, stroke, lw = 2) {
+  g.beginPath(); g.roundRect(x, y, w, h, r);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function ell(x, y, rx, ry, fill, stroke, lw = 2) {
+  g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function line(x1, y1, x2, y2, c = INK, lw = 2) {
+  const [a, b] = wob(x1, y1, 1), [c2, d] = wob(x2, y2, 1);
+  g.beginPath(); g.moveTo(a, b); g.lineTo(c2, d); g.strokeStyle = c; g.lineWidth = lw; g.lineCap = 'round'; g.stroke();
+}
+function wash(x, y, r, color, a = .25) {
+  const gr = g.createRadialGradient(x, y, 0, x, y, r);
+  gr.addColorStop(0, color); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.globalAlpha = a; g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); g.globalAlpha = 1;
+}
+function text(t, x, y, size = 14, color = INK, align = 'center', font = FONT, weight = 500) {
+  g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.textAlign = align; g.textBaseline = 'middle'; g.fillText(t, x, y);
+}
+function paperGrain(c, n) {
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * W, y = Math.random() * H;
+    c.fillStyle = Math.random() < .5 ? 'rgba(120,90,60,.05)' : 'rgba(255,255,255,.08)';
+    c.fillRect(x, y, 1.5, 1.5);
+  }
+}
+function drawFloorPlanks(top) {
+  const cols = ['#C8925C', '#BE8851', '#D09C66', '#C48D57'];
+  let row = 0;
+  for (let y = top; y < H; row++) {
+    const h = 14 + row * 3.2;
+    g.fillStyle = cols[row % cols.length]; g.fillRect(0, y, W, h + 1);
+    g.strokeStyle = 'rgba(90,64,50,.35)'; g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y + (hash(row, 1) - .5) * 2); g.stroke();
+    let x = (hash(row, 7) * 160);
+    while (x < W) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + h); g.stroke(); x += 150 + hash(x, row) * 120; }
+    for (let k = 0; k < 6; k++) { // grain
+      const gx = hash(row, k) * W, gy = y + 3 + hash(k, row) * (h - 6);
+      g.strokeStyle = 'rgba(110,70,40,.18)'; g.beginPath(); g.moveTo(gx, gy); g.quadraticCurveTo(gx + 30, gy - 2, gx + 70, gy + 1); g.stroke();
+    }
+    y += h;
+  }
+}
+function sunRays(x1, x2, ytop, ybot, slant) {
+  g.save(); g.globalAlpha = .22; g.fillStyle = '#FFF1C9';
+  g.beginPath(); g.moveTo(x1, ytop); g.lineTo(x2, ytop); g.lineTo(x2 - slant, ybot); g.lineTo(x1 - slant * 1.3, ybot); g.closePath(); g.fill();
+  g.restore();
+}
+function windowFrame(x, y, w, h, cols, rows) {
+  g.fillStyle = '#FFF8E6'; g.fillRect(x, y, w, h);
+  wash(x + w * .7, y + h * .3, w, '#FFE7B0', .55);
+  rect(x, y, w, h, null, '#8A5E3C', 6);
+  for (let i = 1; i < cols; i++) line(x + w * i / cols, y, x + w * i / cols, y + h, '#8A5E3C', 4);
+  for (let j = 1; j < rows; j++) line(x, y + h * j / rows, x + w, y + h * j / rows, '#8A5E3C', 4);
+  rect(x - 8, y + h, w + 16, 8, '#A87650', INK, 1.5);
+}
+function plant(x, y, s = 1) {
+  rect(x - 13 * s, y - 26 * s, 26 * s, 26 * s, '#E9E1D6', INK, 1.5);
+  for (let i = 0; i < 7; i++) {
+    const a = -Math.PI / 2 + (i - 3) * .35;
+    ell(x + Math.cos(a) * 18 * s, y - 28 * s + Math.sin(a) * 22 * s, 7 * s, 12 * s, i % 2 ? '#8FAE7A' : '#7A9C68', INK, 1.2);
+  }
+}
+function mug(x, y, c) { rrect(x, y - 16, 14, 16, 3, c, INK, 1.4); g.beginPath(); g.arc(x + 15, y - 8, 4, -1.2, 1.2); g.strokeStyle = INK; g.lineWidth = 1.4; g.stroke(); }
+function coffeeBag(x, y, c) { poly([[x, y - 26], [x + 18, y - 26], [x + 20, y], [x - 2, y]], c, INK, 1.4); rect(x + 4, y - 16, 10, 8, '#FFF', null); }
+
+// ====================== static backgrounds ======================
+const BG = {};
+function prerender() {
+  for (const f of [1, 2]) {
+    const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2;
+    const cx = c.getContext('2d'); cx.scale(2, 2); g = cx;
+    f === 1 ? bg1() : bg2();
+    paperGrain(cx, 5000);
+    BG[f] = c;
+  }
+  g = ctx;
+}
+function wallBase() {
+  g.fillStyle = '#FBF8F2'; g.fillRect(0, 0, W, 450);
+  wash(700, 160, 420, '#FFF0D2', .5); wash(120, 380, 300, '#EFE4D4', .35);
+  drawFloorPlanks(450);
+  rect(-4, 442, W + 8, 10, '#A3754E', INK, 1.5);
+}
+function bg1() {
+  wallBase();
+  // loft beam
+  g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, 44); line(0, 44, W, 44, INK, 2);
+  rect(-4, 44, W + 8, 12, '#B4875C', INK, 1.5);
+  for (let x = 30; x < W; x += 70) line(x, 0, x, 42, 'rgba(90,64,50,.25)', 1);
+  // kitchen tiles
+  g.fillStyle = '#F4EEE5'; g.fillRect(70, 250, 270, 192);
+  g.strokeStyle = 'rgba(150,120,90,.25)'; g.lineWidth = 1;
+  for (let x = 70; x <= 340; x += 22) { g.beginPath(); g.moveTo(x, 250); g.lineTo(x, 442); g.stroke(); }
+  for (let y = 250; y <= 442; y += 22) { g.beginPath(); g.moveTo(70, y); g.lineTo(340, y); g.stroke(); }
+  // kitchen shelves with mugs and bags
+  rect(180, 300, 150, 8, '#A87650', INK, 1.5);
+  ['#FFFFFF', '#E9E4DD', '#B9C6CF', '#FFFFFF', '#D8C6AE', '#FFFFFF'].forEach((c, i) => mug(190 + i * 22, 300, c));
+  rect(180, 360, 150, 8, '#A87650', INK, 1.5);
+  ['#C8A882', '#7A5A44', '#C8A882', '#8E6A50'].forEach((c, i) => coffeeBag(192 + i * 34, 360, c));
+  // oven
+  rect(80, 330, 92, 112, '#ECE6DC', INK, 2);
+  rect(92, 360, 68, 46, '#5D4A40', INK, 1.5);
+  for (let i = 0; i < 3; i++) ell(98 + i * 18, 344, 5, 5, '#C9BBAA', INK, 1.2);
+  line(92, 418, 160, 418, INK, 2);
+  text('烤箱', 126, 432, 11, '#8B776B');
+  // menu board (prices drawn live)
+  line(170, 56, 180, 84, INK, 1.2); line(330, 56, 320, 84, INK, 1.2);
+  rect(150, 84, 200, 120, '#F7EEDC', '#8A5E3C', 6);
+  // door / entrance with noren
+  rect(0, 250, 62, 192, '#EDE3D3', INK, 2);
+  g.fillStyle = '#F7F1E6'; g.fillRect(4, 256, 54, 182);
+  rect(-2, 244, 68, 10, '#A87650', INK, 1.5);
+  for (let i = 0; i < 3; i++) rect(4 + i * 18, 254, 17, 58, '#E9DCC4', INK, 1.2);
+  pawPrint(31, 282, .9, '#A87650');
+  rect(2, 430, 60, 12, '#C9B48F', INK, 1.2);
+  // window & light
+  windowFrame(580, 110, 140, 230, 2, 3);
+  sunRays(580, 720, 340, 600, -120);
+  // fluffy cat shelf
+  rect(462, 204, 100, 9, '#B4875C', INK, 1.5);
+  line(476, 213, 486, 232, INK, 1.5); line(548, 213, 538, 232, INK, 1.5);
+  // second decorative shelf
+  rect(400, 140, 70, 8, '#B4875C', INK, 1.5); plant(436, 140, .6);
+  // restroom
+  rect(776, 240, 102, 204, '#F3EDE4', INK, 2);
+  rect(790, 262, 74, 180, '#C69A6D', INK, 2);
+  ell(852, 356, 4, 4, '#E6D2A8', INK, 1.2);
+  rrect(806, 280, 42, 24, 5, '#FFFFFF', INK, 1.5); text('WC', 827, 292, 12, INK, 'center', FONT, 700);
+  // deodorizer
+  rrect(752, 398, 20, 44, 6, '#FFFFFF', INK, 1.5); ell(762, 396, 7, 4, '#D6E3E6', INK, 1.2);
+  // stairs going up
+  g.fillStyle = '#F1E9DC'; g.beginPath(); g.moveTo(880, 450); g.lineTo(960, 450); g.lineTo(960, 56); g.lineTo(940, 56); g.closePath(); g.fill();
+  for (let i = 0; i < 9; i++) {
+    const y = 442 - i * 44, x = 882 + i * 7;
+    rect(x, y - 8, 90, 10, '#B88A5E', INK, 1.4);
+  }
+  line(878, 450, 940, 56, INK, 2.5);
+  text('↑ 2F', 920, 470, 13, '#8B776B', 'center', FONT, 700);
+  plant(360, 448, 1);
+}
+function bg2() {
+  wallBase();
+  // sloped ceiling with beams
+  g.fillStyle = '#FFFFFF'; g.beginPath(); g.moveTo(0, 0); g.lineTo(W, 0); g.lineTo(W, 30); g.lineTo(0, 60); g.closePath(); g.fill();
+  line(0, 60, W, 30, INK, 2);
+  for (let x = 40; x < W; x += 120) rect(x, 0, 16, 60 - x * 30 / W, '#B4875C', INK, 1.2);
+  // big window with sun
+  windowFrame(660, 80, 190, 330, 3, 4);
+  sunRays(660, 850, 410, 600, 180);
+  // cat tree
+  for (const px of [58, 128]) { rect(px - 8, 240, 16, 210, '#E6D6B8', INK, 1.5); for (let y = 250; y < 445; y += 9) line(px - 8, y, px + 8, y + 3, 'rgba(120,90,60,.4)', 1); }
+  rect(30, 236, 130, 12, '#B4875C', INK, 1.5);
+  rect(40, 336, 120, 11, '#B4875C', INK, 1.5);
+  rrect(48, 206, 92, 32, 14, '#E9D9BF', INK, 1.5); // basket bed
+  rect(24, 432, 150, 16, '#B4875C', INK, 1.5);
+  // wall shelves (cat walk)
+  rect(214, 210, 100, 9, '#B4875C', INK, 1.5); line(228, 219, 238, 236, INK, 1.5); line(300, 219, 290, 236, INK, 1.5);
+  rect(330, 150, 80, 9, '#B4875C', INK, 1.5); line(344, 159, 352, 174, INK, 1.5);
+  rect(430, 100, 120, 9, '#B4875C', INK, 1.5); // bridge
+  for (let x = 436; x < 550; x += 14) line(x, 100, x, 109, 'rgba(90,64,50,.4)', 1);
+  // staff only curtain
+  rect(560, 270, 70, 172, '#EEE6DA', INK, 2);
+  for (let i = 0; i < 3; i++) rect(562 + i * 22, 276, 21, 70, '#D9C6A6', INK, 1.2);
+  text('STAFF ONLY', 595, 360, 10, '#8B776B', 'center', FONT, 700);
+  // rug
+  g.fillStyle = '#EBDDC2'; g.beginPath(); g.ellipse(640, 565, 250, 42, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = INK; g.lineWidth = 1.5; g.stroke();
+  g.strokeStyle = 'rgba(160,120,80,.35)'; g.beginPath(); g.ellipse(640, 565, 225, 33, 0, 0, Math.PI * 2); g.stroke();
+  // cushions
+  for (const c of CUSHION_POS) { rrect(c.x - 30, c.y - 14, 60, 22, 10, '#EADFCB', INK, 1.5); line(c.x - 18, c.y - 3, c.x + 18, c.y - 3, 'rgba(120,90,60,.35)', 1); }
+  // stairwell with railing
+  g.fillStyle = '#8F6A4C'; g.fillRect(872, 452, 88, 148);
+  for (let i = 0; i < 6; i++) rect(874 + i * 3, 470 + i * 22, 86, 8, '#B88A5E', INK, 1.2);
+  rect(866, 300, 8, 150, '#A87650', INK, 1.5);
+  rect(866, 296, 94, 8, '#A87650', INK, 1.5);
+  for (let x = 888; x < 960; x += 18) line(x, 304, x, 450, '#A87650', 4);
+  text('↓ 1F', 916, 284, 13, '#8B776B', 'center', FONT, 700);
+  plant(624, 446, .9);
+}
+function pawPrint(x, y, s, c) {
+  ell(x, y + 4 * s, 7 * s, 6 * s, c);
+  for (let i = 0; i < 4; i++) ell(x - 8 * s + i * 5.3 * s, y - 5 * s - (i === 1 || i === 2 ? 3 * s : 0), 2.6 * s, 3.2 * s, c);
+}
+
+// ====================== dynamic scene objects ======================
+function drawCookie(x, y, s = 1) { ell(x, y, 9 * s, 8 * s, '#E2B573', INK, 1.3); pawPrint(x, y + 1 * s, .55 * s, '#9C6236'); }
+function drawPudding(x, y, s = 1) {
+  poly([[x - 9 * s, y + 7 * s], [x + 9 * s, y + 7 * s], [x + 7 * s, y - 5 * s], [x - 7 * s, y - 5 * s]], '#F4D376', INK, 1.3);
+  poly([[x - 7 * s, y - 5 * s], [x + 7 * s, y - 5 * s], [x + 6 * s, y - 8 * s], [x - 6 * s, y - 8 * s]], '#9C5B2E', null);
+  poly([[x - 6 * s, y - 8 * s], [x - 4 * s, y - 13 * s], [x - 2 * s, y - 8 * s]], '#9C5B2E', null);
+  poly([[x + 2 * s, y - 8 * s], [x + 4 * s, y - 13 * s], [x + 6 * s, y - 8 * s]], '#9C5B2E', null);
+}
+const drawDish = (d, x, y, s) => d === 'cookie' ? drawCookie(x, y, s) : drawPudding(x, y, s);
+
+function drawMenuBoard() {
+  text('菜 單', 250, 102, 17, '#6B4A35', 'center', DFONT, 700);
+  pawPrint(172, 100, .7, '#A87650'); pawPrint(328, 100, .7, '#A87650');
+  const rows = [['貓掌奶油餅乾', G.prices.cookie], ['焦糖貓耳布丁', G.prices.pudding], ['2F 吸貓入場', G.prices.loft]];
+  rows.forEach((r, i) => { text(r[0], 166, 132 + i * 22, 13, INK, 'left', DFONT); text(yen(r[1]), 334, 132 + i * 22, 13, INK, 'right', DFONT, 700); });
+}
+function drawCounter() {
+  const { x, y, w, front } = COUNTER;
+  rect(x, y, w, 12, '#B07E52', INK, 2);              // top
+  rect(x + 6, y + 12, w - 12, front - y - 12, '#9C6E48', INK, 2); // body
+  for (let i = 1; i < 5; i++) line(x + 6 + (w - 12) * i / 5, y + 14, x + 6 + (w - 12) * i / 5, front - 2, 'rgba(60,40,30,.25)', 1);
+  // display case
+  rect(x + 14, y - 40, 104, 40, 'rgba(230,243,245,.7)', INK, 1.6);
+  line(x + 14, y - 20, x + 118, y - 20, INK, 1);
+  for (let i = 0; i < Math.min(6, S.display.cookie); i++) drawCookie(x + 26 + i * 16, y - 28, .65);
+  for (let i = 0; i < Math.min(6, S.display.pudding); i++) drawPudding(x + 26 + i * 16, y - 8, .65);
+  // register
+  rect(x + 136, y - 22, 34, 22, '#5D5450', INK, 1.5); rect(x + 142, y - 44, 22, 18, '#3E3836', INK, 1.5);
+  if (S.queue.length && S.phase === 'open') alertMark(x + w / 2, y - 64);
+}
+function drawTable(t) {
+  // chair
+  rect(t.x - 64, t.y - 32, 8, 34, '#A87650', INK, 1.4); rect(t.x - 64, t.y - 12, 30, 7, '#B4875C', INK, 1.4); line(t.x - 38, t.y - 5, t.x - 38, t.y + 2, INK, 2);
+  // table
+  rect(t.x - 30, t.y - 42, 74, 9, '#B98B5F', INK, 1.8);
+  line(t.x - 22, t.y - 33, t.x - 22, t.y, INK, 3); line(t.x + 36, t.y - 33, t.x + 36, t.y, INK, 3);
+  if (t.cust && t.cust.state === 'eating') { ell(t.x + 6, t.y - 45, 15, 4, '#FFFFFF', INK, 1.2); drawDish(t.cust.order.dish, t.x + 6, t.y - 52, .8); mug(t.x + 22, t.y - 42, '#FFFFFF'); }
+  if (t.dirty) {
+    ell(t.x + 6, t.y - 45, 15, 4, '#FFFFFF', INK, 1.2);
+    for (let i = 0; i < 5; i++) ell(t.x - 2 + i * 4, t.y - 47 + (i % 2) * 2, 1.5, 1.5, '#B07E52');
+    alertMark(t.x + 6, t.y - 78, '#D9A23A');
+  }
+}
+function drawOvenGlow() {
+  if (S.mgr.task && S.mgr.task.kind === 'bake' && S.mgr.mode === 'act') { g.globalAlpha = .6 + Math.sin(S.t * 8) * .2; rect(92, 360, 68, 46, '#F2A65A', INK, 1.5); g.globalAlpha = 1; }
+}
+function drawRestroomState() {
+  // mist from deodorizer
+  g.globalAlpha = .35; for (let i = 0; i < 3; i++) ell(762 + Math.sin(S.t * 2 + i) * 4, 386 - i * 9 - (S.t * 10 % 9), 6 + i * 2, 4, '#E1ECEE'); g.globalAlpha = 1;
+  const d = S.restroomDirt;
+  for (let i = 0; i < Math.min(d, 4); i++) rect(802 + i * 14, 446, 10, 3, '#C9B48F', null);
+  if (S.customers.some(c => c.state === 'inWC')) { rect(790, 262, 74, 180, 'rgba(90,64,50,.15)', null); text('使用中', 827, 320, 12, '#6B4A35', 'center', FONT, 700); }
+  if (d >= 3) alertMark(827, 228);
+}
+function drawBowl() {
+  const { x, y } = BOWL;
+  ell(x, y, 22, 7, '#EFE7DB', INK, 1.5); poly([[x - 22, y], [x + 22, y], [x + 16, y + 10], [x - 16, y + 10]], '#E6D2C6', INK, 1.5);
+  if (G.bowl > 0) { for (let i = 0; i < G.bowl; i++) ell(x - 14 + i * 5.6, y - 2 - (i % 2), 3.2, 2.4, '#A26B3E'); }
+  rrect(x - 16, y - 34, 32, 16, 4, '#FFFFFF', 'rgba(90,64,50,.4)', 1); text(`${G.bowl}/6`, x, y - 26, 10, '#8B776B');
+  if (G.bowl === 0 && S.cats.some(k => k.hunger > 70)) alertMark(x, y - 52);
+}
+function drawLitter() {
+  const { x, y } = LITTER;
+  rect(x - 30, y - 18, 60, 20, '#D9E0DC', INK, 1.6);
+  rect(x - 26, y - 22, 52, 6, '#EFE4CF', INK, 1.2);
+  for (let i = 0; i < Math.min(G.litterDirt, 5); i++) ell(x - 18 + i * 9, y - 22, 3, 2, '#8A6A4C');
+  if (G.litterDirt >= 3) { g.globalAlpha = .5; for (let i = 0; i < 3; i++) text('~', x - 12 + i * 12, y - 34 - Math.sin(S.t * 3 + i) * 3, 14, '#9AA37A'); g.globalAlpha = 1; alertMark(x, y - 58); }
+}
+function alertMark(x, y, c = '#D9773E') {
+  const b = Math.sin(S.t * 6) * 2;
+  ell(x, y + b, 11, 11, c, INK, 1.5); text('!', x, y + b + 1, 15, '#FFFFFF', 'center', FONT, 700);
+}
+
+// ====================== characters ======================
+function drawPerson(p, o) {
+  const { x, y } = p; const f = p.face || 1;
+  const sit = o.sit; const bob = p.moving ? Math.sin(S.t * 14 + x) * 1.5 : 0;
+  ell(x, y, 16, 4, 'rgba(70,45,30,.18)');
+  const hip = sit ? y - 22 : y - 34;
+  // legs
+  if (sit) { rect(x - 8, hip - 2, 22 * f, 9, o.pants, INK, 1.3); rect(x - 8 + 22 * f - (f < 0 ? 5 : 0), hip + 2, 5, 18, o.pants, INK, 1.2); }
+  else {
+    const sw = p.moving ? Math.sin(S.t * 14 + x) * 5 : 0;
+    rect(x - 8 + sw * .3, hip, 7, 30, o.pants, INK, 1.3); rect(x + 1 - sw * .3, hip, 7, 30, o.pants, INK, 1.3);
+    ell(x - 4 + sw * .3, y - 2, 6, 3, '#4A3A32'); ell(x + 5 - sw * .3, y - 2, 6, 3, '#4A3A32');
+  }
+  // body
+  const top = hip - 34 + bob;
+  poly([[x - 13, hip + 2], [x + 13, hip + 2], [x + 11, top + 4], [x - 11, top + 4]], o.shirt, INK, 1.6);
+  if (o.apron) poly([[x - 10, hip + 10], [x + 10, hip + 10], [x + 8, top + 14], [x - 8, top + 14]], '#D9C3A0', INK, 1.3);
+  // arms
+  if (p.carry) {
+    line(x + 6 * f, top + 10, x + 18 * f, top + 20, INK, 1.5);
+    ell(x + 20 * f, top + 18, 12, 3, '#FFFFFF', INK, 1.2); drawDish(p.carry, x + 20 * f, top + 10, .7);
+  } else { line(x - 12, top + 8, x - 14, top + 30, o.shirt === '#FFFFFF' ? '#9C8B80' : INK, 1.5); line(x + 12, top + 8, x + 14, top + 30, o.shirt === '#FFFFFF' ? '#9C8B80' : INK, 1.5); }
+  // head
+  const hy = top - 12;
+  ell(x, hy, 13, 14, SKIN, INK, 1.5);
+  g.fillStyle = o.hair; g.beginPath(); g.ellipse(x - f * 2, hy - 5, 14, 11, 0, Math.PI, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(x - f * 9, hy, 6, 11, 0, 0, Math.PI * 2); g.fill();
+  if (o.ponytail) { g.beginPath(); g.ellipse(x - f * 16, hy + 6, 5, 12, f * .4, 0, Math.PI * 2); g.fill(); }
+  ell(x + f * 5, hy + 1, 1.6, 1.8, INK);
+  g.fillStyle = 'rgba(230,140,120,.35)'; g.beginPath(); g.arc(x + f * 7, hy + 6, 3, 0, Math.PI * 2); g.fill();
+}
+function drawMgr() {
+  const m = S.mgr;
+  drawPerson(m, { shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: true, ponytail: true });
+  if (m.task && m.mode === 'act' && m.task.steps[m.si].dur > .3) {
+    const st = m.task.steps[m.si], p = clamp(m.actT / st.dur, 0, 1);
+    ell(m.x, m.y - 110, 12, 12, '#FFFFFF', INK, 1.5);
+    g.beginPath(); g.moveTo(m.x, m.y - 110); g.arc(m.x, m.y - 110, 10, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); g.fillStyle = '#8D6E63'; g.fill();
+  }
+  text('店長', m.x, m.y + 12, 11, '#6B4A35', 'center', FONT, 700);
+}
+function drawCustomer(c) {
+  if (c.hidden) return;
+  const sit = c.state === 'waitFood' || c.state === 'eating' || c.state === 'petting';
+  drawPerson(c, { shirt: c.shirt, pants: c.pants, hair: c.hair, sit });
+  const hy = (sit ? c.y - 22 : c.y - 34) - 46;
+  if (c.name) text(c.name, c.x, c.y + 12, 11, '#6B4A35', 'center', FONT, 700);
+  if (c.say) { bubble(c.x, hy - 18, c.say.text); return; }
+  if (c.state === 'queue') { patBar(c, hy - 6); if (c.order) bubbleOrder(c, hy - 26); }
+  if (c.state === 'waitFood') { bubbleOrder(c, hy - 26, true); patBar(c, hy - 6); }
+  if (c.state === 'petting' && c.sawCat) { const t = (S.t * 1.2 + c.id) % 1; g.globalAlpha = 1 - t; heart(c.x + 10, hy - t * 20, 6); g.globalAlpha = 1; }
+}
+function bubbleOrder(c, y, alert) {
+  rrect(c.x - 18, y - 16, 36, 28, 10, '#FFFFFF', INK, 1.4);
+  if (c.order.dish) drawDish(c.order.dish, c.x, y - 2, .9); else text('2F', c.x, y - 2, 12, INK, 'center', FONT, 700);
+  if (alert) { ell(c.x + 18, y - 16, 7, 7, '#D9773E'); text('!', c.x + 18, y - 15, 10, '#FFF', 'center', FONT, 700); }
+}
+function bubble(x, y, t) {
+  g.font = `500 13px ${FONT}`; const w = g.measureText(t).width + 18;
+  rrect(x - w / 2, y - 14, w, 26, 12, '#FFFFFF', INK, 1.3); text(t, x, y - 1, 13);
+}
+function patBar(c, y) {
+  const r = clamp(c.pat / c.maxPat, 0, 1);
+  rrect(c.x - 18, y, 36, 5, 2, '#EEE4D8', null);
+  rrect(c.x - 18, y, 36 * r, 5, 2, r > .5 ? '#6E9B4E' : r > .25 ? '#D9A23A' : '#C65445', null);
+}
+function heart(x, y, s) {
+  g.fillStyle = '#E07A7A'; g.beginPath(); g.moveTo(x, y + s);
+  g.bezierCurveTo(x - s * 2, y - s * .2, x - s * .8, y - s * 1.6, x, y - s * .4);
+  g.bezierCurveTo(x + s * .8, y - s * 1.6, x + s * 2, y - s * .2, x, y + s); g.fill();
+}
+function drawCat(k) {
+  const { x, y } = k; const f = k.face;
+  if (!k.onBed) ell(x, y, 22, 4, 'rgba(70,45,30,.18)');
+  const out = k.fluffy ? '#BFAE96' : INK;
+  if (k.state === 'sleep') {
+    ell(x, y - 10, 24, 13, k.body, out, 1.6);
+    ell(x + 14 * f, y - 12, 10, 9, k.body, out, 1.5);
+    poly([[x + 8 * f, y - 18], [x + 11 * f, y - 26], [x + 15 * f, y - 19]], k.body, out, 1.3);
+    poly([[x + 15 * f, y - 19], [x + 20 * f, y - 25], [x + 21 * f, y - 16]], k.body, out, 1.3);
+    if (k.id === 'orange') for (let i = 0; i < 3; i++) line(x - 12 + i * 8, y - 21, x - 10 + i * 8, y - 13, k.dark, 2);
+    if (k.id === 'tux') ell(x + 16 * f, y - 9, 5, 4, k.belly);
+    g.beginPath(); g.arc(x - 6 * f, y - 2, 14, 0, Math.PI * .8); g.strokeStyle = k.dark; g.lineWidth = 4; g.stroke();
+    const t = (S.t * .7 + x) % 1; g.globalAlpha = 1 - t; text('z', x + 20 * f + t * 10, y - 30 - t * 18, 12 + t * 6, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1;
+  } else {
+    const step = k.moving ? Math.sin(S.t * 16) * 3 : 0;
+    // tail
+    g.beginPath(); g.moveTo(x - 16 * f, y - 16); g.quadraticCurveTo(x - 30 * f, y - 22, x - 26 * f, y - 40 + Math.sin(S.t * 3 + x) * 3);
+    g.strokeStyle = k.dark; g.lineWidth = k.fluffy ? 8 : 5; g.lineCap = 'round'; g.stroke();
+    // legs
+    for (const lx of [-11, -5, 8, 13]) line(x + lx * f, y - 10, x + lx * f + (lx > 0 ? step : -step) * .6, y - 1, k.body === '#3B3633' ? '#2A2522' : k.dark, 3.4);
+    ell(x, y - 16, k.fluffy ? 21 : 19, k.fluffy ? 12 : 10, k.body, out, 1.6);
+    ell(x + 3 * f, y - 11, 11, 4, k.belly);
+    if (k.id === 'orange') for (let i = 0; i < 3; i++) line(x - 10 + i * 6, y - 25, x - 8 + i * 6, y - 18, k.dark, 2);
+    const hx = x + 19 * f, hy = y - 26;
+    poly([[hx - 7, hy - 6], [hx - 4, hy - 16], [hx, hy - 8]], k.body, out, 1.3);
+    poly([[hx + 1, hy - 8], [hx + 5, hy - 16], [hx + 8, hy - 5]], k.body, out, 1.3);
+    ell(hx, hy, 10, 9, k.body, out, 1.5);
+    if (k.id === 'tux') { ell(hx + 2 * f, hy + 4, 6, 4, k.belly); }
+    ell(hx + 4 * f, hy - 1, 1.4, 2, k.id === 'tux' ? '#F2E6A0' : INK);
+    if (k.state === 'eat') { text('喀', hx + 14 * f, hy - 16, 11, '#8B776B'); }
+    if (k.hunger > 70 && k.state !== 'eat') {
+      rrect(hx - 12, hy - 42, 26, 20, 8, '#FFFFFF', INK, 1.2);
+      ell(hx, hy - 32, 7, 4, '#9DB4C0', INK, 1); poly([[hx + 6, hy - 32], [hx + 11, hy - 36], [hx + 11, hy - 28]], '#9DB4C0', INK, 1);
+    }
+  }
+  if (k.hearts > 0) { g.globalAlpha = clamp(k.hearts, 0, 1); heart(x, y - 52 - (1 - k.hearts) * 16, 7); g.globalAlpha = 1; }
+  text(k.name, x, y + 10, 10, '#8B776B');
+}
+
+// ====================== movement ======================
+function moveAlong(e, dt) {
+  e.moving = false;
+  while (e.path.length) {
+    const p = e.path[0];
+    if (p.f !== e.floor) { e.floor = p.f; e.x = p.x; e.y = p.y; e.path.shift(); continue; }
+    if (p.jump) {
+      if (!e.jumpFrom) { e.jumpFrom = { x: e.x, y: e.y }; e.jumpT = 0; }
+      e.jumpT += dt / .5; const t = Math.min(1, e.jumpT);
+      e.x = e.jumpFrom.x + (p.x - e.jumpFrom.x) * t;
+      e.y = e.jumpFrom.y + (p.y - e.jumpFrom.y) * t - Math.sin(t * Math.PI) * 40;
+      if (Math.abs(p.x - e.jumpFrom.x) > 1) e.face = p.x > e.jumpFrom.x ? 1 : -1;
+      if (t >= 1) { e.jumpFrom = null; e.path.shift(); continue; }
+      return false;
+    }
+    const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy), step = e.speed * dt;
+    if (Math.abs(dx) > 2) e.face = dx > 0 ? 1 : -1;
+    if (d <= step) { e.x = p.x; e.y = p.y; e.path.shift(); dt -= d / e.speed; if (dt <= 0) return !e.path.length; continue; }
+    e.x += dx / d * step; e.y += dy / d * step; e.moving = true; return false;
+  }
+  return true;
+}
+const inKitchen = (f, x, y) => f === 1 && x < 345 && y < 520;
+function routeTo(e, f, x, y) {
+  const path = []; let cf = e.floor, cx = e.x, cy = e.y;
+  if (f !== cf) {
+    leg(path, cf, cx, cy, STAIRS[cf].x, STAIRS[cf].y);
+    path.push({ f, x: STAIRS[f].x, y: STAIRS[f].y }); cf = f; cx = STAIRS[f].x; cy = STAIRS[f].y;
+  }
+  leg(path, cf, cx, cy, x, y); e.path = path;
+}
+function leg(path, f, x0, y0, x1, y1) {
+  if (inKitchen(f, x0, y0) !== inKitchen(f, x1, y1)) path.push({ f, x: KGATE.x, y: KGATE.y });
+  path.push({ f, x: x1, y: y1 });
+}
+
+// ====================== task system ======================
+function addTask(label, steps, opts = {}) {
+  if (S.phase === 'settle') return false;
+  if (S.tasks.length + (S.mgr.task ? 1 : 0) >= 6) { toast('待辦事項太多了，先等店長忙完'); opts.onEnd && opts.onEnd(); return false; }
+  S.tasks.push({ label, steps, ...opts }); renderTasks(); return true;
+}
+function updMgr(dt) {
+  const m = S.mgr;
+  if (!m.task) {
+    if (!S.tasks.length) { moveAlong(m, dt); return; }
+    m.task = S.tasks.shift(); m.si = 0; beginStep(); renderTasks();
+  }
+  const st = m.task.steps[m.si];
+  if (m.mode === 'walk') {
+    if (moveAlong(m, dt)) { m.mode = 'act'; m.actT = 0; if (st.pre && st.pre() === false) return endTask(); }
+  } else {
+    m.actT += dt;
+    if (m.actT >= st.dur) {
+      const ok = st.fn ? st.fn() : true;
+      if (ok === false || ++m.si >= m.task.steps.length) endTask(); else beginStep();
+    }
+  }
+}
+function beginStep() { const m = S.mgr, st = m.task.steps[m.si]; const p = st.pos ? st.pos() : st; routeTo(m, p.f, p.x, p.y); m.mode = 'walk'; }
+function endTask() { const t = S.mgr.task; S.mgr.task = null; S.mgr.mode = 'idle'; t && t.onEnd && t.onEnd(); renderTasks(); }
+
+// ---- actions ----
+function actBake(dish) {
+  const M = MENU[dish];
+  addTask('烤' + M.short, [{ f: 1, ...OVEN_SPOT, dur: M.bake,
+    pre: () => { if (G.stock.flour <= 0) { toast('沒有麵粉了，打開手機的「喵喵速達」買'); return false; } },
+    fn: () => { const n = Math.min(M.batch, G.stock.flour); G.stock.flour -= n; S.display[dish] += n; floatText(1, OVEN_SPOT.x, 330, `+${n} ${M.short}`, '#6E9B4E'); } }], { kind: 'bake' });
+}
+function actOrder() {
+  if (S.tasks.some(t => t.kind === 'order')) { toast('已經排了點餐'); return; }
+  addTask('點餐', [{ f: 1, ...MGR_COUNTER, dur: .8, fn: takeOrder }], { kind: 'order' });
+}
+function actServe(c) {
+  if (c.assigned) { toast('已經在準備這桌了'); return; }
+  c.assigned = true;
+  const d = c.order.dish;
+  addTask('送' + MENU[d].short, [
+    { f: 1, ...MGR_COUNTER, dur: .4, fn: () => {
+      if (c.state !== 'waitFood') return false;
+      if (S.display[d] <= 0) { toast(`展示櫃沒有${MENU[d].short}了，先去烤`); return false; }
+      S.display[d]--; S.mgr.carry = d; } },
+    { pos: () => ({ f: 1, x: c.table.x + 40, y: c.table.y + 14 }), dur: .4, fn: () => {
+      S.mgr.carry = null;
+      if (c.state !== 'waitFood') { S.display[d]++; return; }
+      if (c.wait > 18) { c.stars -= 1; c.notes.push('等餐太久'); }
+      c.state = 'eating'; c.t = rand(5, 7); } },
+  ], { onEnd: () => { c.assigned = false; if (S.mgr.carry) { S.display[S.mgr.carry]++; S.mgr.carry = null; } } });
+}
+function actClear(t) {
+  if (t.busy) return; t.busy = true;
+  addTask('收桌子', [{ f: 1, x: t.x + 40, y: t.y + 14, dur: .6, fn: () => { t.dirty = false; } }], { onEnd: () => t.busy = false });
+}
+function actRestroom() {
+  addTask('打掃洗手間', [{ f: 1, ...WC.door, dur: .1,
+    pre: () => { if (S.restroomDirt <= 0) { toast('洗手間很乾淨'); return false; } },
+    fn: () => startMini() }]);
+}
+function actBowl() {
+  addTask('補貓糧', [{ f: 2, ...BOWL.staff, dur: 1,
+    pre: () => { if (G.bowl >= 6) { toast('貓碗還是滿的'); return false; } if (G.stock.catfood <= 0) { toast('沒有貓糧了，打開手機的「喵喵速達」買'); return false; } },
+    fn: () => { G.stock.catfood--; G.bowl = 6; floatText(2, BOWL.x, BOWL.y - 60, '裝滿了', '#6E9B4E'); } }]);
+}
+function actLitter() {
+  addTask('清貓砂', [{ f: 2, ...LITTER.staff, dur: 1.4,
+    pre: () => { if (G.litterDirt <= 0) { toast('貓砂盆很乾淨'); return false; } if (G.stock.litter <= 0) { toast('沒有貓砂了，打開手機的「喵喵速達」買'); return false; } },
+    fn: () => { G.stock.litter--; G.litterDirt = 0; floatText(2, LITTER.x, LITTER.y - 50, '乾淨了', '#6E9B4E'); } }]);
+}
+function actPet(k) {
+  if (k.hold) return; k.hold = true;
+  addTask((k.state === 'sleep' ? '叫醒' : '摸摸') + k.name, [{ pos: () => ({ f: k.floor, x: clamp(k.x + (k.x > 480 ? -36 : 36), 20, 860), y: k.onBed ? clamp(k.y + 260, 470, 590) : clamp(k.y + 6, 450, 590) }), dur: .8,
+    fn: () => {
+      k.hearts = 1.2;
+      if (k.state === 'sleep') { wakeCat(k); toast(`${k.name}醒來了`); }
+    } }], { onEnd: () => k.hold = false });
+}
+function actStairs() {
+  const to = S.view === 1 ? 2 : 1;
+  if (S.mgr.floor === to && !S.mgr.task) { S.view = to; updateButtons(); return; }
+  S.view = to; updateButtons();
+  addTask(to === 2 ? '上 2F' : '下 1F', [{ f: to, x: STAIRS[to].x - 70, y: STAIRS[to].y + (to === 2 ? 20 : 0), dur: 0 }]);
+}
+function actWalk(x, y) { addTask('走過去', [{ f: S.view, x, y: clamp(y, 455, 590), dur: 0 }]); }
+
+// ====================== customers ======================
+function spawnCustomer(special) {
+  if (S.queue.length >= QUEUE.length) return;
+  const c = { id: ++S.cid, floor: 1, x: DOOR.x, y: DOOR.y, path: [], speed: 150, face: 1, state: 'queue', pat: 32, maxPat: 32, wait: 0,
+    stars: 5, notes: [], shirt: pick(SHIRTS), pants: pick(['#5E6B7A', '#6B5B4E', '#4D4A48', '#7C8B70']), hair: pick(HAIRS), order: null, special: !!special, name: null, sawCat: false };
+  if (special) { c.name = '小晴'; c.pat = c.maxPat = 70; c.shirt = '#F2F0EA'; c.pants = '#41556E'; c.hair = '#2E2420'; }
+  S.customers.push(c); S.queue.push(c);
+}
+function updQueue() {
+  S.queue.forEach((c, i) => { if (c.slot !== i) { c.slot = i; routeTo(c, 1, QUEUE[i].x, QUEUE[i].y); } });
+}
+function zone(price, base) { const r = price / base; return r <= 1.0001 ? 'green' : r <= 1.4001 ? 'yellow' : 'red'; }
+function decideOrder(c) {
+  const o = { dish: null, loft: false, say: null };
+  const want = c.special ? 'cookie' : (Math.random() < .88 ? (Math.random() < .55 ? 'cookie' : 'pudding') : null);
+  if (want) {
+    const z = zone(G.prices[want], MENU[want].base);
+    if (z === 'red') { c.stars -= 1; c.notes.push('價格太貴'); o.say = '這價錢太貴了吧'; }
+    else if (z === 'yellow' && Math.random() < .25 && !c.special) { o.say = '嗯…甜點先不用'; }
+    else o.dish = want;
+  }
+  if (c.special || Math.random() < .62) {
+    const z = zone(G.prices.loft, LOFT_BASE);
+    if (z === 'red') { c.stars -= 1; c.notes.push('入場費太貴'); o.say = o.say || '樓上好貴喔'; }
+    else if (z === 'yellow' && Math.random() < .25 && !c.special) { }
+    else o.loft = true;
+  }
+  return o;
+}
+function takeOrder() {
+  const c = S.queue[0];
+  if (!c || c.path.length) { toast('櫃檯前沒有客人'); return; }
+  if (!c.order) c.order = decideOrder(c);
+  const o = c.order;
+  if (o.dish) {
+    const t = S.tables.find(t => !t.cust && !t.dirty);
+    if (!t) { toast('沒有乾淨的空桌，先收拾桌子'); return; }
+    S.queue.shift(); c.slot = null;
+    t.cust = c; c.table = t; c.state = 'toTable'; routeTo(c, 1, t.x - 44, t.y + 2);
+  } else if (o.loft) { S.queue.shift(); c.slot = null; goLoft(c); }
+  else { S.queue.shift(); c.slot = null; sayFor(c, o.say || '下次再來'); leave(c); return; }
+  if (c.wait > 15) { c.stars -= 1; c.notes.push('排隊太久'); }
+  let paid = 0;
+  if (o.dish) { paid += G.prices[o.dish]; S.today.dessert += G.prices[o.dish]; }
+  if (o.loft) { paid += G.prices.loft; S.today.loft += G.prices.loft; }
+  G.cash += paid; floatText(1, MGR_COUNTER.x, 380, '+' + yen(paid), '#6E9B4E');
+  if (o.say) sayFor(c, o.say);
+}
+function sayFor(c, t) { c.say = { text: t, t: 2.2 }; }
+function goLoft(c) {
+  const cu = S.cushions.find(k => !k.cust);
+  if (cu) { cu.cust = c; c.cushion = cu; routeTo(c, 2, cu.x, cu.y + 4); }
+  else routeTo(c, 2, rand(440, 820), rand(530, 590));
+  c.state = 'toLoft';
+}
+function afterEat(c) {
+  const t = c.table; t.cust = null; t.dirty = true; c.table = null;
+  if (t.dirty && !S.tables.some(x => x !== t && x.dirty)) { /* first dirty table hint */ }
+  if (c.order.loft) goLoft(c); else maybeWC(c, .3);
+}
+function afterLoft(c) {
+  if (!c.sawCat) { c.stars -= 1; c.notes.push('沒摸到貓'); sayFor(c, '貓咪都不理我…'); }
+  if (G.litterDirt >= 3) { c.stars -= 1; c.notes.push('有貓砂味'); }
+  if (c.cushion) { c.cushion.cust = null; c.cushion = null; }
+  maybeWC(c, .4);
+}
+function maybeWC(c, p) {
+  if (Math.random() < p) { c.state = 'toWC'; routeTo(c, 1, WC.inside.x, WC.inside.y); }
+  else leave(c);
+}
+function leave(c) {
+  if (c.state === 'leaving') return;
+  const s = clamp(c.stars, 1, 5); c.final = s;
+  S.today.ratings.push(s);
+  const df = [-2, -1, 0, 1, 3][s - 1]; G.fans = Math.max(0, G.fans + df); S.today.fans += df;
+  if (c.special) S.today.xiaoqing = { stars: s, notes: c.notes.slice() };
+  floatText(c.floor, c.x, c.y - 120, starsTxt(s), s >= 4 ? '#D9A23A' : '#8B776B');
+  c.state = 'leaving'; routeTo(c, 1, DOOR.x, DOOR.y);
+}
+function angryLeave(c, why) {
+  const qi = S.queue.indexOf(c); if (qi >= 0) S.queue.splice(qi, 1);
+  if (c.table) { c.table.cust = null; c.table = null; }
+  if (c.state === 'waitFood' && c.order) { const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; }
+  c.stars = 1; c.notes.push(why); S.today.angry++;
+  sayFor(c, '💢 ' + why);
+  leave(c);
+}
+function updCust(c, dt) {
+  const arrived = moveAlong(c, dt);
+  if (c.say) { c.say.t -= dt; if (c.say.t <= 0) c.say = null; }
+  switch (c.state) {
+    case 'queue': c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '等太久了'); break;
+    case 'toTable': if (arrived) { c.state = 'waitFood'; c.pat = c.maxPat = c.special ? 60 : 40; c.wait = 0; c.face = 1; } break;
+    case 'waitFood': c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '餐點一直沒來'); break;
+    case 'eating': c.t -= dt; if (c.t <= 0) afterEat(c); break;
+    case 'toLoft': if (arrived) { c.state = 'petting'; c.t = rand(9, 14); c.face = c.x > 640 ? -1 : 1; } break;
+    case 'petting':
+      c.t -= dt;
+      if (!c.sawCat && S.cats.some(k => k.floor === 2 && k.state !== 'sleep' && !k.onBed && Math.abs(k.x - c.x) < 120 && Math.abs(k.y - c.y) < 70)) { c.sawCat = true; }
+      if (c.t <= 0) afterLoft(c); break;
+    case 'toWC': if (arrived) { c.state = 'inWC'; c.t = 2; c.hidden = true; if (S.restroomDirt >= 3) { c.stars -= 1; c.notes.push('洗手間很髒'); } } break;
+    case 'inWC': c.t -= dt; if (c.t <= 0) { c.hidden = false; S.restroomDirt++; if (S.restroomDirt === 3) toast('洗手間髒了，點洗手間去打掃'); leave(c); } break;
+    case 'leaving': if (arrived) c.gone = true; break;
+  }
+}
+
+// ====================== cats ======================
+function wakeCat(k) {
+  k.state = 'idle'; k.t = rand(1, 2);
+  if (k.onBed) { const b = BEDS[k.id]; k.path = [{ f: k.floor, x: b.ground.x, y: b.ground.y, jump: true }]; k.state = 'walk'; k.onBed = false; }
+}
+function goBed(k) {
+  const b = BEDS[k.id];
+  routeTo(k, b.f, b.ground.x, b.ground.y); k.path.push({ f: b.f, x: b.x, y: b.y, jump: true }); k.state = 'toBed';
+}
+function wander(k) {
+  if (Math.random() < .2) { // change floor
+    const f = k.floor === 1 ? 2 : 1;
+    routeTo(k, f, f === 1 ? rand(400, 860) : rand(160, 860), rand(470, 590));
+  } else if (k.floor === 2 && Math.random() < .6 && S.customers.some(c => c.state === 'petting')) {
+    const c = pick(S.customers.filter(c => c.state === 'petting'));
+    routeTo(k, 2, clamp(c.x + (Math.random() < .5 ? -48 : 48), 160, 860), clamp(c.y + rand(-6, 10), 470, 592));
+  } else if (k.floor === 1) routeTo(k, 1, rand(380, 860), rand(470, 592));
+  else routeTo(k, 2, rand(160, 860), rand(470, 592));
+  k.state = 'walk';
+}
+function updCat(k, dt) {
+  if (k.hearts > 0) k.hearts -= dt * .8;
+  if (k.hold) { k.moving = false; return; }
+  const open = S.phase === 'open';
+  if (k.state === 'sleep') { if (open) { k.energy += 2.2 * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
+  if (open) { k.energy -= .42 * dt; k.hunger += .4 * dt; }
+  const arrived = moveAlong(k, dt);
+  switch (k.state) {
+    case 'toBed': if (arrived) { k.state = 'sleep'; k.onBed = true; } break;
+    case 'toBowl': if (arrived) { k.face = -1; if (G.bowl > 0) { k.state = 'eat'; k.t = 2.5; } else { k.state = 'beg'; k.t = 2; } } break;
+    case 'beg': k.t -= dt; if (k.t <= 0) { if (G.bowl > 0) { k.state = 'eat'; k.t = 2.5; } else { k.t = 2; if (k.energy < 20) goBed(k); } } break;
+    case 'eat': k.t -= dt; if (k.t <= 0) { G.bowl = Math.max(0, G.bowl - 2); k.hunger = 0; k.state = 'toLitter'; routeTo(k, 2, LITTER.x + rand(-14, 14), LITTER.y + 4); } break;
+    case 'toLitter': if (arrived) { k.state = 'litter'; k.t = 1.5; } break;
+    case 'litter': k.t -= dt; if (k.t <= 0) { G.litterDirt++; if (G.litterDirt === 3) toast('2F 的貓砂盆該清了'); k.state = 'idle'; k.t = rand(1, 3); } break;
+    case 'walk': if (arrived) { k.state = 'idle'; k.t = rand(2, 5); } break;
+    default:
+      k.t -= dt;
+      if (open && k.energy < 25) { goBed(k); break; }
+      if (open && k.hunger > 70) { k.state = 'toBowl'; routeTo(k, 2, BOWL.x + 40 + rand(0, 20), BOWL.y + rand(0, 14)); break; }
+      if (k.t <= 0) wander(k);
+  }
+}
+
+// ====================== effects ======================
+function floatText(f, x, y, t, c) { S.effects.push({ f, x, y, t, c, life: 1.6, age: 0 }); }
+
+// ====================== mini-game ======================
+function startMini() {
+  const n = clamp(S.restroomDirt, 1, 4);
+  const spots = [];
+  while (spots.length < n) {
+    const s = { x: rand(330, 630), y: rand(270, 430), r: rand(26, 36), kind: spots.length % 2 ? 'paw' : 'water', left: 1, rot: rand(0, 6) };
+    if (spots.every(o => Math.hypot(o.x - s.x, o.y - s.y) > 80)) spots.push(s);
+  }
+  S.mini = { t: 3, max: 3, spots, done: 0, last: null };
+}
+function updMini(dt) {
+  const m = S.mini;
+  if (m.done) { m.done -= dt; if (m.done <= 0) S.mini = null; return; }
+  m.t -= dt;
+  if (m.spots.every(s => s.left <= 0)) { S.restroomDirt = 0; m.done = 1; m.win = true; return; }
+  if (m.t <= 0) { S.restroomDirt = m.spots.filter(s => s.left > 0).length; m.done = 1.2; m.win = false; toast('沒擦完，洗手間還有點髒'); }
+}
+function miniRub(x, y) {
+  const m = S.mini; if (!m || m.done) return;
+  if (m.last) {
+    const d = Math.hypot(x - m.last.x, y - m.last.y);
+    for (const s of m.spots) if (Math.hypot(x - s.x, y - s.y) < s.r + 20) s.left -= d / 150;
+  }
+  m.last = { x, y };
+}
+function drawMini() {
+  const m = S.mini;
+  g.fillStyle = 'rgba(60,40,30,.45)'; g.fillRect(0, 0, W, H);
+  rrect(260, 150, 440, 340, 16, '#FFFFFF', INK, 2.5);
+  g.save(); g.beginPath(); g.roundRect(262, 196, 436, 292, 14); g.clip();
+  g.fillStyle = '#F2F5F4'; g.fillRect(262, 196, 436, 292);
+  g.strokeStyle = 'rgba(120,140,140,.25)'; g.lineWidth = 1;
+  for (let x = 262; x < 700; x += 36) { g.beginPath(); g.moveTo(x, 196); g.lineTo(x, 488); g.stroke(); }
+  for (let y = 196; y < 488; y += 36) { g.beginPath(); g.moveTo(262, y); g.lineTo(698, y); g.stroke(); }
+  for (const s of m.spots) {
+    if (s.left <= 0) continue;
+    g.globalAlpha = clamp(s.left, 0, 1);
+    if (s.kind === 'water') { ell(s.x, s.y, s.r, s.r * .7, 'rgba(140,170,180,.55)'); ell(s.x + 8, s.y - 4, s.r * .5, s.r * .35, 'rgba(120,150,165,.5)'); }
+    else { pawPrint(s.x, s.y, 1.6, 'rgba(120,85,55,.75)'); }
+    g.globalAlpha = 1;
+  }
+  g.restore();
+  text('擦掉污漬！滑鼠或手指在上面來回擦', 480, 172, 16, INK, 'center', DFONT, 700);
+  const r = clamp(m.t / m.max, 0, 1);
+  rrect(290, 462, 380, 10, 5, '#EEE4D8', null); rrect(290, 462, 380 * r, 10, 5, r > .4 ? '#6E9B4E' : '#C65445', null);
+  if (m.done && m.win) {
+    text('亮晶晶 ✨', 480, 330, 40, '#D9A23A', 'center', DFONT, 700);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + S.t; text('✦', 480 + Math.cos(a) * 140, 330 + Math.sin(a) * 90, 18, '#E8C46A'); }
+  }
+}
+
+// ====================== main update & draw ======================
+function hourMult(t) { const h = t / 60; if (h < 10) return 1; if (h < 14) return 1.7; if (h < 15) return .8; if (h < 17) return 1; if (h < 19) return 1.4; if (h < 20.5) return .8; return 0; }
+const PHASES = [[8, '開門營業'], [10, '午間尖峰'], [14, '午後大掃除'], [15, '悠閒午後'], [17, '下班人潮'], [19, '悠閒午後']];
+function phaseName() {
+  if (S.phase === 'prep') return '晨間備料・時鐘暫停';
+  if (S.phase === 'settle') return '打烊';
+  let n = '開門營業'; for (const [h, name] of PHASES) if (S.time / 60 >= h) n = name; return n;
+}
+function update(dt) {
+  S.t += dt;
+  if (S.phase === 'open') {
+    S.time += dt * 4;
+    const h = Math.floor(S.time / 60);
+    if (h !== S.lastHour) {
+      S.lastHour = h;
+      const p = PHASES.find(p => p[0] === h); if (p) toast(`${String(h).padStart(2, '0')}:00 ${p[1]}`);
+    }
+    S.spawnT -= dt;
+    if (S.spawnT <= 0) {
+      const m = hourMult(S.time);
+      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (13 / (1 + G.fans / 120)) / m * rand(.7, 1.3); }
+      else S.spawnT = 5;
+    }
+    if (S.time >= 1260) { closeDay(); return; }
+  }
+  updMgr(dt);
+  S.cats.forEach(k => updCat(k, dt));
+  updQueue();
+  S.customers.forEach(c => updCust(c, dt));
+  S.customers = S.customers.filter(c => !c.gone);
+  S.effects.forEach(e => e.age += dt); S.effects = S.effects.filter(e => e.age < e.life);
+}
+function draw() {
+  g = ctx;
+  if (!BG[1]) return;
+  const f = S.view;
+  ctx.drawImage(BG[f], 0, 0, W, H);
+  if (f === 1) { drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); }
+  else { drawBowl(); drawLitter(); }
+  // depth-sorted things
+  const items = [];
+  if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
+  if (S.mgr.floor === f) items.push({ y: S.mgr.y, d: drawMgr });
+  S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.y, d: () => drawCat(k) }); });
+  S.customers.forEach(c => { if (c.floor === f) items.push({ y: c.y + (c.state === 'waitFood' || c.state === 'eating' ? -1 : 0), d: () => drawCustomer(c) }); });
+  items.sort((a, b) => a.y - b.y).forEach(i => i.d());
+  for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
+  drawCornerAlert();
+  if (S.phase === 'prep') { rrect(16, 66, 236, 30, 15, 'rgba(255,255,255,.9)', INK, 1.3); text('晨間備料中・時鐘暫停', 134, 81, 14, '#6B4A35', 'center', DFONT, 700); }
+  if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', W / 2, H / 2, 40, '#FFFFFF', 'center', DFONT, 700); }
+  if (S.mini) drawMini();
+}
+function doorSign() {
+  rrect(8, 330, 48, 22, 5, S.phase === 'open' ? '#FFFFFF' : '#E9DCC4', INK, 1.3);
+  text(S.phase === 'open' ? 'OPEN' : '準備中', 32, 341, 10, INK, 'center', FONT, 700);
+}
+function floorAlerts(f) {
+  const a = [];
+  if (f === 1) {
+    if (S.phase === 'open' && S.queue.length) a.push('客人在櫃檯等點餐');
+    if (S.customers.some(c => c.state === 'waitFood')) a.push('有客人在等餐');
+    if (S.tables.some(t => t.dirty)) a.push('有桌子要收');
+    if (S.restroomDirt >= 3) a.push('洗手間髒了');
+  } else {
+    if (G.bowl === 0 && S.cats.some(k => k.hunger > 70)) a.push('貓咪餓了，貓碗是空的');
+    if (G.litterDirt >= 3) a.push('貓砂盆要清');
+  }
+  return a;
+}
+const CORNER = { x: W - 290, y: 64, w: 274, h: 34 };
+function drawCornerAlert() {
+  const other = S.view === 1 ? 2 : 1, a = floorAlerts(other);
+  if (!a.length) return;
+  const { x, y, w, h } = CORNER;
+  rrect(x, y, w, h, 17, 'rgba(255,255,255,.95)', '#D9773E', 2);
+  ell(x + 20, y + h / 2, 11, 11, '#D9773E'); text('!', x + 20, y + h / 2 + 1, 14, '#fff', 'center', FONT, 700);
+  text(`${other}F：${a[0]}`, x + 38, y + h / 2, 13, INK, 'left', FONT, 700);
+}
+
+// ====================== input ======================
+function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
+function hitPerson(p, x, y, sit) { return Math.abs(x - p.x) < 20 && y < p.y + 6 && y > p.y - (sit ? 80 : 98); }
+function hitTest(x, y) {
+  const f = S.view;
+  const other = f === 1 ? 2 : 1;
+  if (floorAlerts(other).length && x > CORNER.x && x < CORNER.x + CORNER.w && y > CORNER.y && y < CORNER.y + CORNER.h) return { act: () => { S.view = other; updateButtons(); } };
+  for (const c of S.customers) {
+    if (c.floor !== f || c.hidden) continue;
+    if (c.state === 'waitFood' && hitPerson(c, x, y, true)) return { act: () => actServe(c) };
+    if (c.state === 'queue' && hitPerson(c, x, y)) return { act: actOrder };
+  }
+  for (const k of S.cats) if (k.floor === f && Math.abs(x - k.x) < 32 && y < k.y + 8 && y > k.y - 46) return { act: () => actPet(k) };
+  if (f === 1) {
+    for (const t of S.tables) if (x > t.x - 70 && x < t.x + 50 && y > t.y - 70 && y < t.y + 10) {
+      if (t.cust && t.cust.state === 'waitFood') return { act: () => actServe(t.cust) };
+      if (t.dirty) return { act: () => actClear(t) };
+    }
+    if (x > 70 && x < 180 && y > 320 && y < 450) return { act: chooseBake };
+    if (x > 140 && x < 345 && y > 420 && y < 545) return { act: actOrder };
+    if (x > 770 && x < 880 && y > 230 && y < 450) return { act: actRestroom };
+    if (x > 875 && y > 60) return { act: actStairs };
+  } else {
+    if (Math.abs(x - BOWL.x) < 40 && y > BOWL.y - 50 && y < BOWL.y + 20) return { act: actBowl };
+    if (Math.abs(x - LITTER.x) < 44 && y > LITTER.y - 50 && y < LITTER.y + 16) return { act: actLitter };
+    if (x > 860 && y > 280) return { act: actStairs };
+  }
+  if (y > 452) return { act: () => actWalk(x, y), weak: true };
+  return null;
+}
+cv.addEventListener('pointerdown', e => {
+  if (!started || !S || S.phase === 'settle') return;
+  const p = toCanvas(e);
+  if (S.mini) { S.mini.last = p; cv.setPointerCapture(e.pointerId); return; }
+  if (S.paused) return;
+  const h = hitTest(p.x, p.y); if (h) h.act();
+});
+cv.addEventListener('pointermove', e => {
+  if (!S) return;
+  const p = toCanvas(e);
+  if (S.mini) { miniRub(p.x, p.y); return; }
+  const h = started && hitTest(p.x, p.y);
+  cv.style.cursor = h && !h.weak ? 'pointer' : 'default';
+});
+addEventListener('keydown', e => {
+  if (!started || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'f' || e.key === 'F') { S.view = S.view === 1 ? 2 : 1; updateButtons(); }
+  if (e.key === ' ') { e.preventDefault(); togglePause(); }
+});
+
+// ====================== DOM UI ======================
+const $ = id => document.getElementById(id);
+function toast(msg) {
+  const box = $('toasts'); const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; box.appendChild(d);
+  while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => d.remove(), 2600);
+}
+function renderTasks() {
+  const el = $('taskList'); if (!el || !S) return; el.innerHTML = '';
+  if (S.mgr.task) { const c = document.createElement('span'); c.className = 'chip now'; c.textContent = '正在：' + S.mgr.task.label; el.appendChild(c); }
+  S.tasks.forEach((t, i) => {
+    const c = document.createElement('button'); c.className = 'chip'; c.textContent = t.label + ' ✕'; c.title = '取消這件事';
+    c.onclick = () => { const [r] = S.tasks.splice(i, 1); r.onEnd && r.onEnd(); renderTasks(); };
+    el.appendChild(c);
+  });
+  if (!S.mgr.task && !S.tasks.length) { const c = document.createElement('span'); c.className = 'muted'; c.textContent = '點畫面上的東西，店長就會去做'; el.appendChild(c); }
+}
+let hudAcc = 0;
+function hudTick(dt) {
+  hudAcc += dt; if (hudAcc < .15 || !S) return; hudAcc = 0;
+  const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
+  $('day').textContent = S.day;
+  $('clock').textContent = `${String(hh).padStart(2, '0')}:${String(mm - mm % 5).padStart(2, '0')}`;
+  $('phase').textContent = phaseName();
+  $('cash').textContent = yen(G.cash);
+  $('debtWrap').hidden = G.debt <= 0; $('debt').textContent = yen(G.debt);
+  const r = S.today.ratings; $('rating').textContent = r.length ? (r.reduce((a, b) => a + b, 0) / r.length).toFixed(1) + '★' : '—';
+  $('fans').textContent = G.fans;
+  const st = G.stock;
+  $('inv').innerHTML =
+    `<span class="${st.flour < 4 ? 'low' : ''}">麵粉 <b>${st.flour}</b> 份</span>` +
+    `<span class="${st.catfood < 1 ? 'low' : ''}">貓糧 <b>${st.catfood}</b> 包</span>` +
+    `<span class="${st.litter < 1 ? 'low' : ''}">貓砂 <b>${st.litter}</b> 次</span>` +
+    `<span>展示櫃 餅乾 <b>${S.display.cookie}</b>・布丁 <b>${S.display.pudding}</b></span>` +
+    `<span>貓碗 <b>${G.bowl}</b>/6</span>`;
+  updateButtons(); renderTutorial();
+}
+function updateButtons() {
+  if (!S) return;
+  const other = S.view === 1 ? 2 : 1;
+  const fb = $('floorBtn');
+  fb.firstChild.textContent = other === 2 ? '前往 2F 貓咪閣樓' : '回到 1F 店面';
+  const a = floorAlerts(other); $('floorBadge').hidden = !a.length; fb.title = a.join('、');
+  $('openBtn').hidden = S.phase !== 'prep';
+  $('speedBtn').textContent = `速度 ${S.speed}×`;
+  $('pauseBtn').textContent = S.paused ? '繼續' : '暫停';
+}
+function renderTutorial() {
+  const el = $('tutorial'); if (!S) return;
+  if (G.day !== 1 || S.phase === 'settle') { el.hidden = true; return; }
+  el.hidden = false;
+  let html;
+  if (S.phase === 'prep') {
+    const items = [
+      [G.stock.flour > 0 || S.display.cookie + S.display.pudding > 0, '打開「店長手機」→「喵喵速達」，買麵粉和貓糧'],
+      [S.display.cookie + S.display.pudding > 0, '點 1F 左邊的烤箱，烤一批貓掌餅乾'],
+      [G.bowl > 0, '上 2F，點貓碗把貓糧裝滿'],
+      [S.cats.some(k => k.state !== 'sleep'), '點還在睡的貓咪，把牠摸醒（客人想摸醒著的貓）'],
+      [false, '都準備好了，按「開店營業」'],
+    ];
+    html = '<h3>第一天的晨間備料</h3><ol>' + items.map(([d, t]) => `<li class="${d ? 'done' : ''}">${t}</li>`).join('') + '</ol>';
+  } else {
+    html = '<h3>營業小提示</h3><ol><li>客人排在櫃檯前：點櫃檯或客人幫他點餐（收錢）。</li><li>頭上有甜點泡泡的客人：點他，店長會從展示櫃拿去送。</li><li>客人吃完會留下髒盤子：點桌子收拾，才有空位。</li><li>右上角出現另一層的驚嘆號時，記得上去看看。</li></ol>';
+  }
+  if (el.dataset.h !== html) { el.innerHTML = html; el.dataset.h = html; }
+}
+$('openBtn').onclick = () => {
+  if (S.phase !== 'prep') return;
+  S.phase = 'open'; S.time = 480; S.lastHour = 8; toast('08:00 開門營業！'); updateButtons();
+};
+$('floorBtn').onclick = () => { S.view = S.view === 1 ? 2 : 1; updateButtons(); };
+$('speedBtn').onclick = () => { S.speed = S.speed === 1 ? 2 : 1; updateButtons(); };
+$('pauseBtn').onclick = togglePause;
+function togglePause() { if (S.phase === 'settle') return; S.paused = !S.paused; updateButtons(); }
+$('phoneBtn').onclick = () => openPhone('home');
+
+function chooseBake() {
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>烤箱</h2><p class="muted">現在有麵粉 ${G.stock.flour} 份。一份麵粉做一份甜點。</p>`;
+  const row = document.createElement('div'); row.className = 'row'; row.style.flexDirection = 'column';
+  for (const d of ['cookie', 'pudding']) {
+    const M = MENU[d]; const b = document.createElement('button'); b.className = 'opt';
+    b.innerHTML = `<span>烤${M.name}</span><small>一批 ${M.batch} 份，需要 ${M.bake} 秒，售價 ${yen(G.prices[d])}</small>`;
+    b.onclick = () => { closeChoose(); actBake(d); };
+    row.appendChild(b);
+  }
+  const c = document.createElement('button'); c.textContent = '取消'; c.onclick = closeChoose; row.appendChild(c);
+  card.appendChild(row); $('chooseOv').hidden = false; S.uiPause = true;
+}
+function closeChoose() { $('chooseOv').hidden = true; S.uiPause = false; }
+
+// ---- phone ----
+let phoneApp = 'home';
+function openPhone(app) { phoneApp = app; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
+function closePhone() { $('phoneOv').hidden = true; S.uiPause = false; }
+$('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
+function renderPhone() {
+  const sc = $('phoneScreen');
+  const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
+  let h = `<div class="sbar"><span>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span><span>遊戲暫停中</span><span>${yen(G.cash)}</span></div>`;
+  if (phoneApp === 'home') {
+    const apps = [['menu', '掌上菜單', '調整價格', '#8D6E63', '價'], ['shop', '喵喵速達', '買材料', '#D9773E', '送'], ['wallet', '喵錢包', '借錢・還款', '#6E9B4E', '¥'], ['save', '存檔碼', '複製進度', '#7A8DA6', '存']];
+    h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
+      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
+      `<p class="muted" style="padding:0 16px">喵才獵人、喵喵 IG、喵信會在 Stage 2 之後開放。</p>`;
+  } else {
+    const titles = { menu: '掌上菜單', shop: '喵喵速達', wallet: '喵錢包', save: '存檔碼' };
+    h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
+    if (phoneApp === 'menu') {
+      const rows = [['cookie', MENU.cookie.name, MENU.cookie.base], ['pudding', MENU.pudding.name, MENU.pudding.base], ['loft', '2F 吸貓入場費', LOFT_BASE]];
+      h += `<p class="muted">綠色是合理價，客人一定買。黃色是精品價，大約四分之一的客人會打退堂鼓。紅色太貴，客人不會買，還會給低分。</p>`;
+      for (const [id, name, base] of rows) {
+        const p = G.prices[id], z = zone(p, base), pos = clamp((p / base - .5) / 1.5, 0, 1) * 100;
+        const zl = { green: ['合理價', 'var(--good)', '😊'], yellow: ['精品價', 'var(--warn)', '😐'], red: ['太貴了', 'var(--bad)', '😠'] }[z];
+        h += `<div class="item"><div class="top"><span class="nm">${name}</span><span class="zl" style="color:${zl[1]}">${zl[2]} ${zl[0]}</span></div>
+          <div class="price-ctl"><button data-p="${id}" data-d="-5">−5</button><b>${yen(p)}</b><button data-p="${id}" data-d="5">+5</button><span class="sub">基準 ${yen(base)}</span></div>
+          <div class="zone" style="background:linear-gradient(90deg,var(--good) 0 ${100 / 3}%,var(--warn) ${100 / 3}% ${(0.9 / 1.5) * 100}%,var(--bad) ${(0.9 / 1.5) * 100}% 100%)"><i style="left:${pos}%"></i></div></div>`;
+      }
+    } else if (phoneApp === 'shop') {
+      h += `<p class="muted">下單後馬上送到。錢不夠時可以先賒帳，會記在負債裡。</p>`;
+      for (const it of SHOP) {
+        const can = G.cash >= it.price;
+        h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(it.price)}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div>
+          <div class="row" style="margin:0">${can ? `<button class="primary" data-buy="${it.id}">購買</button>` : `<button data-credit="${it.id}">錢不夠，賒帳購買</button>`}</div></div>`;
+      }
+    } else if (phoneApp === 'wallet') {
+      h += `<div class="item"><div class="top"><span class="nm">現金</span><b>${yen(G.cash)}</b></div><div class="top"><span class="nm">負債</span><b style="color:var(--bad)">${yen(G.debt)}</b></div>
+        <div class="sub">每天打烊時，會自動拿當天營收的 20% 還債。負債還沒還清前，之後的 Stage 不能雇員工。</div></div>
+        <div class="item"><div class="nm">向阿嬤借 ¥100</div><div class="sub">負債上限 ¥500。</div><div class="row" style="margin:0"><button class="primary" id="borrow" ${G.debt + 100 > 500 ? 'disabled' : ''}>借錢</button></div></div>
+        <div class="item"><div class="nm">提早還款</div><div class="row" style="margin:0"><button id="repay50" ${G.debt <= 0 || G.cash < 1 ? 'disabled' : ''}>還 ¥50</button><button id="repayAll" ${G.debt <= 0 || G.cash < G.debt ? 'disabled' : ''}>全部還清</button></div></div>`;
+    } else if (phoneApp === 'save') {
+      h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
+        <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
+    }
+    h += '</div>';
+  }
+  sc.innerHTML = h;
+  sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { phoneApp = b.dataset.app; renderPhone(); });
+  const q = s => sc.querySelector(s);
+  q('#pClose') && (q('#pClose').onclick = closePhone);
+  q('#pBack') && (q('#pBack').onclick = () => { phoneApp = 'home'; renderPhone(); });
+  sc.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+    const id = b.dataset.p, base = id === 'loft' ? LOFT_BASE : MENU[id].base;
+    G.prices[id] = clamp(G.prices[id] + +b.dataset.d, 5, base * 2); renderPhone();
+  });
+  sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
+  sc.querySelectorAll('[data-credit]').forEach(b => b.onclick = () => buy(b.dataset.credit, true));
+  q('#borrow') && (q('#borrow').onclick = () => { G.cash += 100; G.debt += 100; S.today.borrowed += 100; toast('跟阿嬤借了 ¥100'); renderPhone(); });
+  q('#repay50') && (q('#repay50').onclick = () => { const r = Math.min(50, G.debt, G.cash); G.cash -= r; G.debt -= r; renderPhone(); });
+  q('#repayAll') && (q('#repayAll').onclick = () => { G.cash -= G.debt; G.debt = 0; toast('負債還清了'); renderPhone(); });
+  q('#copyCode') && (q('#copyCode').onclick = () => copyText(q('#codeOut')));
+}
+function buy(id, credit) {
+  const it = SHOP.find(s => s.id === id);
+  if (credit) { G.debt += it.price; S.today.credit += it.price; } else G.cash -= it.price;
+  G.stock[id] += it.amt; S.today.spent += it.price;
+  toast(`${it.name}送到了${credit ? '（賒帳）' : ''}`); renderPhone();
+}
+function copyText(ta) {
+  const done = () => toast('已複製存檔碼');
+  try { navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); toast('請手動複製反白的文字'); }); }
+  catch { ta.select(); toast('請手動複製反白的文字'); }
+}
+
+// ---- save code ----
+function snapshotG(src) { return JSON.parse(JSON.stringify(src)); }
+function encodeSave(src) {
+  const s = JSON.stringify({ v: 1, ...src });
+  const b = btoa(unescape(encodeURIComponent(s)));
+  let sum = 0; for (const ch of b) sum = (sum * 31 + ch.charCodeAt(0)) % 9973;
+  return `CAT-${b}-${sum}`;
+}
+function decodeSave(code) {
+  const m = code.trim().match(/^CAT-([A-Za-z0-9+/=]+)-(\d+)$/);
+  if (!m) throw new Error('格式不對');
+  let sum = 0; for (const ch of m[1]) sum = (sum * 31 + ch.charCodeAt(0)) % 9973;
+  if (sum !== +m[2]) throw new Error('存檔碼有缺字');
+  const o = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+  const base = freshG();
+  const num = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d);
+  return {
+    day: Math.max(1, Math.floor(num(o.day, 1))), cash: num(o.cash, 100), debt: Math.max(0, num(o.debt, 0)), fans: Math.max(0, num(o.fans, 0)),
+    stock: { flour: num(o.stock?.flour, 0), catfood: num(o.stock?.catfood, 0), litter: num(o.stock?.litter, 0) },
+    prices: { cookie: num(o.prices?.cookie, base.prices.cookie), pudding: num(o.prices?.pudding, base.prices.pudding), loft: num(o.prices?.loft, base.prices.loft) },
+    bowl: clamp(num(o.bowl, 0), 0, 6), litterDirt: Math.max(0, num(o.litterDirt, 0)),
+  };
+}
+function storeLocal() { try { localStorage.setItem('catloft-save', encodeSave(G)); } catch {} }
+
+// ---- day flow ----
+function closeDay() {
+  S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; closePhone(); closeChoose();
+  // customers still waiting for food get refunded
+  let refunds = 0;
+  for (const c of S.customers) {
+    if (c.state === 'waitFood' && c.order?.dish) { const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; refunds++; S.today.ratings.push(2); }
+  }
+  const T = S.today;
+  const revenue = T.dessert + T.loft;
+  const waste = S.display.cookie + S.display.pudding;
+  let repay = 0;
+  if (G.debt > 0) { repay = Math.min(G.debt, Math.round(revenue * .2), Math.max(0, G.cash)); G.cash -= repay; G.debt -= repay; }
+  const avg = T.ratings.length ? T.ratings.reduce((a, b) => a + b, 0) / T.ratings.length : 0;
+  const day = S.day;
+  G.day = day + 1;
+  storeLocal();
+  const code = encodeSave(G);
+  const xq = T.xiaoqing;
+  let review = '';
+  if (day === 1 && xq) {
+    review = xq.stars >= 4
+      ? `<div class="review"><span class="st">${starsTxt(xq.stars)}</span><br>「貓掌餅乾好可愛！樓上的貓咪也好黏人，我一定會再來！」<br><span class="muted">— 高中生 小晴，留下了這間店的第一則評價</span></div>`
+      : `<div class="review"><span class="st">${starsTxt(xq.stars)}</span><br>「店很可愛，可是${xq.notes[0] || '有點可惜'}…」<br><span class="muted">— 高中生 小晴</span></div>`;
+  }
+  const lvp = clamp(G.fans / LV2_FANS, 0, 1) * 100;
+  $('settleCard').innerHTML = `
+    <h2>第 ${day} 天・打烊結算</h2>
+    <p class="muted">今天共接待 ${T.ratings.length} 位客人${T.angry ? `，其中 ${T.angry} 位生氣離開` : ''}${refunds ? `，${refunds} 位沒等到餐點已退款` : ''}。</p>
+    <table class="settle-tab">
+      <tr><td>甜點營收</td><td>${yen(T.dessert)}</td></tr>
+      <tr><td>2F 入場費</td><td>${yen(T.loft)}</td></tr>
+      <tr><td>採購支出${T.credit ? `（其中賒帳 ${yen(T.credit)}）` : ''}</td><td>−${yen(T.spent)}</td></tr>
+      <tr class="tot"><td>今日淨利</td><td>${yen(revenue - T.spent)}</td></tr>
+      ${repay ? `<tr><td>自動還款（營收 20%）</td><td>−${yen(repay)}</td></tr>` : ''}
+      <tr><td>沒賣完的甜點報廢</td><td>${waste} 份</td></tr>
+      <tr><td>今日平均評價</td><td>${avg ? avg.toFixed(1) + ' ★' : '—'}</td></tr>
+      <tr><td>粉絲</td><td>${T.fans >= 0 ? '+' : ''}${T.fans}（共 ${G.fans}）</td></tr>
+      <tr><td>現金</td><td>${yen(G.cash)}</td></tr>
+      ${G.debt ? `<tr><td>剩餘負債</td><td>${yen(G.debt)}</td></tr>` : ''}
+    </table>
+    ${review}
+    <p style="margin-top:14px">Lv.1 巷弄無名小店 → Lv.2 街坊秘密基地：粉絲 ${G.fans}/${LV2_FANS}</p>
+    <div class="prog"><i style="width:${lvp}%"></i></div>
+    <p class="muted">${G.fans >= LV2_FANS ? '已達到升級條件！Stage 2 在試玩版還沒開放，可以繼續經營。' : '試玩版只有 Stage 1，粉絲夠了也還不會升級。'}</p>
+    <p class="muted" style="margin-top:12px">存檔碼（第 ${G.day} 天開店前）</p>
+    <textarea id="settleCode" readonly>${code}</textarea>
+    <div class="row"><button id="settleCopy">複製存檔碼</button><button class="primary" id="nextDay">迎接第 ${G.day} 天</button></div>`;
+  $('settleOv').hidden = false;
+  $('settleCopy').onclick = () => copyText($('settleCode'));
+  $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
+  updateButtons();
+}
+function begin(newG) {
+  G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; storeLocal();
+}
+$('newBtn').onclick = () => begin(freshG());
+$('loadBtn').onclick = () => { try { begin(decodeSave($('loadCode').value)); toast('讀取成功，第 ' + G.day + ' 天'); } catch (e) { toast('讀不到存檔碼：' + e.message); } };
+let localCode = null; try { localCode = localStorage.getItem('catloft-save'); } catch {}
+if (localCode) { $('contBtn').hidden = false; $('contBtn').onclick = () => { try { begin(decodeSave(localCode)); } catch { begin(freshG()); } }; }
+
+// ====================== boot ======================
+G = freshG(); startDay(); prerender();
+let last = performance.now();
+function frame(now) {
+  const rdt = Math.min(.05, (now - last) / 1000); last = now;
+  if (S) {
+    if (S.mini) { S.t += rdt; updMini(rdt); }
+    else if (started && !S.paused && !S.uiPause && S.phase !== 'settle') update(rdt * S.speed);
+    else if (!started) { S.t += rdt; S.cats.forEach(k => { if (k.hearts > 0) k.hearts -= rdt; }); }
+    draw(); hudTick(rdt);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+if (document.fonts) document.fonts.ready.then(() => prerender());
+window.__game = { get G() { return G; }, get S() { return S; }, update, closeDay, actBake, actBowl, actPet, actOrder, actServe, actClear, buy, takeOrder, startMini };
+</script>
+</body>
+</html>
