@@ -762,8 +762,23 @@ const GUESTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c8']; // c6 is 小晴 in he
   const names = ['bg1', 'bg2', 'bg3', 'counter', 'table', 'cushion', 'bowl', 'litter', 'basket', 'record', 'warmer', 'petbed', 'deodor', 'lightbox', 'plant'];
   for (const id of PEOPLE) for (let i = 0; i < 3; i++) names.push(`${id}_${i}`);
   for (const id of Object.keys(CAT_DEFS)) for (let i = 0; i < 5; i++) names.push(`cat_${id}_${i}`);
-  for (const n of names) { const im = new Image(); im.decoding = 'async'; im.src = `assets/${n}.webp`; ART[n] = im; }
+  for (const n of names) loadArtImg(n, 0);
 })();
+// On a phone a few of the ~140 parallel image requests can drop (weak signal, switching networks, the tab
+// sleeping). A dropped image used to leave that character on the old canvas drawing for the whole session,
+// so retry failed ones with backoff, and again whenever the page comes back online or into view.
+function loadArtImg(n, tries) {
+  const im = new Image(); im.decoding = 'async';
+  im.onerror = () => { if (ART[n] === im && tries < 8) setTimeout(() => { if (ART[n] === im) loadArtImg(n, tries + 1); }, Math.min(15000, 600 * 2 ** tries)); };
+  im.src = `assets/${n}.webp` + (tries ? `?retry=${tries}` : '');
+  ART[n] = im;
+}
+function retryMissingArt() {
+  for (const [n, im] of Object.entries(ART)) if (im.complete && !im.naturalWidth) loadArtImg(n, 1);
+}
+window.addEventListener('online', retryMissingArt);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
+window.addEventListener('pageshow', retryMissingArt);
 const art = n => { const im = ART[n]; return im && im.complete && im.naturalWidth ? im : null; };
 // draw an image with its bottom centre at (x, y), h pixels tall, mirrored when flip
 function sprite(im, x, y, h, flip, w) {
