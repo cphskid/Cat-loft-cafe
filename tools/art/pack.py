@@ -3,7 +3,7 @@ from PIL import Image
 OUT='/home/user/cat-loft-cafe/web/assets'; os.makedirs(OUT, exist_ok=True)
 def save(im, name, q=86): im.save(f'{OUT}/{name}.webp', quality=q, method=6)
 def people():
-    for pid in 'mgr cook server cashier feeder sitter c1 c2 c3 c4 c5 c6 c7 c8'.split():
+    for pid in 'mgr mgrm cook server cashier feeder sitter c1 c2 c3 c4 c5 c6 c7 c8'.split():
         ims=[Image.open(f'cut/{pid}_{i}.png') for i in range(3)]
         s=300/ims[0].height
         for i,im in enumerate(ims):
@@ -33,3 +33,4 @@ if what=='rest':
     props([('p2_0','record',150),('p2_1','warmer',120),('p2_2','petbed',140),('p2_3','deodor',80),('p2_4','lightbox',120),('p2_5','plant',100)])
     for i,n in enumerate(['badge','game','phone','cats','daily','save','review']):
         Image.open(f'cut/j2_{i}.png').resize((144,144),Image.LANCZOS).save(f'{OUT}/ic_{n}.webp',quality=86,method=6)
+if what=='props3': props([('p3_0','lamp',90),('p3_1','cattree',200),('p3_2','chalkboard',110),('p3_3','bookshelf',180)])
