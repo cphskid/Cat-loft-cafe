@@ -410,6 +410,22 @@ const ROLES = {
   feeder:  { name: '小芸', title: '餵食人員',   wage: 80,  desc: '顧好 2F 的貓碗和貓砂盆（要有貓糧、貓砂）', apron: '#E3AE97', hair: '#4C3A30', shirt: '#FFFFFF', home: { f: 2, x: 372, y: 528 }, long: true },
   sitter:  { name: '阿凱', title: '逗貓人員',   wage: 80,  desc: '叫醒睡飽的貓，帶貓去陪 2F 的客人',         apron: '#D8C27A', hair: '#A0703F', shirt: '#F4F0E8', home: { f: 2, x: 760, y: 520 } },
 };
+// ---- staff schedule (排班, in the 喵才獵人 app): which part of the day each person works and when they take a break
+const SHIFTS = {
+  all: { name: '全天班', time: '08:00–21:00', pay: 1 },
+  am:  { name: '早班',   time: '08:00–14:00', pay: .6 },
+  pm:  { name: '晚班',   time: '14:00–21:00', pay: .6 },
+  off: { name: '休假',   time: '這天不來上班', pay: 0 },
+};
+const SHIFT_SPLIT = 840; // 14:00, the morning shift goes home and the evening shift comes in
+const BREAK_HOURS = [10, 11, 12, 13, 15, 16, 17, 18, 19];
+// two people share each default break, so the break room is never empty for long
+const DEFAULT_SCHED = { cook: { shift: 'all', brk: 15 }, server: { shift: 'all', brk: 13 }, cashier: { shift: 'all', brk: 16 }, feeder: { shift: 'all', brk: 13 }, sitter: { shift: 'all', brk: 15 } };
+const schedOf = role => ({ ...DEFAULT_SCHED[role], ...(G.sched[role] || {}) });
+const breakFits = (shift, h) => shift === 'all' || (shift === 'am' && h * 60 < SHIFT_SPLIT) || (shift === 'pm' && h * 60 >= SHIFT_SPLIT);
+const todayShift = role => (S && S.staff.find(s => s.role === role) || schedOf(role)).shift;
+const wageOf = (role, shift = todayShift(role)) => Math.round(ROLES[role].wage * SHIFTS[shift].pay);
+const dayWages = () => G.staff.reduce((a, r) => a + wageOf(r), 0);
 const SHIRTS = ['#9FB8AD', '#E3AE97', '#A7B5D6', '#D8C27A', '#C9A3C1', '#8FB0C9', '#E8D8C3', '#B9C99A'];
 const HAIRS = ['#3E2C23', '#6B4A3A', '#2B2420', '#A0703F', '#4C3A30'];
 const SKIN = '#F7DEC9';
@@ -423,7 +439,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 3, expand: 0, staff: [],
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano', sfx: true };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano', sfx: true, sched: {} };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
@@ -438,7 +454,7 @@ const BOND = [
   { at: 10,  title: '熟悉',     act: 'rub',   name: '蹭蹭腳',     desc: '貓咪繞著店長的腳蹭來蹭去' },
   { at: 25,  title: '喜歡',     act: 'five',  name: '擊掌',       desc: '貓咪舉起肉球跟店長擊掌' },
   { at: 45,  title: '好朋友',   act: 'belly', name: '翻肚子',     desc: '露出肚子給店長摸，回復體力' },
-  { at: 70,  title: '最愛',     act: 'hug',   name: '抱抱',       desc: '店長抱著貓走一段路，貓會很開心' },
+  { at: 70,  title: '最愛',     act: 'hug',   name: '抱抱',       desc: '把貓抱起來，想抱多久都可以；再點一次貓或按「放下」就放下來' },
   { at: 100, title: '家人',     act: 'kiss',  name: '碰鼻子',     desc: '用鼻子碰碰店長，愛心滿出來' },
 ];
 const bondOf = k => G.bond[k.id] || 0;
@@ -633,7 +649,8 @@ function adoptCat(id) {
 function makeStaff(role, atDoor) {
   const R = ROLES[role], h = R.home;
   const s = { role, ...R, floor: atDoor ? 1 : h.f, x: atDoor ? DOOR.x : h.x, y: atDoor ? DOOR.y : h.y, path: [], speed: 230, face: 1,
-    stamina: 100, task: null, mode: 'idle', actT: 0, si: 0, carry: null, cool: 0, resting: false, hidden: false };
+    stamina: 100, task: null, mode: 'idle', actT: 0, si: 0, carry: null, cool: 0, resting: false, hidden: false,
+    ...schedOf(role), away: false, brkDone: false, coffeeCool: rand(20, 60) };
   if (atDoor) routeTo(s, h.f, h.x, h.y);
   return s;
 }
@@ -653,6 +670,7 @@ function startDay() {
     cats: makeCats(),
     staff: G.staff.map(r => makeStaff(r, false)),
   };
+  for (const s of S.staff) if (!onShift(s)) { s.away = true; s.hidden = true; }
   S.today.kept = dispTotal(); G.keep = {};
   renderTasks(); updateButtons(); renderTutorial();
 }
@@ -1468,7 +1486,7 @@ function petTask(k, label, act = 'pet') {
       if (k.state === 'sleep') { sfx('meow_happy', k.floor); wakeCat(k); if (isMgr(w)) toast(`${k.name}醒來了`); say(w, '起床囉～'); return; }
       if (isMgr(w) && act !== 'pet' && bondOf(k) >= B.at) {
         if (k.wantPet) { k.wantPet = 0; k.petCool = 45; k.sulk = 0; gainExp(2); }
-        endPlay(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? 5 : 3.2 };
+        endPlay(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? Infinity : 3.2, held: 0 };
         k.face = S.mgr.x > k.x ? 1 : -1; S.mgr.face = -k.face;
         const lines = { rub: ['好癢喔～', '呼嚕呼嚕'], five: ['耶！擊掌！', '喵！'], belly: ['肚子好軟～', '呼嚕～'], hug: ['抱抱～好溫暖', '喵嗚～'], kiss: ['碰碰鼻子～', '啾～'] }[act];
         talk(w, lines[0], k, lines[1]); sfx(act === 'five' ? 'cat_highfive' : act === 'hug' || act === 'kiss' ? 'cat_hug' : 'purr', k.floor);
@@ -1503,7 +1521,19 @@ function actRestroom() {
 }
 function actBowl() { queueTask(bowlTask()); }
 function actLitter() { queueTask(litterTask()); }
+const heldCat = () => S.cats.find(k => k.anim && k.anim.kind === 'hug');
+// put the held cat down next to the manager (cats stay out of the break room and the kitchen)
+function putDown(k = heldCat()) {
+  if (!k) return;
+  const m = S.mgr;
+  if (m.floor === 3) { toast(`休息室不能放貓，回到 1F 或 2F 再放下${k.name}`); return; }
+  k.anim = null; k.onBed = false; k.floor = m.floor; k.x = clamp(m.x + 36 * m.face, 160, 900); k.y = clamp(m.y + 6, 490, 594);
+  if (behindCounter(k.floor, k.x, k.y)) { k.x = KGATE.x + 60; k.y = clamp(k.y, 540, 594); }
+  k.state = 'idle'; k.t = rand(1, 3); k.hearts = 1.2;
+  say(k, pick(['喵～', '還要抱抱', '呼嚕～'])); say(m, pick(['乖乖，去玩吧', `${k.name}好重喔～`, '下次再抱你']));
+}
 function actPet(k) {
+  if (k.anim && k.anim.kind === 'hug') { putDown(k); return; }
   if (k.hold || k.anim) return;
   if (k.state !== 'sleep' && bondLv(k) >= 1) chooseBond(k); else queueTask(petTask(k));
 }
@@ -1565,10 +1595,10 @@ function findJob(s) {
     }
     case 'sitter': {
       if (!open) return null;
-      const sleepy = S.cats.find(k => k.state === 'sleep' && !k.hold && k.energy >= 55);
+      const sleepy = S.cats.find(k => k.state === 'sleep' && !k.hold && !k.anim && k.energy >= 55);
       if (sleepy) return petTask(sleepy, '叫醒' + sleepy.name);
       const c = S.customers.find(c => c.state === 'petting' && !c.sawCat && !c.helped);
-      const k = c && S.cats.find(k => !k.hold && !k.onBed && (k.state === 'idle' || k.state === 'walk'));
+      const k = c && S.cats.find(k => !k.hold && !k.anim && !k.onBed && (k.state === 'idle' || k.state === 'walk'));
       if (c && k) {
         c.helped = true;
         return { label: '帶貓陪客', steps: [{ pos: () => ({ f: 2, x: clamp(c.x - 60, 150, 880), y: clamp(c.y + 8, 490, 594) }), dur: 1, fn: () => {
@@ -1581,24 +1611,61 @@ function findJob(s) {
   }
   return null;
 }
+// is this person supposed to be at work right now? (morning prep counts as the morning shift)
+function onShift(s) {
+  if (s.shift === 'all') return true;
+  if (s.shift === 'am') return S.phase === 'prep' || S.time < SHIFT_SPLIT;
+  if (s.shift === 'pm') return S.phase === 'open' && S.time >= SHIFT_SPLIT;
+  return false;
+}
+const seatOf = s => SOFA_SEATS[Math.max(0, G.staff.indexOf(s.role)) % SOFA_SEATS.length];
+function giveTask(s, t) { s.task = t; s.si = 0; beginStep(s); }
+// tired (stamina < 20) rests until fully recovered; a scheduled break lasts its whole hour
+function goRest(s, why) {
+  giveTask(s, { label: why === 'break' ? '休息時間' : '休息', kind: 'rest', steps: [{ f: 3, ...seatOf(s), dur: 0, fn: w => {
+    w.resting = why; w.face = 1;
+    toast(why === 'break' ? `${w.name}的休息時間到了，去員工休息室坐一下` : `${w.name}累了，去員工休息室休息`);
+  } }] });
+}
 function updStaff(s, dt) {
-  if (s.resting) { s.stamina += 12 * dt; if (s.stamina >= 100) { s.stamina = 100; s.resting = false; s.hidden = false; } return; }
-  if (S.phase === 'open') s.stamina -= dt * (s.task ? .7 : .2);
-  s.cool -= dt;
-  if (s.task) { runTask(s, dt); return; }
-  if (s.stamina < 20) {
-    const seat = SOFA_SEATS[Math.max(0, G.staff.indexOf(s.role)) % SOFA_SEATS.length];
-    s.task = { label: '休息', steps: [{ f: 3, ...seat, dur: 0, fn: w => { w.resting = true; w.face = 1; toast(`${w.name}去員工休息室休息了`); } }] };
-    s.si = 0; beginStep(s); return;
+  if (s.away) { // off shift: not in the shop until the shift starts
+    if (!onShift(s)) return;
+    Object.assign(s, { away: false, hidden: false, floor: 1, x: DOOR.x, y: DOOR.y, stamina: 100, task: null, mode: 'idle' });
+    routeTo(s, s.home.f, s.home.x, s.home.y); toast(`${s.name}（${s.title}）來上${SHIFTS[s.shift].name}了`); return;
   }
+  if (!onShift(s) && s.task?.kind !== 'leave') { // shift is over: put down whatever she's doing and walk out the front door
+    if (s.task) endTask(s);
+    s.resting = false;
+    giveTask(s, { label: '下班', kind: 'leave', steps: [{ f: 1, ...DOOR, dur: 0, fn: w => { w.away = true; w.hidden = true; } }] });
+    toast(`${s.name}下班了，明天見～`); say(s, '我先下班囉，辛苦了！'); return;
+  }
+  if (s.resting) {
+    s.stamina = Math.min(100, s.stamina + 12 * dt);
+    const done = s.resting === 'break' ? S.phase !== 'open' || S.time >= (s.brk + 1) * 60 : s.stamina >= 100;
+    if (done) { s.resting = false; s.hidden = false; say(s, pick(['休息好了，回去工作！', '充好電了～', '好，繼續加油！'])); }
+    return;
+  }
+  if (S.phase === 'open') s.stamina -= dt * (s.task ? .7 : .2);
+  s.cool -= dt; s.coffeeCool -= dt;
+  if (s.task) { runTask(s, dt); return; }
+  if (s.stamina < 20) { goRest(s, 'tired'); return; }
+  if (S.phase === 'open' && s.brk && !s.brkDone && Math.floor(S.time / 60) === s.brk) { s.brkDone = true; goRest(s, 'break'); return; }
   const job = findJob(s);
-  if (job) { s.task = job; s.si = 0; beginStep(s); return; }
+  if (job) { giveTask(s, job); return; }
+  // nothing to do and a bit tired: pop up to the break room for a quick cup of coffee
+  if (S.phase === 'open' && s.stamina < 70 && s.coffeeCool <= 0 && Math.random() < dt * .05) {
+    s.coffeeCool = rand(80, 140);
+    giveTask(s, { label: '喝咖啡', kind: 'coffee', steps: [{ f: 3, x: COFFEE.x - 40, y: COFFEE.y + 20, dur: 2.5, fn: w => {
+      w.stamina = Math.min(100, w.stamina + 20); say(w, pick(['喝杯咖啡提提神', '呼～好香', '喝完馬上回去'])); floatText(3, w.x, w.y - 140, '體力 +20', '#6E9B4E');
+    } }] });
+    return;
+  }
   if (!moveAlong(s, dt)) return;
   if (Math.random() < dt * .25) { const h = s.home; routeTo(s, h.f, clamp(h.x + rand(-40, 40), 150, 880), clamp(h.y + rand(-8, 12), 484, 594)); }
 }
 function hire(role) {
   if (G.staff.includes(role)) return;
-  G.staff.push(role); S.staff.push(makeStaff(role, true)); sfx('hire');
+  G.staff.push(role); const s = makeStaff(role, true); if (!onShift(s)) s.shift = 'all'; S.staff.push(s); sfx('hire');
   toast(`${ROLES[role].name}（${ROLES[role].title}）來上班了`);
 }
 function fire(role) {
@@ -1606,6 +1673,25 @@ function fire(role) {
   const s = S.staff.find(s => s.role === role);
   if (s) { if (s.task) endTask(s); S.staff = S.staff.filter(x => x !== s); }
   toast(`${ROLES[role].name}離職了`);
+}
+// shift changes count from tomorrow (or right away before opening); a new break hour counts right away
+function setSched(role, ch) {
+  const nx = { ...schedOf(role), ...ch };
+  if (nx.brk && !breakFits(nx.shift, nx.brk)) nx.brk = BREAK_HOURS.find(h => breakFits(nx.shift, h)) || 0;
+  G.sched[role] = nx;
+  const s = S.staff.find(s => s.role === role); if (!s) return;
+  s.brk = nx.brk;
+  if (S.phase === 'prep') s.shift = nx.shift;
+}
+function schedHtml(role) {
+  const sc = schedOf(role), today = todayShift(role), row = '<div class="row" style="margin:0;display:flex;flex-wrap:wrap;gap:6px">';
+  let h = `<div class="sub">排班：${SHIFTS[sc.shift].name}（${SHIFTS[sc.shift].time}）・日薪 ${yen(wageOf(role, sc.shift))}${today !== sc.shift ? `・今天還是${SHIFTS[today].name}` : ''}</div>${row}`;
+  for (const [id, T] of Object.entries(SHIFTS)) h += `<button class="chip${sc.shift === id ? ' now' : ''}" data-shift="${role}:${id}">${T.name}</button>`;
+  h += '</div>';
+  if (sc.shift === 'off') return h;
+  h += `<div class="sub">休息時間：${sc.brk ? `${sc.brk}:00–${sc.brk + 1}:00 去員工休息室` : '不休息（累了還是會去休息）'}</div>${row}`;
+  for (const v of [0, ...BREAK_HOURS.filter(x => breakFits(sc.shift, x))]) h += `<button class="chip${sc.brk === v ? ' now' : ''}" data-brk="${role}:${v}">${v ? v + ':00' : '不休息'}</button>`;
+  return h + '</div>';
 }
 
 // ====================== customers ======================
@@ -1784,8 +1870,12 @@ function updCat(k, dt) {
   if (k.hearts > 0) k.hearts -= dt * .8;
   if (k.anim) {
     const a = k.anim, m = S.mgr; a.t -= dt; k.hearts = Math.max(k.hearts, .9); k.moving = false;
-    if (a.kind === 'hug') { k.floor = m.floor; k.x = m.x; k.y = m.y; }
-    if (a.t <= 0) { if (a.kind === 'hug') { k.x = clamp(m.x + 36, 160, 900); k.y = clamp(m.y + 6, 490, 594); } k.anim = null; k.state = 'idle'; k.t = rand(1, 3); }
+    if (a.kind === 'hug') { // held in the manager's arms until she puts it down; a long cuddle keeps adding bond
+      k.floor = m.floor; k.x = m.x; k.y = m.y; k.happy = 90;
+      a.held += dt; if (a.held >= 30) { a.held = 0; addBond(k, 1); if (Math.random() < .5) say(k, pick(['呼嚕呼嚕～', '喵～最喜歡被抱了', '好溫暖喔'])); }
+      return;
+    }
+    if (a.t <= 0) { k.anim = null; k.state = 'idle'; k.t = rand(1, 3); }
     return;
   }
   if (k.hold) { k.moving = false; return; }
@@ -2099,6 +2189,7 @@ function talk(a, la, b, lb) { say(a, la); later(1.7, () => { if (!b.gone) say(b,
 const CAFE_TALK = [['這個餅乾上面有貓掌耶', '好可愛，捨不得吃'], ['你看樓梯旁邊那隻貓', '牠睡得好熟喔'], ['下次還要來這家', '我也是！'], ['甜點好好吃喔', '等等上樓去摸貓吧'], ['這家店好溫暖', '陽光照進來好舒服']];
 const LOFT_TALK = [['牠剛剛蹭我的手！', '好羨慕～'], ['這隻是橘子嗎？', '對，圓滾滾好可愛'], ['好療癒喔', '真的，都不想回家了'], ['黑豆一直看我們', '牠的眼睛好漂亮'], ['雪球好蓬喔', '像一顆棉花糖']];
 const STAFF_TALK = [['今天也要加油喔', '嗯，一起努力吧'], ['剛剛有客人說甜點很好吃', '太好了！'], ['樓上的貓咪好黏人', '牠們很喜歡大家呢'], ['這首歌好好聽', '是我挑的喔']];
+const BREAK_TALK = [['呼～終於可以坐一下了', '這張沙發好好坐'], ['你要喝咖啡嗎？', '好啊，幫我加牛奶'], ['剛剛有貓跑到廚房門口', '還好沒進去，哈哈'], ['休息完再一起加油吧', '嗯！'], ['店長泡的咖啡最好喝', '我也這麼覺得'], ['你明天也有排班嗎？', '有，我排早班']];
 const CREW_TALK = [['今天好忙喔', '加油，快下班了'], ['你午餐吃什麼？', '剩下的布丁！'], ['橘子又在偷睡覺', '好羨慕牠'], ['客人好多喔', '這間店越來越有名了']];
 function chatter(dt) {
   S.chatT -= dt; if (S.chatT > 0) return;
@@ -2116,6 +2207,9 @@ function chatter(dt) {
     talk(st, G.mgrName + '店長，' + l[0], m, l[1]);
   });
   for (const a of S.staff) for (const b of S.staff) if (a.role < b.role && free(a) && free(b) && near(a, b)) opts.push(() => { const [x, y] = pick(CREW_TALK); talk(a, x, b, y); });
+  const resting = S.staff.filter(s => s.resting && s.floor === 3 && !s.say);
+  for (const a of resting) for (const b of resting) if (a.role < b.role) { const f = () => { const [x, y] = pick(BREAK_TALK); talk(a, x, b, y); }; opts.push(f, f); }
+  for (const s of resting) if (free(m) && m.floor === 3) opts.push(() => talk(s, pick(['店長也來休息呀', '店長辛苦了～']), m, pick(['大家都辛苦了', '喝杯咖啡吧'])));
   for (const k of S.cats) if (!k.onBed && k.state !== 'sleep' && free(k)) {
     if (free(m) && near(k, m, 170)) opts.push(() => talk(m, pick(['你今天好乖喔', '要不要摸摸？', '不可以偷吃甜點喔']), k, pick(['喵～', '喵嗚？', '呼嚕呼嚕'])));
     const c = S.customers.find(c => free(c) && c.state === 'petting' && near(c, k, 170));
@@ -2361,7 +2455,7 @@ function actCoffee() {
 }
 // the manager takes a free seat (one no resting staff member is using) and sits until she moves again
 function freeSeat(x) {
-  const used = S.staff.filter(s => s.floor === 3 && (s.resting || s.task?.label === '休息')).map(s => SOFA_SEATS[Math.max(0, G.staff.indexOf(s.role)) % SOFA_SEATS.length]);
+  const used = S.staff.filter(s => s.resting || s.task?.kind === 'rest').map(seatOf);
   return SOFA_SEATS.filter(p => !used.includes(p)).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
 }
 function actSit(x = S.mgr.x) {
@@ -2383,6 +2477,8 @@ function climbStairs() {
 function nearbyActions() {
   const m = S.mgr, f = m.floor, list = [];
   const add = (x, y, label, fn) => list.push({ label, fn, d: Math.hypot(m.x - x, (m.y - y) * 1.6) });
+  const hk = heldCat();
+  if (hk && f !== 3) list.push({ label: '放下' + hk.name, fn: () => putDown(hk), d: 99 }); // always offered, after anything closer
   if (f === 1) {
     add(OVEN_SPOT.x, OVEN_SPOT.y, '廚房（甜點・正餐）', chooseBake);
     if (S.queue.length) { add(MGR_COUNTER.x, MGR_COUNTER.y, '幫客人點餐', actOrder); add(QUEUE[0].x, QUEUE[0].y, '幫客人點餐', actOrder); }
@@ -2401,7 +2497,7 @@ function nearbyActions() {
     if (!m.sitting) for (const p of SOFA_SEATS) add(p.x, p.y, '坐下休息', () => actSit(p.x));
     for (const s of S.staff) if (s.floor === 3 && s.resting) add(s.x, s.y, `幫${s.name}打氣`, () => actCheer(s));
   }
-  for (const k of S.cats) if (k.floor === f) {
+  for (const k of S.cats) if (k.floor === f && k !== hk) {
     const p = k.onBed ? BEDS[k.id].ground : k;
     add(p.x, p.y, (k.state === 'sleep' ? '叫醒' : '摸摸') + k.name, () => actPet(k));
   }
@@ -2481,7 +2577,7 @@ function hudTick(dt) {
   const sp = $('staffPanel');
   $('staffTab').hidden = !S.staff.length;
   if (!S.staff.length && $('drawer').dataset.show === 'staff') closeDrawer();
-  sp.innerHTML = '<span class="lbl">員工</span>' + S.staff.map(s => `<span class="${s.stamina < 30 ? 'low' : ''}">${s.name}（${s.title}）<b>${s.resting ? '休息中' : '體力 ' + Math.round(s.stamina)}</b>${s.task && !s.resting ? '・' + s.task.label : ''}</span>`).join('');
+  sp.innerHTML = '<span class="lbl">員工</span>' + S.staff.map(s => `<span class="${s.stamina < 30 ? 'low' : ''}">${s.name}（${s.title}）<b>${s.away ? (s.shift === 'off' ? '今天休假' : s.shift === 'pm' && S.time < SHIFT_SPLIT ? '14:00 上班' : '下班了') : s.resting ? (s.resting === 'break' ? '休息時間' : '休息中') : '體力 ' + Math.round(s.stamina)}</b>${s.task && !s.resting && !s.away ? '・' + s.task.label : ''}</span>`).join('');
   updateButtons(); renderTutorial();
 }
 function updateButtons() {
@@ -2606,13 +2702,15 @@ function renderPhone() {
       }
     } else if (phoneApp === 'hire') {
       const blocked = G.debt > 0;
-      const wages = G.staff.reduce((a, r) => a + ROLES[r].wage, 0);
-      h += `<p class="muted">員工會自己找事做，打烊時領日薪。今天雇用也要付今天的薪水。目前每日薪資 ${yen(wages)}。</p>`;
+      const wages = dayWages();
+      h += `<p class="muted">員工會自己找事做，打烊時領日薪。今天雇用也要付今天的薪水。今天的薪資 ${yen(wages)}。</p>`;
+      if (G.staff.length) h += `<p class="muted">排班：早班、晚班領 6 成薪水，休假不用付薪水。${S.phase === 'prep' ? '開門前改的班今天就生效。' : '改的班明天生效，休息時間馬上生效。'}</p>`;
       if (blocked) h += `<p style="color:var(--bad);font-size:13px;margin:0">還有負債 ${yen(G.debt)}，還清前不能雇新員工。</p>`;
       for (const [id, R] of Object.entries(ROLES)) {
         const has = G.staff.includes(id);
         h += `<div class="item"><div class="top"><span class="nm">${R.name}・${R.title}</span><b>日薪 ${yen(R.wage)}</b></div><div class="sub">${R.desc}</div>
-          <div class="row" style="margin:0">${has ? `<button data-fire="${id}">請他離職</button><span class="sub">上班中</span>` : `<button class="primary" data-hire="${id}" ${blocked || S.phase === 'settle' ? 'disabled' : ''}>錄用</button>`}</div></div>`;
+          ${has ? schedHtml(id) : ''}
+          <div class="row" style="margin:0">${has ? `<button data-fire="${id}">請他離職</button>` : `<button class="primary" data-hire="${id}" ${blocked || S.phase === 'settle' ? 'disabled' : ''}>錄用</button>`}</div></div>`;
       }
     } else if (phoneApp === 'wallet') {
       h += `<div class="item"><div class="top"><span class="nm">現金</span><b>${yen(G.cash)}</b></div><div class="top"><span class="nm">負債</span><b style="color:var(--bad)">${yen(G.debt)}</b></div>
@@ -2725,6 +2823,8 @@ function renderPhone() {
   sc.querySelectorAll('[data-credit]').forEach(b => b.onclick = () => buy(b.dataset.credit, true));
   sc.querySelectorAll('[data-hire]').forEach(b => b.onclick = () => { hire(b.dataset.hire); renderPhone(); });
   sc.querySelectorAll('[data-fire]').forEach(b => b.onclick = () => { fire(b.dataset.fire); renderPhone(); });
+  sc.querySelectorAll('[data-shift]').forEach(b => b.onclick = () => { const [r, v] = b.dataset.shift.split(':'); setSched(r, { shift: v }); renderPhone(); });
+  sc.querySelectorAll('[data-brk]').forEach(b => b.onclick = () => { const [r, v] = b.dataset.brk.split(':'); setSched(r, { brk: +v }); renderPhone(); });
   q('#borrow') && (q('#borrow').onclick = () => { sfx('wallet'); G.cash += 100; G.debt += 100; toast('跟阿嬤借了 ¥100'); renderPhone(); });
   q('#repay50') && (q('#repay50').onclick = () => { sfx('wallet'); const r = Math.min(50, G.debt, G.cash); G.cash -= r; G.debt -= r; renderPhone(); });
   q('#repayAll') && (q('#repayAll').onclick = () => { sfx('wallet'); G.cash -= G.debt; G.debt = 0; toast('負債還清了'); renderPhone(); });
@@ -2795,6 +2895,7 @@ function decodeSave(code) {
       return list.length ? list : START_CATS.map(id => ({ id, since: 1, pets: 0 })); })(),
     landReady: !!o.landReady, shopName: cleanName(o.shopName, base.shopName, 10), mgrName: cleanName(o.mgrName, base.mgrName, 8),
     music: MUSIC[o.music] && !MUSIC[o.music].hidden ? o.music : base.music, sfx: o.sfx !== false,
+    sched: Object.fromEntries(Object.keys(ROLES).filter(r => o.sched?.[r]).map(r => [r, { shift: SHIFTS[o.sched[r].shift] ? o.sched[r].shift : 'all', brk: [0, ...BREAK_HOURS].includes(o.sched[r].brk) ? o.sched[r].brk : DEFAULT_SCHED[r].brk }])),
     badges: Array.isArray(o.badges) ? [...new Set(o.badges.filter(id => BADGES.some(b => b.id === id)))] : [],
     reviews: Array.isArray(o.reviews) ? o.reviews.filter(r => r && typeof r.t === 'string').slice(0, 80).map(r => ({ d: Math.max(1, Math.floor(num(r.d, 1))), s: clamp(Math.floor(num(r.s, 3)), 1, 5), w: cleanName(r.w, '客人', 8), t: cleanName(r.t, '', 60) })) : [],
     revTotal: Math.max(0, Math.floor(num(o.revTotal, 0))),
@@ -2979,7 +3080,7 @@ function closeDay() {
   const lvPct = lvNow < MAX_LV ? clamp((G.exp - pv) / (nx - pv), 0, 1) * 100 : 100;
   const gained = []; for (let l = S.startLv + 1; l <= lvNow; l++) gained.push(l);
   const landPct = clamp(G.earned / LAND_GOAL, 0, 1) * 100;
-  const wages = G.staff.reduce((a, r) => a + ROLES[r].wage, 0);
+  const wages = dayWages();
   let owedWages = 0;
   if (wages) { const pay = Math.min(wages, Math.max(0, G.cash)); G.cash -= pay; owedWages = wages - pay; G.debt += owedWages; }
   let repay = 0;
