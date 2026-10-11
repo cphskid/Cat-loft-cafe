@@ -87,7 +87,11 @@
     { key: 'late', when: () => S.time >= 1200, text: () => '20:00 了，再撐一下，21:00 打烊會結算今天的成績。' },
   ];
 
-  const active = () => started && S && S.day === 1 && !G.tutDone && !S.tutOff;
+  // only the very first time on this device: a finished or skipped guide, or any save past day 1, means it has been seen
+  let seen = false;
+  try { const c = localStorage.getItem('catloft-save'); seen = !!localStorage.getItem('catloft-tut') || (!!c && decodeSave(c).day > 1); } catch {}
+  const markSeen = () => { seen = true; try { localStorage.setItem('catloft-tut', '1'); } catch {} };
+  const active = () => started && S && S.day === 1 && !seen && !G.tutDone && !S.tutOff;
   function state() {
     if (!S.tut) S.tut = { i: 0, t: 0, pets0: pets(), sawDirty: false, hints: {}, hint: null, okd: {}, firstGone: false };
     return S.tut;
@@ -119,7 +123,8 @@
   }
   function render() {
     if (!S) return;
-    if (S.phase === 'settle' && S.day === 1 && !G.tutDone && !S.tutOff) finishDay();
+    if (started && S.day > 1 && !seen) markSeen();
+    if (S.phase === 'settle' && S.day === 1 && !seen && !G.tutDone && !S.tutOff) finishDay();
     cur = active() && S.phase !== 'settle' ? current() : null;
     card.hidden = !cur; $('game').classList.toggle('coaching', !!cur);
     highlight(cur && cur.target && cur.target.dom);
@@ -128,7 +133,7 @@
     $('coachN').textContent = cur.n; $('coachOk').hidden = !cur.ok;
   }
   function finishDay() {
-    G.tutDone = true;
+    G.tutDone = true; markSeen();
     const sc = $('settleCard');
     if (sc && !sc.querySelector('.tut-done')) sc.insertAdjacentHTML('afterbegin', '<div class="tut-done"><b>🎉 第一天完成了！</b><br>從明天開始就交給你經營囉。忘記怎麼做的話，左邊的「說明」都有寫。</div>');
   }
@@ -138,7 +143,7 @@
     else if (T.i < STEPS.length) T.okd[STEPS[T.i].key] = true;
     render();
   };
-  $('coachSkip').onclick = () => { S.tutOff = true; G.tutDone = true; if (S.startG) S.startG.tutDone = true; toast('教學關掉了，「說明」裡有完整玩法'); render(); };
+  $('coachSkip').onclick = () => { S.tutOff = true; G.tutDone = true; markSeen(); if (S.startG) S.startG.tutDone = true; toast('教學關掉了，「說明」裡有完整玩法'); render(); };
 
   // the clock and new guests wait while the first guest is being looked after
   function hold() {
