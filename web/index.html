@@ -113,6 +113,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .fld input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--wood-l);border-radius:10px;background:#fff;color:var(--ink)}
 .item.locked{opacity:.6}
 #chooseCard{max-height:88vh;overflow:auto}
+.sexPick{display:flex;gap:10px;margin-bottom:10px}.sexPick button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-width:2px}.sexPick button.on{border-color:#D9773E;background:#FFF1E4}.sexPick img{height:110px}
 .kh{margin:10px 0 2px;font-size:14px;color:var(--wood-d);text-align:left;font-weight:700}
 .unl{margin:8px 0 0;padding-left:20px;text-align:left;line-height:1.8}
 .hudtop{position:absolute;left:calc(10px + env(safe-area-inset-left));top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:4;max-width:calc(100% - 80px)}
@@ -318,13 +319,20 @@ const LV_EXP = [0, 40, 110, 210, 340, 500, 700];
 const MAX_LV = LV_EXP.length;
 // furniture unlocked by shop level, bought in the phone shop
 const FURN = {
+  plant:   { name: '綠意盆栽',     price: 60,  lv: 1, desc: '1F 擺一盆綠色植物，客人排隊和等餐的耐心 +10%' },
+  lamp:    { name: '暖光立燈',     price: 120, lv: 2, desc: '1F 暖暖的燈光，客人給 4 星以上時店鋪多 +1 經驗' },
   record:  { name: '復古唱片機',   price: 180, lv: 2, desc: '1F 放著輕音樂，客人排隊和等餐的耐心 +20%' },
   cushion: { name: '加購貓咪坐墊', price: 100, lv: 3, desc: '2F 多 2 個座位，更多客人可以同時吸貓' },
   deodor:  { name: '貓砂除臭機',   price: 160, lv: 4, desc: '貓砂盆要髒到 5 次才會有味道' },
   warmer:  { name: '甜點保溫櫃',   price: 220, lv: 5, desc: '打烊沒賣完的甜點，一半可以留到明天賣' },
+  cattree: { name: '豪華貓跳台',   price: 260, lv: 3, desc: '2F 多一座貓跳台，貓咪醒著時體力消耗慢 30%' },
+  chalk:   { name: '今日推薦黑板', price: 150, lv: 4, desc: '1F 門口的小黑板，客人順手帶咖啡豆回家的機會變多' },
   bed:     { name: '暖暖貓窩',     price: 200, lv: 5, desc: '貓咪睡覺回復體力快 50%' },
   sign:    { name: '招牌燈箱',     price: 300, lv: 6, desc: '店門口的招牌亮起來，上門的客人多 20%' },
+  books:   { name: '貓咪漫畫書櫃', price: 240, lv: 6, desc: '2F 客人可以翻漫畫等貓，就算沒摸到貓也不會扣星' },
 };
+// where the furniture without a fixed role in the layout stands (floor y = the prop's bottom)
+const PROP = { plant: { x: 880, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 720, y: 480 } };
 const CUSHION_EXTRA = [{ x: 520, y: 546 }, { x: 578, y: 594 }];
 const LAND_GOAL = 100000;
 // background music: ElevenLabs tracks in assets/audio (tools/audio/ makes them); `hidden` ones are not in the phone list
@@ -550,10 +558,10 @@ const ROLES = {
 // ---- manager outfits (phone app 衣櫃)
 const OUTFITS = [
   { id: 'basic', name: '咖啡廳圍裙', desc: '開店第一天穿的白襯衫和米色圍裙', price: 0, lv: 1, spr: 'mgr' },
-  { id: 'mo1', name: '貓咪毛衣', desc: '胸口有貓臉的燕麥色毛衣配長裙', price: 300, lv: 1, spr: 'mo1' },
-  { id: 'mo2', name: '草莓洋裝', desc: '淡黃色草莓小碎花洋裝加白圍裙', price: 500, lv: 2, spr: 'mo2' },
-  { id: 'mo6', name: '草帽洋裝', desc: '鼠尾草綠的亞麻洋裝、草帽和小籃子', price: 800, lv: 3, spr: 'mo6' },
-  { id: 'mo3', name: '夏日浴衣', desc: '水藍色牽牛花浴衣配粉紅腰帶', price: 900, lv: 3, spr: 'mo3' },
+  { id: 'mo1', name: '貓咪毛衣', desc: '胸口有貓臉的燕麥色毛衣配長裙', descM: '胸口有貓臉的燕麥色毛衣配深色長褲', price: 300, lv: 1, spr: 'mo1' },
+  { id: 'mo2', name: '草莓洋裝', nameM: '草莓襯衫', desc: '淡黃色草莓小碎花洋裝加白圍裙', descM: '淡黃色草莓小碎花短袖襯衫加白圍裙', price: 500, lv: 2, spr: 'mo2' },
+  { id: 'mo6', name: '草帽洋裝', nameM: '草帽亞麻衫', desc: '鼠尾草綠的亞麻洋裝、草帽和小籃子', descM: '鼠尾草綠的亞麻襯衫、草帽和小籃子', price: 800, lv: 3, spr: 'mo6' },
+  { id: 'mo3', name: '夏日浴衣', desc: '水藍色牽牛花浴衣配粉紅腰帶', descM: '深藍色牽牛花浴衣配灰色腰帶', price: 900, lv: 3, spr: 'mo3' },
   { id: 'mo4', name: '甜點師白袍', desc: '雙排扣白袍和高高的廚師帽', price: 1200, lv: 4, spr: 'mo4' },
   { id: 'mo5', name: '聖誕毛衣', desc: '紅色雪花貓咪毛衣和綠圍巾', price: 1500, lv: 5, spr: 'mo5' },
 ];
@@ -617,13 +625,13 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 3, expand: 0, staff: [],
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano', sfx: true, sched: {} };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {} };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
 const hasF = id => G.furn.includes(id);
 const dispTotal = () => DISHES.reduce((a, d) => a + (S.display[d] || 0), 0);
-const patMul = () => hasF('record') ? 1.2 : 1;
+const patMul = () => (hasF('record') ? 1.2 : 1) * (hasF('plant') ? 1.1 : 1);
 const litterMax = () => hasF('deodor') ? 5 : 3;
 const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv).map(d => (MENU[d].meal ? '正餐「' : '甜點「') + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
 // ---- bond between the manager and each cat ----
@@ -1040,10 +1048,10 @@ function pawPrint(x, y, s, c) {
 // ====================== painted art (web/assets, painted with the Gemini image model in the reference style) ======================
 // Every sprite has a hand-drawn canvas fallback, so the game still plays if an image fails to load.
 const ART = {};
-const PEOPLE = ['mgr', 'cook', 'server', 'cashier', 'feeder', 'sitter', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'];
+const PEOPLE = ['mgr', 'mgrm', 'cook', 'server', 'cashier', 'feeder', 'sitter', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'];
 const GUESTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c8']; // c6 is 小晴 in her school uniform
 (function loadArt() {
-  const names = ['bg1', 'bg2', 'bg3', 'counter', 'table', 'cushion', 'bowl', 'litter', 'basket', 'record', 'warmer', 'petbed', 'deodor', 'lightbox', 'plant'];
+  const names = ['bg1', 'bg2', 'bg3', 'counter', 'table', 'cushion', 'bowl', 'litter', 'basket', 'record', 'warmer', 'petbed', 'deodor', 'lightbox', 'plant', 'lamp', 'cattree', 'chalkboard', 'bookshelf'];
   for (const id of PEOPLE) for (let i = 0; i < 3; i++) names.push(`${id}_${i}`);
   for (const id of START_CATS.concat(['calico', 'gray', 'tabby', 'milk'])) for (let i = 0; i < 5; i++) names.push(`cat_${id}_${i}`);
   for (const n of names) loadArtImg(n, 0);
@@ -1064,7 +1072,7 @@ window.addEventListener('online', retryMissingArt);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
-const LAZY_ART = /^(c(9|1\d|20)|mo\d)_\d$/;
+const LAZY_ART = /^(c(9|1\d|20)|mo\dm?)_\d$/;
 const art = n => { let im = ART[n]; if (!im && LAZY_ART.test(n)) { loadArtImg(n, 0); im = ART[n]; } return im && im.complete && im.naturalWidth ? im : null; };
 // draw an image with its bottom centre at (x, y), h pixels tall, mirrored when flip
 function sprite(im, x, y, h, flip, w) {
@@ -1355,6 +1363,10 @@ function drawRestroomState() {
   if (d >= 3) alertMark(809, 270);
 }
 function drawFurn1() {
+  if (hasF('plant') && !propArt('plant', PROP.plant.x, PROP.plant.y, 44)) { rect(PROP.plant.x - 10, PROP.plant.y - 18, 20, 18, '#C98B62', INK, 1.1); ell(PROP.plant.x, PROP.plant.y - 30, 16, 14, '#7FA66A', INK, 1.1); }
+  if (hasF('lamp')) { const { x, y } = PROP.lamp; g.globalAlpha = .25 + Math.sin(S.t * 1.5) * .05; ell(x, y - 118, 40, 30, '#FFE7A8'); g.globalAlpha = 1;
+    if (!propArt('lamp', x, y, 40)) { line(x, y, x, y - 110, INK, 2); poly([[x - 16, y - 108], [x + 16, y - 108], [x + 11, y - 132], [x - 11, y - 132]], '#FFF1D2', INK, 1.2); } }
+  if (hasF('chalk') && !propArt('chalkboard', PROP.chalk.x, PROP.chalk.y, 50)) { rect(PROP.chalk.x - 22, PROP.chalk.y - 60, 44, 52, '#3F5E4A', INK, 1.3); pawPrint(PROP.chalk.x, PROP.chalk.y - 36, .4, '#F4F0E8'); }
   if (hasF('record') && propArt('record', 721, 480, 64)) { if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; } }
   else if (hasF('record')) { // low cabinet + gramophone between the menu board and the restroom
     wood(690, 438, 62, 40, '#A9774B', 1.3); line(721, 442, 721, 474, 'rgba(70,45,30,.3)', 1);
@@ -1374,6 +1386,8 @@ function drawFurn1() {
   }
 }
 function drawFurn2() {
+  if (hasF('cattree') && !propArt('cattree', PROP.cattree.x, PROP.cattree.y, 92)) { const { x, y } = PROP.cattree; rect(x - 6, y - 150, 12, 150, '#E3CDA4', INK, 1.2); for (const h of [50, 100, 150]) ell(x, y - h, 30, 7, '#D9C3A0', INK, 1.2); }
+  if (hasF('books') && !propArt('bookshelf', PROP.books.x, PROP.books.y, 90)) { const { x, y } = PROP.books; wood(x - 42, y - 80, 84, 80, '#A9774B', 1.3); for (let i = 0; i < 8; i++) rect(x - 36 + i * 9, y - 72, 7, 30, ['#C96B5B', '#6E8FB3', '#E2B573', '#7FA66A'][i % 4], INK, .8); }
   if (hasF('cushion')) for (const c of CUSHION_EXTRA) cushion(c.x, c.y, '#EAD3C6');
   for (const c of expandCushions()) cushion(c.x, c.y, '#D9E2D0');
   if (hasF('bed')) { if (!propArt('petbed', 206, 466, 60)) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); } text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
@@ -1456,12 +1470,15 @@ function progressRing(w, y) {
   ell(w.x, y, 11, 11, '#FFFFFF', INK, 1.2);
   g.beginPath(); g.moveTo(w.x, y); g.arc(w.x, y, 9, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); g.fillStyle = '#8D6E63'; g.fill();
 }
-const mgrSpr = () => { const o = OUTFITS.find(x => x.id === G.outfit); return o && art(o.spr + '_0') ? o.spr : 'mgr'; };
+// the manager's painted sprite set: mgr_* is the woman, mgrm_* the man; outfits are mo1..mo6 (+ 'm' for the man)
+const outfitName = o => (G.mgrSex === 'm' && o.nameM) || o.name;
+const mgrSfx = () => G.mgrSex === 'm' ? 'm' : '';
+const mgrSpr = () => { const o = OUTFITS.find(x => x.id === G.outfit), s = mgrSfx(), base = (o ? o.spr : 'mgr') + s; return art(base + '_0') ? base : art('mgr' + s + '_0') ? 'mgr' + s : 'mgr'; };
 function drawMgr() {
   const m = S.mgr;
-  drawPerson(m, { spr: mgrSpr(), shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true, sit: m.sitting });
+  drawPerson(m, { spr: mgrSpr(), shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: G.mgrSex !== 'm', sit: m.sitting });
   const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
-  if (hk) { // the manager carries the cat in her arms
+  if (hk) { // the manager carries the cat in their arms
     const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
     g.save(); g.translate(cx, cy); g.scale(.8, .8); g.translate(-cx, -cy);
     hk.x = cx; hk.y = cy; hk._inAnim = true; drawCat(hk); hk._inAnim = false; hk.x = ox; hk.y = oy; g.restore();
@@ -2050,7 +2067,7 @@ function decideOrder(c) {
     if (z === 'green' || (z === 'yellow' && Math.random() < .6)) o.treat = true;
   }
   // about a quarter of the guests also take a bag of beans home, if there is any on the counter
-  if (!c.special && G.stock.beans > 0 && Math.random() < .25) {
+  if (!c.special && G.stock.beans > 0 && Math.random() < (hasF('chalk') ? .4 : .25)) {
     const z = zone(G.prices.beans, BEANS_BASE);
     if (z === 'green' || (z === 'yellow' && Math.random() < .6)) o.beans = true;
   }
@@ -2106,7 +2123,7 @@ function afterEat(c) {
   if (c.order.loft) goLoft(c); else maybeWC(c, .3);
 }
 function afterLoft(c) {
-  if (!c.sawCat) { c.stars -= 1; c.notes.push('沒摸到貓'); sayFor(c, '貓咪都不理我…'); }
+  if (!c.sawCat && !hasF('books')) { c.stars -= 1; c.notes.push('沒摸到貓'); sayFor(c, '貓咪都不理我…'); }
   if (G.litterDirt >= litterMax()) { c.stars -= 1; c.notes.push('有貓砂味'); }
   if (c.cushion) { c.cushion.cust = null; c.cushion = null; }
   maybeWC(c, .4);
@@ -2118,7 +2135,7 @@ function leave(c) {
   if (c.state === 'leaving') return;
   if (c.played && !c.angry) c.stars++; // a cat came over to play: best part of the visit
   const s = clamp(c.stars, 1, 5); c.final = s;
-  S.today.ratings.push(s); gainExp(s);
+  S.today.ratings.push(s); gainExp(s + (s >= 4 && hasF('lamp') ? 1 : 0));
   // fans never drop: an unhappy guest just doesn't become one
   let df = [0, 0, 0, 1, 2][s - 1];
   if (!c.order || (!c.order.dish && !c.order.loft && !c.order.beans)) df = 0; // walked out without buying anything
@@ -2208,7 +2225,7 @@ function updCat(k, dt) {
   for (const key of ['happy', 'sulk', 'petCool']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
   if (k.wantPet) { k.wantPet -= dt; if (k.wantPet <= 0 || k.state === 'sleep') { k.wantPet = 0; if (k.state !== 'sleep') { k.sulk = 30; say(k, '哼…'); sfx('cat_grumpy', k.floor); } } }
   if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
-  if (open) { k.energy -= .42 * (k.P.energy || 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
+  if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
   const arrived = moveAlong(k, dt);
   switch (k.state) {
     case 'toBed': if (arrived) { k.state = 'sleep'; k.onBed = true; } break;
@@ -3021,7 +3038,7 @@ function renderPhone() {
         <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', TABLE_PRICE)}</div></div>`;
       for (const [id, F] of Object.entries(FURN)) {
         const own = hasF(id), locked = F.lv > shopLv();
-        const th = { record: 'record', cushion: 'cushion', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox' }[id];
+        const th = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf' }[id];
         h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(F.price)}</b></div><div class="sub">${F.desc}</div>
           <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, F.price)}</div></div>`;
       }
@@ -3133,7 +3150,7 @@ function renderPhone() {
       h += `<p class="muted">幫${G.mgrName}店長換衣服。買過的衣服可以隨時換穿。</p>`;
       for (const o of OUTFITS) {
         const own = G.wardrobe.includes(o.id), wear = G.outfit === o.id, locked = o.lv > shopLv();
-        h += `<div class="item${locked && !own ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${o.spr}_0.webp" alt="" style="height:96px;width:40px;flex:none;object-fit:contain" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${wear ? '✓ ' : locked && !own ? '🔒 ' : ''}${o.name}</span><b>${own ? (wear ? '穿著中' : '已擁有') : yen(o.price)}</b></div><div class="sub">${o.desc}</div>
+        h += `<div class="item${locked && !own ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${o.spr + mgrSfx()}_0.webp" alt="" style="height:96px;width:40px;flex:none;object-fit:contain" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${wear ? '✓ ' : locked && !own ? '🔒 ' : ''}${outfitName(o)}</span><b>${own ? (wear ? '穿著中' : '已擁有') : yen(o.price)}</b></div><div class="sub">${(G.mgrSex === 'm' && o.descM) || o.desc}</div>
           <div class="row" style="margin:0">${wear ? '<button disabled>正在穿</button>' : own ? `<button class="primary" data-wear="${o.id}">換上</button>` : locked ? `<button disabled>店鋪 Lv.${o.lv} 解鎖</button>` : G.cash < o.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-outfit="${o.id}">購買並換上</button>`}</div></div></div></div>`;
       }
     } else if (phoneApp === 'phone') {
@@ -3177,9 +3194,9 @@ function renderPhone() {
   q('#hangUp') && (q('#hangUp').onclick = () => { CALL = null; renderPhone(); });
   sc.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { claimDaily(+b.dataset.claim); renderPhone(); });
   sc.querySelectorAll('[data-adopt]').forEach(b => b.onclick = () => { adoptCat(b.dataset.adopt); renderPhone(); });
-  sc.querySelectorAll('[data-wear]').forEach(b => b.onclick = () => { G.outfit = b.dataset.wear; art(OUTFITS.find(o => o.id === G.outfit).spr + '_0'); say(S.mgr, '換好衣服了！'); saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-wear]').forEach(b => b.onclick = () => { G.outfit = b.dataset.wear; art(OUTFITS.find(o => o.id === G.outfit).spr + mgrSfx() + '_0'); say(S.mgr, '換好衣服了！'); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-outfit]').forEach(b => b.onclick = () => { const o = OUTFITS.find(o => o.id === b.dataset.outfit); if (!o || G.wardrobe.includes(o.id) || o.lv > shopLv() || G.cash < o.price) return;
-    G.cash -= o.price; S.today.spent += o.price; G.wardrobe.push(o.id); G.outfit = o.id; for (let i = 0; i < 3; i++) art(`${o.spr}_${i}`); toast(`買了「${o.name}」，${G.mgrName}店長換上新衣服了！`); say(S.mgr, '好看嗎？'); saveProgress(); renderPhone(); });
+    G.cash -= o.price; S.today.spent += o.price; G.wardrobe.push(o.id); G.outfit = o.id; for (let i = 0; i < 3; i++) art(`${o.spr}${mgrSfx()}_${i}`); toast(`買了「${outfitName(o)}」，${G.mgrName}店長換上新衣服了！`); say(S.mgr, '好看嗎？'); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-ctab]').forEach(b => b.onclick = () => { S.catTab = b.dataset.ctab; renderPhone(); });
   sc.querySelectorAll('[data-cpage]').forEach(b => b.onclick = () => { S.catPage = +b.dataset.cpage; renderPhone(); });
   sc.querySelectorAll('[data-dpage]').forEach(b => b.onclick = () => { S.dexPage = +b.dataset.dpage; renderPhone(); });
@@ -3273,7 +3290,7 @@ function decodeSave(code) {
         .filter(c => c && CAT_DEFS[c.id] && !seen.has(c.id) && seen.add(c.id))
         .map(c => { const r = { id: c.id, since: clamp(Math.floor(num(c.since, 1)), 1, day), pets: Math.max(0, Math.floor(num(c.pets, 0))) }; const nm = cleanName(c.nm, '', 6); if (nm) r.nm = nm; return r; });
       return list.length ? list : START_CATS.map(id => ({ id, since: 1, pets: 0 })); })(),
-    landReady: !!o.landReady, shopName: cleanName(o.shopName, base.shopName, 10), mgrName: cleanName(o.mgrName, base.mgrName, 8),
+    landReady: !!o.landReady, shopName: cleanName(o.shopName, base.shopName, 10), mgrName: cleanName(o.mgrName, base.mgrName, 8), mgrSex: o.mgrSex === 'm' ? 'm' : 'f',
     music: MUSIC[o.music] && !MUSIC[o.music].hidden ? o.music : base.music, sfx: o.sfx !== false,
     sched: Object.fromEntries(Object.keys(ROLES).filter(r => o.sched?.[r]).map(r => [r, { shift: SHIFTS[o.sched[r].shift] ? o.sched[r].shift : 'all', brk: [0, ...BREAK_HOURS].includes(o.sched[r].brk) ? o.sched[r].brk : DEFAULT_SCHED[r].brk }])),
     badges: Array.isArray(o.badges) ? [...new Set(o.badges.filter(id => BADGES.some(b => b.id === id)))] : [],
@@ -3535,17 +3552,21 @@ function closeDay() {
   $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
   updateButtons();
 }
-function begin(newG) { G = newG; S = null; for (let i = 0; i < 3; i++) art((OUTFITS.find(o => o.id === G.outfit) || OUTFITS[0]).spr + '_' + i); startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; if (G.day === 1) { renderTutorial(); openDrawer('tips'); } setMusic(G.music); sfx('morning'); saveProgress(); }
+function begin(newG) { G = newG; S = null; for (let i = 0; i < 3; i++) art((OUTFITS.find(o => o.id === G.outfit) || OUTFITS[0]).spr + mgrSfx() + '_' + i); startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; if (G.day === 1) { renderTutorial(); openDrawer('tips'); } setMusic(G.music); sfx('morning'); saveProgress(); }
 function openSetup() {
   const card = $('chooseCard');
+  let sex = 'f';
   card.innerHTML = `<h2>幫你的店取名字</h2>
+    <p class="fld" style="margin-bottom:4px">店長是…</p>
+    <div class="sexPick"><button data-sex="f" class="on"><img src="assets/mgr_0.webp" alt="">女生</button><button data-sex="m"><img src="assets/mgrm_0.webp" alt="">男生</button></div>
     <label class="fld">店名（最多 10 個字）<input id="inShop" maxlength="10" value="暖陽貓閣"></label>
     <label class="fld">店長名字（最多 8 個字）<input id="inMgr" maxlength="8" value="小暖"></label>
     <div class="row"><button id="setupBack">返回</button><button class="primary" id="setupGo">開店！</button></div>`;
   $('chooseOv').hidden = false; $('inShop').focus(); $('inShop').select();
+  for (const b of card.querySelectorAll('[data-sex]')) b.onclick = () => { sex = b.dataset.sex; for (const o of card.querySelectorAll('[data-sex]')) o.classList.toggle('on', o === b); };
   $('setupBack').onclick = () => { $('chooseOv').hidden = true; };
   $('setupGo').onclick = () => {
-    const ng = freshG(); ng.shopName = cleanName($('inShop').value, ng.shopName, 10); ng.mgrName = cleanName($('inMgr').value, ng.mgrName, 8);
+    const ng = freshG(); ng.shopName = cleanName($('inShop').value, ng.shopName, 10); ng.mgrName = cleanName($('inMgr').value, ng.mgrName, 8); ng.mgrSex = sex;
     $('chooseOv').hidden = true; begin(ng); toast(`歡迎來到${G.shopName}，${G.mgrName}店長！`);
   };
 }
