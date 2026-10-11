@@ -2249,8 +2249,10 @@ function audioInit() {
   if (AUD.ctx) { if (AUD.ctx.state === 'suspended' && !document.hidden) AUD.ctx.resume(); return; }
   try {
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    // iPhone: play even with the ring/silent switch on (Web Audio is muted by it otherwise)
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
     const c = AUD.ctx = new AC();
-    for (const [k, v] of [['music', .4], ['sfx', .8], ['amb', .35]]) { const gn = c.createGain(); gn.gain.value = v; gn.connect(c.destination); AUD.bus[k] = gn; }
+    for (const [k, v] of [['music', 1], ['sfx', .6], ['amb', .5]]) { const gn = c.createGain(); gn.gain.value = v; gn.connect(c.destination); AUD.bus[k] = gn; }
     SFX_LIST.forEach(loadBuf);
     if (!started) playMusic('title'); else setMusic(G.music);
   } catch {}
@@ -2294,7 +2296,8 @@ function ambTick() {
   const want = started && S && S.phase !== 'settle' && sfxOn() ? 'amb' + S.view : null;
   if ((AUD.amb && AUD.amb.name) !== want) loop('amb', 'amb', want, SFX_VOL[want] ?? .8);
 }
-['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, audioInit, true));
+// iOS Safari only unlocks audio inside touchend/click, so listen to all of them
+['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => addEventListener(ev, audioInit, true));
 addEventListener('click', e => { if (e.target.closest && e.target.closest('button') && !e.target.closest('[data-app],[data-music]')) sfx('ui_click'); }, true);
 document.addEventListener('visibilitychange', () => { if (AUD.ctx) document.hidden ? AUD.ctx.suspend() : AUD.ctx.resume(); });
 
