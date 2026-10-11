@@ -405,6 +405,143 @@ const CAT_DEFS = {
 const START_CATS = ['orange', 'tux', 'fluffy'];
 const catDays = id => { const c = G.cats.find(c => c.id === id); return c ? Math.max(1, G.day - c.since + 1) : 0; };
 const catRank = d => d >= 30 ? '資深店貓' : d >= 14 ? '店裡的招牌' : d >= 7 ? '店裡的一份子' : d >= 3 ? '熟悉環境中' : '新來的';
+// ---- 喵喵圖鑑: 300+ cats made from the 7 painted cats, recoloured (coat) x body size x personality ----
+// Every cat id is a key of CAT_DEFS: the 7 originals keep their ids, the rest are 'x8', 'x9', ...
+const RARITY = [
+  { name: '普通', color: '#7E9A6C', lv: 1, price: 350,  w: 62 },
+  { name: '少見', color: '#5E8CB0', lv: 2, price: 800,  w: 25 },
+  { name: '稀有', color: '#9C6CC0', lv: 4, price: 1800, w: 10 },
+  { name: '傳說', color: '#D9A23A', lv: 6, price: 4500, w: 3 },
+];
+// t: [hue shift, saturation x, lightness x, lightness +, colourise [hue, sat, amount]]
+const COATS = [
+  { base: 'orange', name: '橘貓',       dot: '#E9A564', r: 0, t: null },
+  { base: 'orange', name: '奶油貓',     dot: '#EAD7B8', r: 0, t: [5, .55, 1, .1] },
+  { base: 'orange', name: '紅橘貓',     dot: '#E0743E', r: 1, t: [-12, 1.15, .85, 0] },
+  { base: 'orange', name: '焦糖貓',     dot: '#B9772F', r: 1, t: [-5, .9, .7, 0] },
+  { base: 'orange', name: '金色招財貓', dot: '#F2C24E', r: 3, t: [12, 1.5, 1, .05] },
+  { base: 'tabby',  name: '棕虎斑',     dot: '#A9855E', r: 0, t: null },
+  { base: 'tabby',  name: '銀虎斑',     dot: '#A7A7A7', r: 1, t: [0, .1, 1, .08] },
+  { base: 'tabby',  name: '紅虎斑',     dot: '#C46E45', r: 1, t: [-10, 1.6, 1, 0] },
+  { base: 'tabby',  name: '巧克力虎斑', dot: '#7E5A3A', r: 2, t: [-5, .9, .75, 0] },
+  { base: 'gray',   name: '藍灰貓',     dot: '#9BA4AD', r: 0, t: null },
+  { base: 'gray',   name: '銀白貓',     dot: '#D5D8DB', r: 1, t: [0, .4, 1, .18] },
+  { base: 'gray',   name: '丁香貓',     dot: '#B5A8C8', r: 2, t: [60, .8, 1, .08] },
+  { base: 'gray',   name: '黑貓',       dot: '#3B3B40', r: 0, t: [0, .3, .45, 0] },
+  { base: 'tux',    name: '賓士貓',     dot: '#3B3633', r: 0, t: null },
+  { base: 'tux',    name: '灰白貓',     dot: '#8C8C8C', r: 0, t: [0, 1, .7, .3] },
+  { base: 'tux',    name: '棕白貓',     dot: '#9C6B45', r: 1, t: [0, 1, .8, .2, [28, .45, 1]] },
+  { base: 'tux',    name: '星空貓',     dot: '#3F4A8A', r: 3, t: [0, 1, .78, .1, [232, .38, 1]] },
+  { base: 'fluffy', name: '白色長毛貓', dot: '#F4ECDF', r: 0, t: null },
+  { base: 'fluffy', name: '奶茶長毛貓', dot: '#E8D2B0', r: 1, t: [0, 1, .97, 0, [35, .5, .6]] },
+  { base: 'fluffy', name: '藍霧長毛貓', dot: '#B4C2D2', r: 2, t: [0, 1, .85, 0, [210, .15, .8]] },
+  { base: 'fluffy', name: '櫻花貓',     dot: '#F2B8C6', r: 3, t: [0, 1, .92, 0, [345, .55, .9]] },
+  { base: 'fluffy', name: '抹茶貓',     dot: '#BFD6A6', r: 3, t: [0, 1, .9, 0, [95, .35, .9]] },
+  { base: 'calico', name: '三花貓',     dot: '#E39A55', r: 1, t: null },
+  { base: 'calico', name: '淡三花',     dot: '#E8CDB5', r: 2, t: [0, .5, 1, .08] },
+  { base: 'calico', name: '玳瑁貓',     dot: '#5A4030', r: 2, t: [0, 1, .62, 0] },
+  { base: 'milk',   name: '暹羅貓',     dot: '#EFE3CF', r: 1, t: null },
+  { base: 'milk',   name: '藍點暹羅',   dot: '#C9D2DC', r: 2, t: [180, .4, 1, 0] },
+  { base: 'milk',   name: '巧克力暹羅', dot: '#E3C9A8', r: 2, t: [0, 1.1, 1, .1] },
+  { base: 'milk',   name: '火焰暹羅',   dot: '#F0B48A', r: 3, t: [-10, 1.8, 1, 0] },
+];
+const BODIES = [{ name: '小', desc: '還是小貓', s: .78, sx: .78 }, { name: '', desc: '', s: 1, sx: 1 }, { name: '胖', desc: '圓滾滾', s: 1.1, sx: 1.22 }];
+// personality: hunger / energy drain, how much it likes guests, how often it asks for pets, bonus bond
+const PERSONAS = [
+  { name: '黏人', desc: '一直想要店長摸摸',       want: 2, bond: 1 },
+  { name: '貪吃', desc: '一下子就餓了',           hunger: 1.35, treat: 1 },
+  { name: '愛睡', desc: '很容易就想睡覺',         energy: 1.35 },
+  { name: '活潑', desc: '最愛陪客人玩',           play: .9 },
+  { name: '害羞', desc: '不太敢靠近陌生人',       play: .3, bond: 1 },
+  { name: '好奇', desc: '喜歡在 1F、2F 跑來跑去', roam: .45 },
+  { name: '優雅', desc: '客人看到都會多給一顆星', star: 1 },
+  { name: '調皮', desc: '常常撲來撲去',           play: .75, want: 1.3 },
+];
+const NAME_POOL = ('麻糬 布丁 湯圓 芝麻 豆花 可可 拿鐵 奶酪 糖糖 小虎 饅頭 包子 年糕 花生 栗子 地瓜 芋頭 鬆餅 蛋塔 泡芙 雪花 小雨 阿福 旺財 招財 嘟嘟 咪寶 喵喵 球球 毛毛 胖虎 小黑 小白 小花 小米 小橘 墨墨 炭炭 煤球 銀杏 楓葉 櫻桃 草莓 藍莓 檸檬 柚子 橘醬 蜂蜜 焦糖 太妃 奶昔 優格 起司 吐司 貝果 可頌 瑪芬 甜甜圈 棉花糖 QQ 糰子 大福 銅鑼燒 鯛魚燒 仙貝 抹茶 烏龍 紅茶 奶蓋 珍珠 椰果 仙草 愛玉 杏仁 核桃 腰果 毛豆 豆腐 竹輪 魚板 丸子 小籠 燒賣 春捲 餃子 粽子 月餅 雪球 星星 月亮 太陽 雲朵 彩虹 小熊 兔兔 噗噗 啾啾 皮皮 樂樂 歡歡 妞妞 寶寶').split(' ');
+const NAME_SUFFIX = ['', '丸', '寶', '醬'];
+for (const [id, d] of Object.entries(CAT_DEFS)) Object.assign(d, { base: id, coat: COATS.findIndex(c => c.base === id && !c.t), size: 1, pers: { orange: 1, tux: 6, fluffy: 2, calico: 3, gray: 4, tabby: 7, milk: 0 }[id], rarity: 0, no: Object.keys(CAT_DEFS).indexOf(id) + 1, orig: true });
+(function makeDex() {
+  let n = Object.keys(CAT_DEFS).length;
+  COATS.forEach((C, ci) => BODIES.forEach((B, bi) => { for (let j = 0; j < 4; j++) {
+    const pi = (ci + bi * 3 + j * 2) % PERSONAS.length, i = n - 7, R = RARITY[C.r], P = PERSONAS[pi];
+    const o = CAT_DEFS[C.base];
+    CAT_DEFS['x' + ++n] = { ...o, orig: false, no: n, base: C.base, coat: ci, size: bi, pers: pi, rarity: C.r, body: C.dot,
+      name: NAME_POOL[i % NAME_POOL.length] + NAME_SUFFIX[Math.floor(i / NAME_POOL.length) % NAME_SUFFIX.length],
+      desc: `${B.desc ? B.desc + '、' : ''}${P.name}的${C.name}，${P.desc}`,
+      price: Math.round(R.price * (bi === 0 ? 1.15 : bi === 2 ? 1.1 : 1) / 10) * 10, lv: R.lv };
+  } }));
+})();
+const CAT_IDS = Object.keys(CAT_DEFS);
+const catDef = id => CAT_DEFS[id];
+const catCoat = d => COATS[d.coat] || COATS[0];
+const catDot = d => d.body;
+const catNameOf = id => { const c = G.cats.find(c => c.id === id); return (c && c.nm) || CAT_DEFS[id].name; };
+// recoloured copies of the painted sprites, made on first use
+const TINTED = {};
+function tintImage(im, t) {
+  const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+  const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), p = d.data, [dh, sm, lm, la, col] = t;
+  for (let i = 0; i < p.length; i += 4) {
+    if (!p[i + 3]) continue;
+    const r = p[i] / 255, g2 = p[i + 1] / 255, b = p[i + 2] / 255, mx = Math.max(r, g2, b), mn = Math.min(r, g2, b), dd = mx - mn;
+    let l = (mx + mn) / 2, s = 0, h = 0;
+    if (dd > 1e-6) {
+      s = l > .5 ? dd / Math.max(1e-6, 2 - mx - mn) : dd / (mx + mn);
+      h = mx === r ? ((g2 - b) / dd + 6) % 6 : mx === g2 ? (b - r) / dd + 2 : (r - g2) / dd + 4; h *= 60;
+    }
+    h = (h + dh + 360) % 360; s = Math.min(1, s * sm); l = clamp(l * lm + la, 0, 1);
+    if (col) { h = col[0]; s = s * (1 - col[2]) + col[1] * col[2]; }
+    else s = Math.min(s, Math.min(1, dd * sm) / Math.max(1e-6, 1 - Math.abs(2 * l - 1))); // keep near-white pixels pale when darkening
+    const C = (1 - Math.abs(2 * l - 1)) * s, X = C * (1 - Math.abs((h / 60) % 2 - 1)), m = l - C / 2, k = Math.floor(h / 60) % 6;
+    const [R, G2, B] = [[C, X, 0], [X, C, 0], [0, C, X], [0, X, C], [X, 0, C], [C, 0, X]][k];
+    p[i] = (R + m) * 255; p[i + 1] = (G2 + m) * 255; p[i + 2] = (B + m) * 255;
+  }
+  x.putImageData(d, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height; return c;
+}
+function catImg(d, pose) {
+  const im = art(`cat_${d.base}_${pose}`); if (!im) return null;
+  const t = catCoat(d).t; if (d.orig || !t) return im;
+  const key = d.coat + '_' + pose;
+  try { return TINTED[key] || (TINTED[key] = tintImage(im, t)); } catch { return im; }
+}
+// small picture of a coat for the phone apps
+const COAT_PIC = {};
+function coatPic(d) {
+  const key = d.orig ? d.base : 'c' + d.coat; if (COAT_PIC[key]) return COAT_PIC[key];
+  const im = catImg(d, 1); if (!im) return '';
+  try { const c = document.createElement('canvas'); c.width = 60; c.height = 80; const x = c.getContext('2d'); const s = Math.min(60 / im.naturalWidth, 80 / im.naturalHeight); x.drawImage(im, (60 - im.naturalWidth * s) / 2, 80 - im.naturalHeight * s, im.naturalWidth * s, im.naturalHeight * s); return (COAT_PIC[key] = c.toDataURL()); } catch { return ''; }
+}
+const catThumb = (d, size = 40) => { const src = coatPic(d), b = BODIES[d.size];
+  return src ? `<img src="${src}" alt="" style="width:${size * b.sx}px;height:${size * 4 / 3 * b.s}px;object-fit:contain;vertical-align:bottom">` : `<i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${catDot(d)};border:1px solid var(--line)"></i>`; };
+// beds: the 7 painted spots plus extra baskets; cats on duty get one each day
+const EXTRA_BEDS = [
+  { f: 2, x: 566, y: 122, ground: { x: 566, y: 512 } },
+  { f: 2, x: 700, y: 494, ground: { x: 700, y: 512 }, basket: '#C9A27E' },
+  { f: 2, x: 800, y: 494, ground: { x: 800, y: 512 }, basket: '#B8C4B0' },
+  { f: 1, x: 36, y: 186, ground: { x: 170, y: 520 } },
+  { f: 1, x: 716, y: 492, ground: { x: 716, y: 512 }, basket: '#C9A27E' },
+  { f: 2, x: 352, y: 496, ground: { x: 352, y: 514 }, basket: '#D8C2A0' },
+];
+const dutyCap = () => Math.min(Object.keys(BEDS).length + EXTRA_BEDS.length, 3 + shopLv() + G.expand);
+const onDuty = () => G.duty.filter(id => G.cats.some(c => c.id === id));
+function assignBeds(ids) {
+  const free = Object.keys(BEDS).filter(b => !ids.includes(b)).map(b => BEDS[b]).concat(EXTRA_BEDS), out = {};
+  for (const id of ids) out[id] = BEDS[id] || free.shift() || EXTRA_BEDS[0];
+  return out;
+}
+// adoption centre: 4 cats a day, rarer ones only once the shop is big enough
+function dailyOffers() {
+  let seed = (G.day * 104729 + 17) % 2147483647; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  const lv = shopLv(), pool = CAT_IDS.filter(id => !CAT_DEFS[id].orig && CAT_DEFS[id].lv <= lv && !G.cats.some(c => c.id === id)), out = [];
+  for (let tries = 0; out.length < 4 && pool.length && tries < 200; tries++) {
+    const ok = RARITY.map((R, i) => R.lv <= lv ? R.w : 0), tot = ok.reduce((a, b) => a + b, 0); let x = rnd() * tot, r = 0; while (x > ok[r]) x -= ok[r++];
+    const list = pool.filter(id => CAT_DEFS[id].rarity === r); if (!list.length) continue;
+    const id = list[Math.floor(rnd() * list.length)]; if (!out.includes(id)) out.push(id);
+  }
+  for (const id of out) if (!G.seen.includes(id)) G.seen.push(id);
+  return out;
+}
 const ROLES = {
   cook:    { name: '阿杰', title: '煮飯人員',   wage: 120, desc: '展示櫃快空時會自己去烤點心（要有麵粉）',   apron: '#C9A27E', hair: '#2B2420', shirt: '#F4F0E8', home: { f: 1, x: 300, y: 512 } },
   server:  { name: '小美', title: '上收餐人員', wage: 100, desc: '幫客人送餐、收桌子，也會打掃洗手間',       apron: '#9FB8AD', hair: '#6B4A3A', shirt: '#FFFFFF', home: { f: 1, x: 655, y: 560 }, long: true },
@@ -412,6 +549,47 @@ const ROLES = {
   feeder:  { name: '小芸', title: '餵食人員',   wage: 80,  desc: '顧好 2F 的貓碗和貓砂盆（要有貓糧、貓砂）', apron: '#E3AE97', hair: '#4C3A30', shirt: '#FFFFFF', home: { f: 2, x: 372, y: 528 }, long: true },
   sitter:  { name: '阿凱', title: '逗貓人員',   wage: 80,  desc: '叫醒睡飽的貓，帶貓去陪 2F 的客人',         apron: '#D8C27A', hair: '#A0703F', shirt: '#F4F0E8', home: { f: 2, x: 760, y: 520 } },
 };
+// ---- manager outfits (phone app 衣櫃)
+const OUTFITS = [
+  { id: 'basic', name: '咖啡廳圍裙', desc: '開店第一天穿的白襯衫和米色圍裙', price: 0, lv: 1, spr: 'mgr' },
+  { id: 'mo1', name: '貓咪毛衣', desc: '胸口有貓臉的燕麥色毛衣配長裙', price: 300, lv: 1, spr: 'mo1' },
+  { id: 'mo2', name: '草莓洋裝', desc: '淡黃色草莓小碎花洋裝加白圍裙', price: 500, lv: 2, spr: 'mo2' },
+  { id: 'mo6', name: '草帽洋裝', desc: '鼠尾草綠的亞麻洋裝、草帽和小籃子', price: 800, lv: 3, spr: 'mo6' },
+  { id: 'mo3', name: '夏日浴衣', desc: '水藍色牽牛花浴衣配粉紅腰帶', price: 900, lv: 3, spr: 'mo3' },
+  { id: 'mo4', name: '甜點師白袍', desc: '雙排扣白袍和高高的廚師帽', price: 1200, lv: 4, spr: 'mo4' },
+  { id: 'mo5', name: '聖誕毛衣', desc: '紅色雪花貓咪毛衣和綠圍巾', price: 1500, lv: 5, spr: 'mo5' },
+];
+// ---- 客人圖鑑: everyone who has visited, by rarity. Rarer guests come once the shop is bigger, tip and bring fans.
+const GUEST_DEX = [
+  { id: 'c1', r: 0, name: '背包大學生', desc: '下課就來寫報告，一坐就是一下午' },
+  { id: 'c2', r: 0, name: '西裝上班族', desc: '午休時間衝過來吸貓充電' },
+  { id: 'c3', r: 0, name: '慈祥的阿嬤', desc: '說橘子長得很像她家以前的貓' },
+  { id: 'c4', r: 0, name: '長髮文青', desc: '帶著一本書，喜歡靠窗的位子' },
+  { id: 'c5', r: 0, name: '牛仔外套女孩', desc: '每次都拍一堆貓咪照片' },
+  { id: 'c7', r: 0, name: '帽T少年', desc: '假裝很酷，其實一直偷摸貓' },
+  { id: 'c8', r: 0, name: '優雅的阿姨', desc: '紫色上衣，總是點一杯拿鐵' },
+  { id: 'c6', r: 1, name: '高中生 小晴', desc: '第一位客人，把這家店推薦給全班', special: true },
+  { id: 'c9', r: 1, name: '攝影師小林', desc: '來拍貓咪寫真集，會幫店裡宣傳', say: '可以讓我拍幾張嗎？' },
+  { id: 'c10', r: 1, name: '貓咪部落客', desc: '一邊吃一邊直播，粉絲很多', say: '大家好～今天來到一家貓咪咖啡廳！' },
+  { id: 'c11', r: 1, name: '小黃帽小學生', desc: '放學路上拿零用錢來看貓', say: '我存了好久的零用錢！' },
+  { id: 'c12', r: 1, name: '運動少女', desc: '晨跑完來喝一杯，再去摸貓', say: '跑完步來吸貓最棒了' },
+  { id: 'c13', r: 2, name: '美食評論家', desc: '戴著圓眼鏡，在小本子上寫下評分', say: '讓我嚐嚐這裡的招牌…' },
+  { id: 'c14', r: 2, name: '外國背包客', desc: '看著地圖一路找過來的觀光客', say: 'Hello! 這裡就是那家貓咖啡廳嗎？' },
+  { id: 'c15', r: 2, name: '和服奶奶', desc: '穿著紫色和服，優雅地搧著扇子', say: '哎呀，好可愛的貓咪們' },
+  { id: 'c16', r: 2, name: '休假的甜點師', desc: '名店的甜點師，帶了一盒點心來交流', say: '我也是做甜點的，來觀摩一下' },
+  { id: 'c17', r: 3, name: '電視台主播', desc: '來做「巷弄貓咖啡」特別報導', say: '各位觀眾，我們現在來到…' },
+  { id: 'c18', r: 3, name: '知名畫家', desc: '一邊畫貓咪速寫，一邊喝咖啡', say: '這光線…太適合畫畫了' },
+  { id: 'c19', r: 3, name: '貓咪博士', desc: '研究貓咪三十年的獸醫博士', say: '讓我看看這些孩子健不健康' },
+  { id: 'c20', r: 3, name: '神秘的貓紳士', desc: '肩膀上坐著一隻橘貓，沒有人知道他從哪裡來', say: '……喵。' },
+];
+const GUEST_R = [
+  { name: '普通', color: '#7E9A6C', lv: 1, chance: 0,   tip: 0,   fans: 0, exp: 0 },
+  { name: '少見', color: '#5E8CB0', lv: 2, chance: .14, tip: 20,  fans: 1, exp: 2 },
+  { name: '稀有', color: '#9C6CC0', lv: 4, chance: .06, tip: 60,  fans: 3, exp: 6 },
+  { name: '傳說', color: '#D9A23A', lv: 6, chance: .025, tip: 150, fans: 8, exp: 15 },
+];
+const guestOf = id => GUEST_DEX.find(x => x.id === id) || GUEST_DEX[0];
+const regularTitle = n => n >= 100 ? '家人般的熟客' : n >= 30 ? '老朋友' : n >= 10 ? '常客' : n >= 3 ? '回頭客' : '初次見面';
 const SHIRTS = ['#9FB8AD', '#E3AE97', '#A7B5D6', '#D8C27A', '#C9A3C1', '#8FB0C9', '#E8D8C3', '#B9C99A'];
 const HAIRS = ['#3E2C23', '#6B4A3A', '#2B2420', '#A0703F', '#4C3A30'];
 const SKIN = '#F7DEC9';
@@ -425,7 +603,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 3, expand: 0, staff: [],
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano' };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', music: 'piano' };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
@@ -436,21 +614,35 @@ const litterMax = () => hasF('deodor') ? 5 : 3;
 const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv).map(d => (MENU[d].meal ? '正餐「' : '甜點「') + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
 // ---- bond between the manager and each cat ----
 const BOND = [
-  { at: 0,   title: '有點害羞', act: 'pet',   name: '摸摸頭',     desc: '每摸一次親密度 +1' },
-  { at: 10,  title: '熟悉',     act: 'rub',   name: '蹭蹭腳',     desc: '貓咪繞著店長的腳蹭來蹭去' },
-  { at: 25,  title: '喜歡',     act: 'five',  name: '擊掌',       desc: '貓咪舉起肉球跟店長擊掌' },
-  { at: 45,  title: '好朋友',   act: 'belly', name: '翻肚子',     desc: '露出肚子給店長摸，回復體力' },
-  { at: 70,  title: '最愛',     act: 'hug',   name: '抱抱',       desc: '店長抱著貓走一段路，貓會很開心' },
-  { at: 100, title: '家人',     act: 'kiss',  name: '碰鼻子',     desc: '用鼻子碰碰店長，愛心滿出來' },
+  { at: 0,    title: '有點害羞',   act: 'pet',     name: '摸摸頭',   desc: '每摸一次親密度 +1', gain: 1 },
+  { at: 10,   title: '熟悉',       act: 'rub',     name: '蹭蹭腳',   desc: '貓咪繞著店長的腳蹭來蹭去', gain: 2 },
+  { at: 25,   title: '喜歡',       act: 'five',    name: '擊掌',     desc: '貓咪舉起肉球跟店長擊掌', gain: 2 },
+  { at: 45,   title: '好朋友',     act: 'belly',   name: '翻肚子',   desc: '露出肚子給店長摸，回復體力', gain: 3 },
+  { at: 70,   title: '最愛',       act: 'hug',     name: '抱抱',     desc: '店長抱著貓走一段路，貓會很開心', gain: 4 },
+  { at: 100,  title: '家人',       act: 'kiss',    name: '碰鼻子',   desc: '用鼻子碰碰店長，愛心滿出來', gain: 4 },
+  { at: 150,  title: '心有靈犀',   act: 'dance',   name: '轉圈圈跳舞', desc: '跟店長一起轉圈圈，親密度 +5', gain: 5 },
+  { at: 250,  title: '形影不離',   act: 'gift',    name: '送禮物',   desc: '叼來一份小禮物（每隻貓一天一次）', gain: 6 },
+  { at: 400,  title: '靈魂伴侶',   act: 'sing',    name: '喵喵合唱', desc: '一起唱歌，同一層的客人變得更有耐心', gain: 7 },
+  { at: 650,  title: '命中注定',   act: 'star',    name: '閃亮亮',   desc: '全身閃閃發光，同一層客人的耐心全部回滿', gain: 8 },
+  { at: 1000, title: '永遠的羈絆', act: 'rainbow', name: '彩虹之約', desc: '天空出現彩虹，粉絲 +1（每隻貓一天一次）', gain: 10 },
+  { at: 1500, title: '傳說中的好夥伴' },
+  { at: 2500, title: '宇宙無敵好朋友' },
+  { at: 5000, title: '喵生摯愛' },
+  { at: 9999, title: '超越時空的家人' },
 ];
+const BOND_MAX = 99999;
 const bondOf = k => G.bond[k.id] || 0;
-const bondLv = k => BOND.filter(b => bondOf(k) >= b.at).length - 1;
+const bondLvV = v => BOND.filter(b => v >= b.at).length - 1;
+const bondLv = k => bondLvV(bondOf(k));
+// progress towards the next title, for the bars in the phone
+const bondPct = v => { const l = bondLvV(v), a = BOND[l].at, b = BOND[l + 1]; return b ? clamp((v - a) / (b.at - a), 0, 1) * 100 : 100; };
 function addBond(k, n) {
-  const before = bondLv(k); G.bond[k.id] = Math.min(100, bondOf(k) + n);
+  n += (k.P && k.P.bond) || 0;
+  const before = bondLv(k); G.bond[k.id] = Math.min(BOND_MAX, bondOf(k) + n);
   const rc = G.cats.find(c => c.id === k.id); if (rc) rc.pets++;
   floatText(k.floor, k.x, k.y - 96, `親密度 +${n}`, '#E07A7A');
   const after = bondLv(k);
-  if (after > before) { toast(`${k.name}跟${G.mgrName}更親了！解鎖「${BOND[after].name}」`); floatText(k.floor, k.x, k.y - 120, `♥ ${BOND[after].title}`, '#E07A7A'); }
+  if (after > before) { const B = BOND[after]; toast(B.act ? `${k.name}跟${G.mgrName}更親了！解鎖「${B.name}」` : `${k.name}跟${G.mgrName}變成「${B.title}」了！`); floatText(k.floor, k.x, k.y - 120, `♥ ${B.title}`, '#E07A7A'); }
 }
 // ---- phone calls (app 電話): each contact can be called once a day and does something for the shop
 const CALLS = [
@@ -477,18 +669,43 @@ function startCall(id) {
   setTimeout(step, 700);
 }
 // ---- customer comments (phone app 喵評論): about half the guests leave one when they go
-const NICKS = ['貓奴阿宏', '甜點控小安', '路過的上班族', '大學生 Yuki', '愛貓的阿姨', '攝影師小林', '吃貨小胖', '隔壁鄰居', '咖啡廳巡禮', '帶女兒來的爸爸', '社畜 Amy', '貓咪部落客'];
-const NOTE_TXT = { '等餐太久': '餐點等好久', '價格太貴': '價格有點貴', '入場費太貴': '2F 入場費太貴', '排隊太久': '排隊排太久', '沒摸到貓': '貓咪都不理我', '有貓砂味': '2F 有貓砂味', '洗手間很髒': '洗手間不太乾淨', '找錢找錯': '找錢找錯了', '等太久了': '等到不想等了' };
+const NICKS = ['貓奴阿宏', '甜點控小安', '路過的上班族', '大學生 Yuki', '愛貓的阿姨', '吃貨小胖', '隔壁鄰居', '咖啡廳巡禮', '帶女兒來的爸爸', '社畜 Amy', '貓咪部落客', '週末散步的夫妻', '早起的鳥兒', '加班到很晚的人', '奶茶星人', '研究生阿德', '新手爸媽', '退休的王伯伯', '剛搬來的人', '拿鐵控', '熬夜趕稿的人', '喵星人觀察家', '喜歡下雨天', '路痴小雯', '第一次來', '每週報到', '帶狗經過的人', '高中生阿傑', '幼兒園老師', '公車司機大哥', '花店老闆娘', '書店店員', '健身教練', '鋼琴老師', '外送小哥', '護理師小琪', '設計師 Kai', '程式設計師', '自由接案者', '旅行中的人', '想養貓的人', '家裡有三隻貓', '咖啡豆收藏家', '布丁愛好者', '蛋糕偵探', '小說作家', '社區志工', '美髮師 Joe', '雙胞胎姊妹', '阿公帶孫子'];
+const NOTE_TXT = { '等餐太久': '餐點等好久', '價格太貴': '價格有點貴', '入場費太貴': '2F 入場費太貴', '排隊太久': '排隊排太久', '沒摸到貓': '貓咪都不理我', '有貓砂味': '2F 有貓砂味', '洗手間很髒': '洗手間不太乾淨', '找錢找錯': '找錢找錯了', '等太久了': '等到不想等了', '餐點一直沒來': '餐點一直沒來' };
+// comments are put together from parts ({c} cat, {d} dish, {s} shop, {m} manager, {b} complaint) and never repeat a recent one
+const REV = {
+  open: ['', '', '', '今天第一次來，', '下班順路過來，', '跟朋友一起來，', '下雨天來躲雨，', '週末來放鬆，', '聽朋友推薦來的，', '第二次來了，', '又來報到了！', '午休偷溜過來，', '帶家人一起來，', '一個人來發呆，', '早上一開門就來了，', '看到 IG 照片來的，'],
+  5: ['{c}一直來找我玩，超療癒！', '被{c}選中了！今天好幸福', '{d}好好吃，貓咪也好可愛', '{c}在我腿上睡著了，捨不得走', '{d}是我吃過最好吃的！', '{m}店長好親切，還記得我的名字', '整間店暖暖的，陽光好舒服', '{c}對我喵了一聲，心都化了', '環境好乾淨，貓咪都很親人', '{d}配上{c}，完美的下午', '{c}用肉球拍我的手！', '這裡就是貓奴的天堂', '{s}是我心中第一名的貓咖', '{c}的毛好軟好蓬', '{d}的味道讓我想起小時候', '跟{c}拍了好多合照', '{c}翻肚子給我看！', '{m}店長做的{d}太厲害了', '樓上的貓咪好會撒嬌', '一進門就被{c}迎接', '音樂、陽光、貓咪，全部都剛剛好', '{c}在窗邊曬太陽的樣子好美', '吃完{d}再上樓吸貓，太幸福了', '每一隻貓都好有個性'],
+  4: ['{d}不錯吃，下次想試別的', '氣氛很好，適合放空', '貓咪好可愛，推推', '{c}有點害羞，但很可愛', '{d}好吃，份量可以再多一點', '整體很棒，只是{b}', '{c}一直在睡覺，睡臉好可愛', '店很溫馨，會想再來', '{d}很好吃，價格也合理', '樓上很舒服，可惜人有點多', '{m}店長很忙但還是很親切', '下次想帶朋友一起來', '{c}好像不太理我，但還是好可愛', '甜點很用心，貓咪也照顧得很好'],
+  3: ['還可以，但{b}', '普普通通，貓咪蠻可愛的', '{d}還行，{b}', '貓咪很可愛，可是{b}', '氣氛不錯，只是{b}', '{c}很可愛，但{b}', '中規中矩的一次', '期待下次會更好'],
+  2: ['有點失望，{b}…', '{b}，有點可惜', '跟想像的不太一樣，{b}', '貓咪可愛，可是{b}，好可惜'],
+  1: ['真的很失望，{b}', '{b}…不太想再來了', '今天運氣不好，{b}'],
+  close: ['', '', '', '', '下次還要來！', '推薦給大家', '會再來的', '喵～', '♡', '一定要再來', '五顆星給貓咪', '已經跟朋友分享了', '想住在這裡', '明天還想來'],
+  close3: ['', '', '', '希望下次更好', '會再觀察看看', '貓咪是加分的'],
+  fed: ['親手餵{c}吃肉泥，牠舔得好用力！', '{c}吃肉泥的樣子太可愛了', '買了肉泥，{c}馬上衝過來', '餵{c}吃肉泥，牠還用頭蹭我'],
+  rare: {
+    c9: ['拍到好多{c}的好照片，下次出寫真集！'], c10: ['今天的直播大成功，觀眾都愛{c}！'], c11: ['我長大也要開貓咪咖啡廳！'], c12: ['跑完步來這裡，整個人都療癒了'],
+    c13: ['{d}的層次很細膩，{s}值得專程來一趟'], c14: ['Amazing! {c}是我這趟旅行最棒的回憶'], c15: ['好久沒有這麼悠閒了，{c}真乖'], c16: ['{d}做得很用心，我也學到了'],
+    c17: ['這集「巷弄貓咖啡」一定會很受歡迎！'], c18: ['畫了一整本{c}的速寫，感謝招待'], c19: ['每隻貓都很健康，看得出來被照顧得很好'], c20: ['……{c}，好孩子。（留下一枚貓掌印章）'],
+  },
+};
 function writeReview(c, s) {
-  if (c.special) { /* 小晴 always writes one */ } else if (Math.random() > (s === 5 || s === 1 ? .7 : .45)) return;
-  const dish = c.order?.dish ? MENU[c.order.dish].name : null, cat = c.catName, bad = NOTE_TXT[c.notes[0]] || c.notes[0];
-  let t;
-  if (c.fed === true && Math.random() < .5) t = s >= 4 ? `親手餵${cat || '貓咪'}吃肉泥，牠舔得好用力！` : `餵貓吃肉泥很開心，可是${bad || '有點可惜'}`;
-  else if (s >= 5) t = pick([cat ? `${cat}一直來找我玩，超療癒！` : '整間店暖暖的好舒服', dish ? `${dish}好好吃，貓咪也好可愛` : '店長好親切，會再來！', cat ? `被${cat}選中了！今天好幸福` : '環境好乾淨，貓咪都很親人']);
-  else if (s === 4) t = pick([dish ? `${dish}不錯吃，下次想試別的` : '氣氛很好，適合放空', bad ? `整體很棒，只是${bad}` : '貓咪好可愛，推推']);
-  else if (s === 3) t = bad ? `還可以，但${bad}` : '普普通通，貓咪蠻可愛的';
-  else t = bad ? `有點失望，${bad}…` : '跟想像的不太一樣';
-  G.reviews.unshift({ d: S.day, s, w: c.special ? '高中生 小晴' : pick(NICKS), t }); if (G.reviews.length > 80) G.reviews.length = 80;
+  if (c.special || c.rare >= 2) { /* 小晴 and the rare guests always write one */ } else if (Math.random() > (s === 5 || s === 1 ? .7 : .45)) return;
+  const dish = c.order?.dish ? MENU[c.order.dish].name : null, cat = c.catName || (S.cats.length ? pick(S.cats).name : '貓咪'), bad = NOTE_TXT[c.notes[0]] || c.notes[0] || '有點小可惜';
+  const fill = x => x.replace(/{c}/g, cat).replace(/{d}/g, dish || '甜點').replace(/{s}/g, G.shopName).replace(/{m}/g, G.mgrName).replace(/{b}/g, bad);
+  const used = new Set(G.reviews.map(r => r.t));
+  const pool = REV[s].filter(x => (dish || !x.includes('{d}')) && (c.notes.length || !x.includes('{b}')) && (c.catName || s < 4 || !x.includes('{c}')));
+  let t = '';
+  for (let tries = 0; tries < 30 && (!t || used.has(t)); tries++) {
+    let body;
+    if (c.rare && REV.rare[c.look] && s >= 3 && tries < 6) body = pick(REV.rare[c.look]);
+    else if (c.fed === true && Math.random() < .5 && s >= 3) body = pick(REV.fed);
+    else body = pick(pool.length ? pool : REV[s]);
+    const end = s >= 4 ? pick(REV.close) : s === 3 ? pick(REV.close3) : '';
+    t = fill(pick(REV.open) + body + (end ? (/[！～…♡]$/.test(body) ? '' : '，') + end : '')).replace(/，，/g, '，');
+  }
+  t = t.slice(0, 60);
+  const who = c.special ? '高中生 小晴' : c.rare ? guestOf(c.look).name : pick(NICKS);
+  G.reviews.unshift({ d: S.day, s, w: who, t }); if (G.reviews.length > 80) G.reviews.length = 80;
   G.revTotal++; S.today.reviews++;
 }
 // ---- daily missions (phone app 每日任務): 3 a day, picked from the day number, each pays cash + exp once claimed
@@ -534,7 +751,7 @@ function doPromo(id) {
     const awake = S.cats.filter(k => k.state !== 'sleep');
     if (!awake.length) { toast('貓咪都在睡覺，拍不到可愛的照片'); return; }
     const k = awake.sort((a, b) => bondOf(b) - bondOf(a))[0];
-    fans = 2 + Math.floor(bondOf(k) / 10) + awake.length; note = `（拍了${k.name}，${fans * 7} 個讚）`;
+    fans = 2 + Math.min(15, Math.floor(bondOf(k) / 10)) + Math.min(8, awake.length); note = `（拍了${k.name}，${fans * 7} 個讚）`;
   }
   if (id === 'sample') {
     const n = dispTotal(); if (n < 3) { toast('展示櫃至少要有 3 份點心才能辦試吃'); return; }
@@ -562,6 +779,53 @@ const BADGES = [
   { id: 'week',    icon: '📅', name: '營業一週',   desc: '撐過 7 天',                   ok: () => G.day >= 8 },
   { id: 'clowder', icon: '🐾', name: '貓咪大家庭', desc: '店裡住了 7 隻貓',          ok: () => G.cats.length >= 7 },
   { id: 'land',    icon: '🌱', name: '開拓者',     desc: '累計營收 ¥100,000',           ok: () => G.earned >= LAND_GOAL },
+  // cats
+  { id: 'cat10',   icon: '🐈', name: '十全十美',   desc: '領養 10 隻貓',                ok: () => G.cats.length >= 10 },
+  { id: 'cat30',   icon: '🏘️', name: '貓咪村長',   desc: '領養 30 隻貓',                ok: () => G.cats.length >= 30 },
+  { id: 'cat100',  icon: '🏰', name: '喵喵王國',   desc: '領養 100 隻貓',               ok: () => G.cats.length >= 100 },
+  { id: 'seen50',  icon: '🔍', name: '貓咪觀察家', desc: '圖鑑見過 50 隻貓',            ok: () => G.seen.length >= 50 },
+  { id: 'seen150', icon: '📚', name: '貓咪百科',   desc: '圖鑑見過 150 隻貓',           ok: () => G.seen.length >= 150 },
+  { id: 'seenall', icon: '🌟', name: '圖鑑大師',   desc: '圖鑑見過全部的貓',            ok: () => G.seen.length >= CAT_IDS.length },
+  { id: 'catR',    icon: '💎', name: '少見的緣分', desc: '領養一隻「少見」的貓',        ok: () => G.cats.some(c => CAT_DEFS[c.id].rarity >= 1) },
+  { id: 'catSR',   icon: '🔮', name: '稀有的緣分', desc: '領養一隻「稀有」的貓',        ok: () => G.cats.some(c => CAT_DEFS[c.id].rarity >= 2) },
+  { id: 'catSSR',  icon: '👑', name: '傳說的緣分', desc: '領養一隻「傳說」的貓',        ok: () => G.cats.some(c => CAT_DEFS[c.id].rarity >= 3) },
+  { id: 'kitten',  icon: '🍼', name: '小貓保母',   desc: '領養一隻小貓',                ok: () => G.cats.some(c => CAT_DEFS[c.id].size === 0) },
+  { id: 'chonk',   icon: '🍙', name: '圓滾滾俱樂部', desc: '領養一隻胖胖貓',            ok: () => G.cats.some(c => CAT_DEFS[c.id].size === 2) },
+  { id: 'rename',  icon: '✏️', name: '命名大師',   desc: '幫貓咪取一個新名字',          ok: () => G.stats.rename >= 1 },
+  { id: 'fullhouse', icon: '🛋️', name: '客滿的貓床', desc: '上班的貓咪名額全部排滿',   ok: () => S.cats.length >= dutyCap() && dutyCap() >= 8 },
+  // bond
+  { id: 'soul',    icon: '💞', name: '心有靈犀',   desc: '跟一隻貓親密度到 150',        ok: () => Object.values(G.bond).some(v => v >= 150) },
+  { id: 'b400',    icon: '🎶', name: '靈魂伴侶',   desc: '跟一隻貓親密度到 400',        ok: () => Object.values(G.bond).some(v => v >= 400) },
+  { id: 'b1000',   icon: '🌈', name: '永遠的羈絆', desc: '跟一隻貓親密度到 1000',       ok: () => Object.values(G.bond).some(v => v >= 1000) },
+  { id: 'b9999',   icon: '♾️', name: '超越時空',   desc: '跟一隻貓親密度到 9999',       ok: () => Object.values(G.bond).some(v => v >= 9999) },
+  { id: 'friends5', icon: '🤝', name: '大家都是好朋友', desc: '5 隻貓親密度到 45',      ok: () => Object.values(G.bond).filter(v => v >= 45).length >= 5 },
+  { id: 'fed50',   icon: '🥢', name: '肉泥大使',   desc: '客人餵貓吃肉泥 50 次',        ok: () => G.stats.fed >= 50 },
+  // guests
+  { id: 'g10',     icon: '👋', name: '熱鬧小店',   desc: '客人圖鑑收集 10 種客人',      ok: () => Object.keys(G.guests).length >= 10 },
+  { id: 'gall',    icon: '📒', name: '人脈王',     desc: '客人圖鑑全部收集',            ok: () => Object.keys(G.guests).length >= GUEST_DEX.length },
+  { id: 'gR',      icon: '🎒', name: '少見的客人', desc: '接待一位「少見」的客人',      ok: () => GUEST_DEX.some(x => x.r === 1 && !x.special && G.guests[x.id]) },
+  { id: 'gSR',     icon: '🎩', name: '稀客上門',   desc: '接待一位「稀有」的客人',      ok: () => GUEST_DEX.some(x => x.r === 2 && G.guests[x.id]) },
+  { id: 'gSSR',    icon: '🎬', name: '傳說中的客人', desc: '接待一位「傳說」的客人',    ok: () => GUEST_DEX.some(x => x.r === 3 && G.guests[x.id]) },
+  { id: 'regular', icon: '☕', name: '老朋友',     desc: '有一位客人來了 30 次',        ok: () => Object.values(G.guests).some(v => v.n >= 30) },
+  { id: 'v100',    icon: '🚪', name: '百位客人',   desc: '累計接待 100 位客人',         ok: () => G.stats.guests >= 100 },
+  { id: 'v1000',   icon: '🎊', name: '千客萬來',   desc: '累計接待 1,000 位客人',       ok: () => G.stats.guests >= 1000 },
+  { id: 'tips',    icon: '🪙', name: '小費滿滿',   desc: '累計收到 ¥1,000 小費',        ok: () => G.stats.tips >= 1000 },
+  { id: 'rev100',  icon: '💬', name: '話題小店',   desc: '收到 100 則留言',             ok: () => G.revTotal >= 100 },
+  { id: 'rev500',  icon: '📰', name: '口碑名店',   desc: '收到 500 則留言',             ok: () => G.revTotal >= 500 },
+  // shop
+  { id: 'fans200', icon: '📣', name: '人氣名店',   desc: '粉絲到 200',                  ok: () => G.fans >= 200 },
+  { id: 'fans1000', icon: '🏆', name: '全城都知道', desc: '粉絲到 1,000',               ok: () => G.fans >= 1000 },
+  { id: 'lv3',     icon: '🏠', name: '小有名氣',   desc: '店鋪升到 Lv.3',               ok: () => shopLv() >= 3 },
+  { id: 'lv5',     icon: '🏡', name: '巷口名店',   desc: '店鋪升到 Lv.5',               ok: () => shopLv() >= 5 },
+  { id: 'expand2', icon: '🔨', name: '越開越大',   desc: '完成 2 次擴建',               ok: () => G.expand >= 2 },
+  { id: 'day30',   icon: '🗓️', name: '營業一個月', desc: '撐過 30 天',                  ok: () => G.day >= 31 },
+  { id: 'day100',  icon: '💯', name: '百日紀念',   desc: '撐過 100 天',                 ok: () => G.day >= 101 },
+  { id: 'rich2',   icon: '🏦', name: '大富翁',     desc: '現金到 ¥10,000',              ok: () => G.cash >= 10000 },
+  { id: 'chef50',  icon: '🍰', name: '甜點職人',   desc: '完美火候 50 次',              ok: () => G.stats.perfect >= 50 },
+  { id: 'change50', icon: '🧮', name: '心算高手',  desc: '正確找錢 50 次',              ok: () => G.stats.change >= 50 },
+  { id: 'gamer60', icon: '🕹️', name: '接點心大師', desc: '小遊戲拿到 60 分',            ok: () => G.stats.best >= 60 },
+  { id: 'dress3',  icon: '👗', name: '愛打扮的店長', desc: '衣櫃裡有 3 套衣服',         ok: () => G.wardrobe.length >= 3 },
+  { id: 'dressall', icon: '🎀', name: '時尚店長',  desc: '收集全部衣服',               ok: () => G.wardrobe.length >= OUTFITS.length },
 ];
 function checkBadges() {
   for (const b of BADGES) if (!G.badges.includes(b.id) && b.ok()) {
@@ -615,20 +879,23 @@ function pgEnd() {
 function pgPointer(e) { const cvs = $('pgame'); if (!cvs || !PG.run) return; const r = cvs.getBoundingClientRect(); PG.x = clamp((e.clientX - r.left) * 300 / r.width, 24, 276); }
 function gainExp(n) { G.exp += n; if (S) S.today.exp += n; }
 function gainEarned(n) { G.earned += n; if (!G.landReady && G.earned >= LAND_GOAL) { G.landReady = true; S.landUp = true; } }
-function makeCat(id) {
-  const d = CAT_DEFS[id], b = BEDS[id];
-  return { id, name: d.name, body: d.body, dark: d.dark, belly: d.belly, fluffy: !!d.fluffy, stripes: !!d.stripes, tux: !!d.tux, spots: d.spots, points: !!d.points,
+function makeCat(id, b) {
+  const d = CAT_DEFS[id];
+  return { id, def: d, bed: b, P: PERSONAS[d.pers] || {}, size: BODIES[d.size] || BODIES[1], name: catNameOf(id), body: d.body, dark: d.dark, belly: d.belly, fluffy: !!d.fluffy, stripes: !!d.stripes, tux: !!d.tux, spots: d.spots, points: !!d.points,
            floor: b.f, x: b.x, y: b.y, path: [], speed: 95, face: d.face,
            state: 'sleep', onBed: true, energy: 70, hunger: 25 + Math.random() * 15, t: 0, hold: false, hearts: 0 };
 }
-function makeCats() { return G.cats.map(c => makeCat(c.id)); }
+function makeCats() { const ids = onDuty().slice(0, dutyCap()), beds = assignBeds(ids); return ids.map(id => makeCat(id, beds[id])); }
 // a newly adopted cat comes in through the front door, says hello and goes to find its bed
 function adoptCat(id) {
   const d = CAT_DEFS[id];
   if (!d || G.cats.some(c => c.id === id) || d.lv > shopLv() || G.cash < d.price) return;
-  G.cash -= d.price; S.today.spent += d.price;
-  G.cats.push({ id, since: G.day, pets: 0 });
-  const k = makeCat(id); k.onBed = false; k.state = 'walk'; k.floor = 1; k.x = DOOR.x; k.y = DOOR.y;
+  G.cash -= d.price; S.today.spent += d.price; G.stats.adopt++;
+  G.cats.push({ id, since: G.day, pets: 0 }); if (!G.seen.includes(id)) G.seen.push(id);
+  if (S.cats.length >= dutyCap()) { toast(`${d.name}來到${G.shopName}了！今天店裡的貓已經滿了，牠先在貓咪宿舍休息，可以在喵喵家族排牠上班`); saveProgress(); return; }
+  G.duty.push(id);
+  const used = S.cats.map(k => k.bed), free = Object.keys(BEDS).map(b => BEDS[b]).concat(EXTRA_BEDS).filter(b => !used.includes(b));
+  const k = makeCat(id, BEDS[id] && !used.includes(BEDS[id]) ? BEDS[id] : free[0]); k.onBed = false; k.state = 'walk'; k.floor = 1; k.x = DOOR.x; k.y = DOOR.y;
   S.cats.push(k); goBed(k); k.energy = 40; say(k, '喵？這裡是新家嗎'); later(2.5, () => say(S.mgr, `歡迎你，${d.name}！`));
   toast(`${d.name}來到${G.shopName}了！`); saveProgress();
 }
@@ -650,7 +917,7 @@ function startDay() {
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
     startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false,
     today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0 },
-    daily: pickDaily(), base: { ...G.stats, pets: G.cats.reduce((a, c) => a + c.pets, 0) },
+    daily: pickDaily(), offers: dailyOffers(), rareToday: {}, base: { ...G.stats, pets: G.cats.reduce((a, c) => a + c.pets, 0) },
     cats: makeCats(),
     staff: G.staff.map(r => makeStaff(r, false)),
   };
@@ -761,10 +1028,12 @@ const GUESTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c8']; // c6 is 小晴 in he
 (function loadArt() {
   const names = ['bg1', 'bg2', 'bg3', 'counter', 'table', 'cushion', 'bowl', 'litter', 'basket', 'record', 'warmer', 'petbed', 'deodor', 'lightbox', 'plant'];
   for (const id of PEOPLE) for (let i = 0; i < 3; i++) names.push(`${id}_${i}`);
-  for (const id of Object.keys(CAT_DEFS)) for (let i = 0; i < 5; i++) names.push(`cat_${id}_${i}`);
+  for (const id of START_CATS.concat(['calico', 'gray', 'tabby', 'milk'])) for (let i = 0; i < 5; i++) names.push(`cat_${id}_${i}`);
   for (const n of names) { const im = new Image(); im.decoding = 'async'; im.src = `assets/${n}.webp`; ART[n] = im; }
 })();
-const art = n => { const im = ART[n]; return im && im.complete && im.naturalWidth ? im : null; };
+// rare guests and outfits are fetched the first time they are needed
+const LAZY_ART = /^(c(9|1\d|20)|mo\d)_\d$/;
+const art = n => { let im = ART[n]; if (!im && LAZY_ART.test(n)) { im = ART[n] = new Image(); im.decoding = 'async'; im.src = `assets/${n}.webp`; } return im && im.complete && im.naturalWidth ? im : null; };
 // draw an image with its bottom centre at (x, y), h pixels tall, mirrored when flip
 function sprite(im, x, y, h, flip, w) {
   w = w || im.naturalWidth * h / im.naturalHeight;
@@ -1155,9 +1424,10 @@ function progressRing(w, y) {
   ell(w.x, y, 11, 11, '#FFFFFF', INK, 1.2);
   g.beginPath(); g.moveTo(w.x, y); g.arc(w.x, y, 9, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2); g.fillStyle = '#8D6E63'; g.fill();
 }
+const mgrSpr = () => { const o = OUTFITS.find(x => x.id === G.outfit); return o && art(o.spr + '_0') ? o.spr : 'mgr'; };
 function drawMgr() {
   const m = S.mgr;
-  drawPerson(m, { spr: 'mgr', shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true, sit: m.sitting });
+  drawPerson(m, { spr: mgrSpr(), shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: true, sit: m.sitting });
   const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
   if (hk) { // the manager carries the cat in her arms
     const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
@@ -1186,7 +1456,7 @@ function drawStaff(s) {
 function drawCustomer(c) {
   if (c.hidden) return;
   const sit = c.state === 'waitFood' || c.state === 'eating' || c.state === 'petting';
-  drawPerson(c, { spr: c.look, shirt: c.shirt, pants: c.pants, hair: c.hair, sit, long: c.long });
+  drawPerson(c, { spr: art(c.look + '_0') ? c.look : 'c4', shirt: c.shirt, pants: c.pants, hair: c.hair, sit, long: c.long });
   const hy = c.y - ((sit ? 14 : 36) + 50) * PS;
   if (c.name) text(c.name, c.x, c.y + 12, 11, '#6B4A35', 'center', FONT, 700);
   if (c.say) { bubble(c.x, hy - 18, c.say.text); return; }
@@ -1221,10 +1491,10 @@ function drawCatAnim(k) {
     drawCat(k); const up = Math.sin(a.t * 4) > 0, hx = ox + 19 * of;
     ell(hx + 9 * of, oy - (up ? 52 : 40), 5, 5, k.body, out, 1.1);
     if (up) { pawPrint(hx + 9 * of, oy - 53, .35, '#F2A9A9'); text('啪！', hx + 26 * of, oy - 66, 15, '#D9773E', 'center', DFONT, 700); }
-  } else if (a.kind === 'belly' && art(`cat_${k.id}_4`)) {
-    const im = art(`cat_${k.id}_4`);
+  } else if (a.kind === 'belly' && catImg(k.def, 4)) {
+    const im = catImg(k.def, 4);
     ell(ox, oy, 26, 4, 'rgba(70,45,30,.16)');
-    g.save(); g.translate(ox, oy); g.rotate(Math.sin(a.t * 9) * .05); sprite(im, 0, 2, im.naturalHeight * CATK, of < 0); g.restore();
+    g.save(); g.translate(ox, oy); g.rotate(Math.sin(a.t * 9) * .05); sprite(im, 0, 2, im.naturalHeight * CATK * k.size.s, of < 0, im.naturalWidth * CATK * k.size.sx); g.restore();
     text('呼嚕～', ox, oy - 46, 12, '#B0705F', 'center', DFONT, 700);
     text(k.name, ox, oy + 10, 10, '#8B776B', 'center');
   } else if (a.kind === 'belly') {
@@ -1240,8 +1510,23 @@ function drawCatAnim(k) {
     text('呼嚕～', x, y - 46, 12, '#B0705F', 'center', DFONT, 700);
     text(k.name, x, y + 10, 10, '#8B776B', 'center');
   } else if (a.kind === 'kiss') { k.y = oy - Math.abs(Math.sin(a.t * 3)) * 36; drawCat(k); heart(ox + 19 * of, oy - 96, 11); }
+  else if (a.kind === 'dance') {
+    k.x = ox + Math.sin(a.t * 4) * 22; k.y = oy - Math.abs(Math.sin(a.t * 8)) * 12; k.face = Math.cos(a.t * 4) > 0 ? 1 : -1; drawCat(k);
+    for (let i = 0; i < 3; i++) { const p = (a.t * .8 + i / 3) % 1; g.globalAlpha = 1 - p; text(i % 2 ? '♫' : '♪', ox - 30 + i * 30, oy - 60 - p * 30, 16, '#C77B8B', 'center', FONT, 700); } g.globalAlpha = 1;
+  } else if (a.kind === 'gift') {
+    drawCat(k); const gx = ox + 30 * of, gy = oy - 6 - Math.abs(Math.sin(a.t * 3)) * 4;
+    rect(gx - 9, gy - 16, 18, 16, '#E8A0A0', INK, 1.1); line(gx, gy - 16, gx, gy, '#F7E3A0', 3); line(gx - 9, gy - 8, gx + 9, gy - 8, '#F7E3A0', 3);
+    text('送給你！', ox, oy - 74, 13, '#D9773E', 'center', DFONT, 700);
+  } else if (a.kind === 'sing') {
+    drawCat(k); for (let i = 0; i < 4; i++) { const p = (a.t * .6 + i / 4) % 1; g.globalAlpha = 1 - p; text(i % 2 ? '♫' : '♪', ox + 20 * of + Math.sin(p * 6 + i) * 14, oy - 50 - p * 50, 15 + i * 2, '#7A8DA6', 'center', FONT, 700); } g.globalAlpha = 1;
+  } else if (a.kind === 'star') {
+    drawCat(k); for (let i = 0; i < 6; i++) { const an = a.t * 2 + i * Math.PI / 3, r = 42 + Math.sin(a.t * 5 + i) * 6; g.globalAlpha = .6 + .4 * Math.sin(a.t * 6 + i); text('✦', ox + Math.cos(an) * r, oy - 26 + Math.sin(an) * r * .7, 14, '#E6B43C', 'center', FONT, 700); } g.globalAlpha = 1;
+  } else if (a.kind === 'rainbow') {
+    ['#E88080', '#EBB46A', '#E9DB7A', '#8FC48A', '#7FA9D6', '#A88CC8'].forEach((c, i) => { g.beginPath(); g.arc(ox, oy - 20, 74 - i * 6, Math.PI, 0); g.strokeStyle = c; g.globalAlpha = .55; g.lineWidth = 6; g.stroke(); }); g.globalAlpha = 1;
+    k.y = oy - Math.abs(Math.sin(a.t * 3)) * 16; drawCat(k); heart(ox - 26, oy - 100, 9); heart(ox + 26, oy - 108, 7);
+  }
   k.x = ox; k.y = oy; k.face = of; k._inAnim = false;
-  if (a.kind !== 'rub' && a.kind !== 'five' && a.kind !== 'kiss') { g.globalAlpha = clamp(k.hearts, 0, 1); heart(ox, oy - 60 - (1 - k.hearts) * 16, 7); g.globalAlpha = 1; }
+  if (!['rub', 'five', 'kiss', 'dance', 'gift', 'rainbow'].includes(a.kind)) { g.globalAlpha = clamp(k.hearts, 0, 1); heart(ox, oy - 60 - (1 - k.hearts) * 16, 7); g.globalAlpha = 1; }
 }
 const CATK = 68 / 160; // painted cats: the walking pose is 160 px wide in the sprite, 68 px on screen
 function drawCat(k) {
@@ -1250,8 +1535,8 @@ function drawCat(k) {
   if (!k.onBed && !k.jumpFrom) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
   const out = k.fluffy ? '#BFAE96' : INK;
   const pose = k.state === 'sleep' ? 2 : (k.jumpFrom || k.state === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
-  const ci = art(`cat_${k.id}_${pose}`);
-  if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK, f < 0);
+  const ci = catImg(k.def, pose);
+  if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK * k.size.s, f < 0, ci.naturalWidth * CATK * k.size.sx);
   if (k.state === 'sleep') {
     if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
@@ -1445,10 +1730,27 @@ function litterTask() {
     pre: w => { if (G.litterDirt <= 0) { if (isMgr(w)) toast('貓砂盆很乾淨'); return false; } if (G.stock.litter <= 0) { if (isMgr(w)) toast('沒有貓砂了，打開手機的「喵喵速達」買'); return false; } },
     fn: () => { G.stock.litter--; G.litterDirt = 0; floatText(2, LITTER.x, LITTER.y - 50, '乾淨了', '#6E9B4E'); } }] };
 }
+// what the high-bond actions do for the shop
+function bondAct(k, act) {
+  S.bondDone = S.bondDone || {};
+  const once = act + k.id, near = S.customers.filter(c => c.floor === k.floor && !c.hidden && c.pat != null);
+  if (act === 'gift') {
+    if (S.bondDone[once]) { later(1.2, () => say(k, '今天的禮物已經送過了喵')); return; }
+    S.bondDone[once] = true;
+    const r = pick([['cash', 40 + Math.floor(Math.random() * 60)], ['treat', 2], ['catfood', 3], ['beans', 1]]);
+    if (r[0] === 'cash') { G.cash += r[1]; toast(`${k.name}叼來一枚亮晶晶的硬幣：+${yen(r[1])}`); }
+    else { G.stock[r[0]] += r[1]; toast(`${k.name}叼來禮物：${{ treat: '貓咪肉泥', catfood: '貓糧', beans: '咖啡豆' }[r[0]]} +${r[1]}`); }
+  } else if (act === 'sing') { for (const c of near) c.pat = Math.min(c.maxPat, c.pat + 15); if (near.length) toast(`${k.name}的歌聲讓客人都放鬆了`); }
+  else if (act === 'star') { for (const c of near) c.pat = c.maxPat; if (near.length) toast(`${k.name}閃閃發光，客人的耐心全部回滿了`); }
+  else if (act === 'rainbow') {
+    if (S.bondDone[once]) return; S.bondDone[once] = true;
+    G.fans += 1; S.today.fans += 1; toast(`${k.name}和${G.mgrName}的彩虹之約被客人拍到了，粉絲 +1`);
+  }
+}
 function petTask(k, label, act = 'pet') {
   k.hold = true;
   const B = BOND.find(b => b.act === act);
-  return { label: label || (k.state === 'sleep' ? '叫醒' + k.name : act === 'pet' ? '摸摸' + k.name : `跟${k.name}${B.name}`), steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? BEDS[k.id].ground.x + 30 : k.x + (k.x > 480 ? -36 : 36), 150, 880), y: k.onBed ? BEDS[k.id].ground.y : clamp(k.y + 6, 490, 594) }), dur: .8,
+  return { label: label || (k.state === 'sleep' ? '叫醒' + k.name : act === 'pet' ? '摸摸' + k.name : `跟${k.name}${B.name}`), steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? k.bed.ground.x + 30 : k.x + (k.x > 480 ? -36 : 36), 150, 880), y: k.onBed ? k.bed.ground.y : clamp(k.y + 6, 490, 594) }), dur: .8,
     fn: w => {
       k.hearts = 1.2;
       if (k.state === 'sleep') { wakeCat(k); if (isMgr(w)) toast(`${k.name}醒來了`); say(w, '起床囉～'); return; }
@@ -1456,11 +1758,13 @@ function petTask(k, label, act = 'pet') {
         if (k.wantPet) { k.wantPet = 0; k.petCool = 45; k.sulk = 0; gainExp(2); }
         endPlay(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? 5 : 3.2 };
         k.face = S.mgr.x > k.x ? 1 : -1; S.mgr.face = -k.face;
-        const lines = { rub: ['好癢喔～', '呼嚕呼嚕'], five: ['耶！擊掌！', '喵！'], belly: ['肚子好軟～', '呼嚕～'], hug: ['抱抱～好溫暖', '喵嗚～'], kiss: ['碰碰鼻子～', '啾～'] }[act];
+        const lines = { rub: ['好癢喔～', '呼嚕呼嚕'], five: ['耶！擊掌！', '喵！'], belly: ['肚子好軟～', '呼嚕～'], hug: ['抱抱～好溫暖', '喵嗚～'], kiss: ['碰碰鼻子～', '啾～'],
+          dance: ['一、二、轉圈圈～', '喵喵喵♪'], gift: ['這是要送我的嗎？', '喵！（叼）'], sing: ['啦啦啦～', '喵～喵～♪'], star: ['你在發光耶！', '喵✨'], rainbow: ['哇，是彩虹！', '喵嗚～♡'] }[act];
         talk(w, lines[0], k, lines[1]);
         if (act === 'belly') k.energy = Math.min(100, k.energy + 20);
-        if (act === 'hug' || act === 'kiss') k.happy = 90;
-        addBond(k, act === 'hug' || act === 'kiss' ? 3 : 2); gainExp(1);
+        if (act === 'hug' || act === 'kiss' || BOND.findIndex(b => b.act === act) >= 6) k.happy = 90;
+        bondAct(k, act);
+        addBond(k, B.gain); gainExp(1);
         return;
       }
       if (isMgr(w)) addBond(k, k.wantPet ? 3 : 1);
@@ -1495,16 +1799,18 @@ function actPet(k) {
 }
 function chooseBond(k) {
   const card = $('chooseCard'), v = bondOf(k), lv = bondLv(k);
-  card.innerHTML = `<h2>${k.name}</h2><p class="muted">跟${G.mgrName}店長的親密度 <b>${v}</b>/100・${BOND[lv].title}</p><div class="prog"><i style="width:${v}%"></i></div>`;
-  const row = document.createElement('div'); row.className = 'row'; row.style.flexDirection = 'column';
-  for (const b of BOND) {
+  const nb = BOND[lv + 1];
+  card.innerHTML = `<h2>${k.name}</h2><p class="muted">跟${G.mgrName}店長的親密度 <b>${v}</b>・${BOND[lv].title}${nb ? `（${nb.at} 變成「${nb.title}」）` : ''}</p><div class="prog"><i style="width:${bondPct(v)}%"></i></div>`;
+  const row = document.createElement('div'); row.className = 'row'; row.style.flexDirection = 'column'; row.style.maxHeight = '52vh'; row.style.overflowY = 'auto';
+  const acts = BOND.filter(b => b.act), shown = acts.filter((b, i) => v >= b.at || (i && v >= acts[i - 1].at));
+  for (const b of shown.reverse()) {
     const open = v >= b.at, bt = document.createElement('button'); bt.className = 'opt';
     bt.innerHTML = open ? `<span>${b.name}</span><small>${b.desc}</small>` : `<span>🔒 ${b.name}</span><small>親密度 ${b.at} 解鎖</small>`;
     if (open) bt.onclick = () => { closeChoose(); queueTask(petTask(k, null, b.act)); }; else bt.disabled = true;
     row.appendChild(bt);
   }
-  const c = document.createElement('button'); c.textContent = '取消'; c.onclick = closeChoose; row.appendChild(c);
-  card.appendChild(row); $('chooseOv').hidden = false; S.uiPause = true;
+  const c = document.createElement('button'); c.textContent = '取消'; c.onclick = closeChoose; c.style.marginTop = '8px'; c.style.width = '100%';
+  card.appendChild(row); card.appendChild(c); $('chooseOv').hidden = false; S.uiPause = true;
 }
 function actStairs() {
   const to = S.view === 1 ? 2 : 1;
@@ -1599,10 +1905,25 @@ function spawnCustomer(special) {
   if (S.queue.length >= QUEUE.length) return;
   const c = { id: ++S.cid, floor: 1, x: DOOR.x, y: DOOR.y, path: [], speed: 150, face: 1, state: 'queue', pat: 45 * patMul(), maxPat: 45 * patMul(), wait: 0,
     stars: 5, notes: [], shirt: pick(SHIRTS), pants: pick(['#5E6B7A', '#6B5B4E', '#4D4A48', '#7C8B70']), hair: pick(HAIRS), long: Math.random() < .45,
-    order: null, special: !!special, name: null, sawCat: false, look: special ? 'c6' : pick(GUESTS) };
+    order: null, special: !!special, name: null, sawCat: false, look: special ? 'c6' : pickGuestLook() };
   if (special) { c.name = '小晴'; c.pat = c.maxPat = 80 * patMul(); c.shirt = '#F2F0EA'; c.pants = '#41556E'; c.hair = '#2E2420'; c.long = true; }
+  const gd = guestOf(c.look); c.rare = gd.r; art(c.look + '_0');
+  if (gd.r && !special) { c.name = gd.name; c.pat = c.maxPat = (50 + gd.r * 10) * patMul(); if (gd.say) later(1.5, () => { if (!c.gone) say(c, gd.say); }); }
+  if (gd.r >= 2) toast(`✨ ${GUEST_R[gd.r].name}顧客「${gd.name}」光臨了！好好招待喔`);
+  const rec = G.guests[c.look] || (G.guests[c.look] = { n: 0, d: G.day }); rec.n++; G.stats.guests++;
+  if (rec.n === 1) later(2.5, () => toast(`📖 客人圖鑑新增：${gd.name}（${GUEST_R[gd.r].name}）`));
   S.customers.push(c); S.queue.push(c);
   const hr = Math.floor(S.time / 60); S.today.hours[hr] = (S.today.hours[hr] || 0) + 1;
+}
+// most guests are regulars; rarer ones only show up once the shop is big enough, each SR/SSR at most once a day
+function pickGuestLook() {
+  const lv = shopLv();
+  for (let r = 3; r >= 1; r--) {
+    const R = GUEST_R[r]; if (R.lv > lv || Math.random() > R.chance) continue;
+    const list = GUEST_DEX.filter(x => x.r === r && !x.special && !(r >= 2 && S.rareToday[x.id]) && !S.customers.some(c => c.look === x.id && !c.gone));
+    if (list.length) { const x = pick(list); S.rareToday[x.id] = true; return x.id; }
+  }
+  return pick(GUESTS);
 }
 function updQueue() { S.queue.forEach((c, i) => { if (c.slot !== i) { c.slot = i; routeTo(c, 1, QUEUE[i].x, QUEUE[i].y); } }); }
 function zone(price, base) { const r = price / base; return r <= 1.0001 ? 'green' : r <= 1.4001 ? 'yellow' : 'red'; }
@@ -1701,6 +2022,10 @@ function leave(c) {
   // fans never drop: an unhappy guest just doesn't become one
   let df = [0, 0, 0, 1, 2][s - 1];
   if (!c.order || (!c.order.dish && !c.order.loft && !c.order.beans)) df = 0; // walked out without buying anything
+  if (c.rare && s >= 3 && !c.special && c.order && (c.order.dish || c.order.loft || c.order.beans)) { // rare guests tip and tell their friends
+    const R = GUEST_R[c.rare]; df += R.fans; gainExp(R.exp); G.cash += R.tip; gainEarned(R.tip); G.stats.tips += R.tip; S.today.tips = (S.today.tips || 0) + R.tip;
+    floatText(c.floor, c.x, c.y - 140, `小費 +${yen(R.tip)}・粉絲 +${R.fans}`, '#D9A23A');
+  }
   G.fans = Math.max(0, G.fans + df); S.today.fans += df;
   if (c.special) S.today.xiaoqing = { stars: s, notes: c.notes.slice() };
   writeReview(c, s);
@@ -1742,10 +2067,10 @@ function updCust(c, dt) {
 // ====================== cats ======================
 function wakeCat(k) {
   k.state = 'idle'; k.t = rand(1, 2);
-  if (k.onBed) { const b = BEDS[k.id]; k.path = [{ f: k.floor, x: b.ground.x, y: b.ground.y, jump: true }]; k.state = 'walk'; k.onBed = false; }
+  if (k.onBed) { const b = k.bed; k.path = [{ f: k.floor, x: b.ground.x, y: b.ground.y, jump: true }]; k.state = 'walk'; k.onBed = false; }
 }
 function goBed(k) {
-  const b = BEDS[k.id];
+  const b = k.bed;
   routeTo(k, b.f, b.ground.x, b.ground.y); k.path.push({ f: b.f, x: b.x, y: b.y, jump: true }); k.state = 'toBed';
 }
 const PLAY_STATES = ['petting', 'eating', 'waitFood'];
@@ -1753,11 +2078,11 @@ function endPlay(k) { if (k.target) { k.target.catBuddy = null; if (k.target.fed
 function wander(k) {
   // cats like company: walk over to a customer and play with them
   const guests = S.customers.filter(c => c.floor === k.floor && !c.catBuddy && !c.hidden && PLAY_STATES.includes(c.state));
-  if (guests.length && !k.sulk && Math.random() < (k.happy ? .8 : .5)) {
+  if (guests.length && !k.sulk && Math.random() < (k.happy ? .8 : k.P.play || .5)) {
     const c = pick(guests); c.catBuddy = k; k.target = c;
     routeTo(k, k.floor, clamp(c.x + (c.x > 480 ? -50 : 50), 160, 920), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; return;
   }
-  if (Math.random() < .2) {
+  if (Math.random() < (k.P.roam || .2)) {
     const f = k.floor === 1 ? 2 : 1;
     routeTo(k, f, f === 1 ? rand(160, 880) : rand(160, 900), rand(500, 594));
   } else if (k.floor === 2 && Math.random() < .6 && S.customers.some(c => c.state === 'petting')) {
@@ -1779,7 +2104,7 @@ function updCat(k, dt) {
   for (const key of ['happy', 'sulk', 'petCool']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
   if (k.wantPet) { k.wantPet -= dt; if (k.wantPet <= 0 || k.state === 'sleep') { k.wantPet = 0; if (k.state !== 'sleep') { k.sulk = 30; say(k, '哼…'); } } }
   if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
-  if (open) { k.energy -= .42 * dt; k.hunger += .4 * dt; }
+  if (open) { k.energy -= .42 * (k.P.energy || 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
   const arrived = moveAlong(k, dt);
   switch (k.state) {
     case 'toBed': if (arrived) { k.state = 'sleep'; k.onBed = true; } break;
@@ -1794,8 +2119,8 @@ function updCat(k, dt) {
       if (!c || c.gone || c.floor !== k.floor || !PLAY_STATES.includes(c.state)) { endPlay(k); k.state = 'idle'; k.t = 1; break; }
       if (arrived) {
         k.state = 'play'; k.t = rand(4, 6) * (k.happy ? 1.4 : 1); k.face = c.x > k.x ? 1 : -1; c.face = k.x > c.x ? 1 : -1;
-        c.sawCat = true; c.played = true; c.catName = k.name; k.hearts = 1.2;
-        if (k.treat) { k.treat = false; c.fed = true; c.stars++; k.hunger = Math.max(0, k.hunger - 35); S.today.fed++; k.t += 2; floatText(2, k.x, k.y - 70, '舔舔舔 ♥', '#E07A7A'); talk(c, pick(['來，吃肉泥～', '慢慢吃喔', '牠吃得好認真！']), k, '舔舔舔…'); break; }
+        c.sawCat = true; c.played = true; c.catName = k.name; k.hearts = 1.2; if (k.P.star && !c.elegant) { c.elegant = true; c.stars++; }
+        if (k.treat) { k.treat = false; c.fed = true; c.stars++; k.hunger = Math.max(0, k.hunger - 35); S.today.fed++; G.stats.fed++; k.t += 2; floatText(2, k.x, k.y - 70, '舔舔舔 ♥', '#E07A7A'); talk(c, pick(['來，吃肉泥～', '慢慢吃喔', '牠吃得好認真！']), k, '舔舔舔…'); break; }
         talk(c, pick(['好可愛～', '牠在跟我玩耶！', '哇，來蹭我了', '你也想吃嗎？', '乖乖，給你摸摸']), k, pick(['喵～', '喵嗚！', '呼嚕呼嚕']));
       }
       break;
@@ -1810,7 +2135,7 @@ function updCat(k, dt) {
     }
     default:
       k.t -= dt;
-      if (open && !k.wantPet && !k.petCool && !k.sulk && Math.random() < dt * .018) {
+      if (open && !k.wantPet && !k.petCool && !k.sulk && Math.random() < dt * .018 * (k.P.want || 1)) {
         k.wantPet = 25; toast(`${k.name}想要${G.mgrName}店長摸摸`);
       }
       if (k.wantPet) { k.t = Math.max(k.t, .5); break; }
@@ -2196,7 +2521,7 @@ function drawWorld() {
   if (f === 1) { drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); drawFurn1(); }
   else if (f === 2) { drawFurn2(); drawBowl(); drawLitter(); }
   else { g.globalAlpha = .4; for (let i = 0; i < 3; i++) ell(855 + Math.sin(S.t * 2 + i) * 3, 330 - i * 10 - (S.t * 8 % 10), 5 + i * 2, 3, '#FFFFFF', '#C9B8A8', .8); g.globalAlpha = 1; }
-  for (const c of G.cats) { const b = BEDS[c.id]; if (b.basket && b.f === f && propArt('basket', b.x, b.y + 12, 66)) continue; if (b.basket && b.f === f) { ell(b.x, b.y + 4, 30, 9, b.basket, INK, 1.3); ell(b.x, b.y - 1, 24, 6, '#F4EBDD', null); for (let i = -2; i <= 2; i++) line(b.x + i * 11, b.y + 2, b.x + i * 11 + 2, b.y + 11, 'rgba(90,60,40,.35)', 1); } }
+  for (const k of S.cats) { const b = k.bed; if (b.basket && b.f === f && propArt('basket', b.x, b.y + 12, 66)) continue; if (b.basket && b.f === f) { ell(b.x, b.y + 4, 30, 9, b.basket, INK, 1.3); ell(b.x, b.y - 1, 24, 6, '#F4EBDD', null); for (let i = -2; i <= 2; i++) line(b.x + i * 11, b.y + 2, b.x + i * 11 + 2, b.y + 11, 'rgba(90,60,40,.35)', 1); } }
   const items = [];
   if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
   if (S.mgr.floor === f) items.push({ y: S.mgr.y, d: drawMgr });
@@ -2360,7 +2685,7 @@ function nearbyActions() {
     for (const s of S.staff) if (s.floor === 3 && s.resting) add(s.x, s.y, `幫${s.name}打氣`, () => actCheer(s));
   }
   for (const k of S.cats) if (k.floor === f) {
-    const p = k.onBed ? BEDS[k.id].ground : k;
+    const p = k.onBed ? k.bed.ground : k;
     add(p.x, p.y, (k.state === 'sleep' ? '叫醒' : '摸摸') + k.name, () => actPet(k));
   }
   if (f !== 3) add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
@@ -2530,13 +2855,13 @@ function renderPhone() {
   if (phoneApp === 'home') {
     const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '喵喵速達', '材料・傢俱', '#D9773E', '送'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
-                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
+                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存']];
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論' };
+    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -2590,7 +2915,7 @@ function renderPhone() {
         <div class="prog"><i style="width:${lv < MAX_LV ? clamp((G.exp - pv) / (nx - pv), 0, 1) * 100 : 100}%"></i></div>
         <div class="sub">客人給的星星、完美火候、摸摸想撒嬌的貓、每天打烊，都會增加經驗。</div></div>`;
       h += '<p class="kh">貓咪親密度</p>' + S.cats.map(k => { const v = bondOf(k), b = BOND[bondLv(k)], nb = BOND[bondLv(k) + 1];
-        return `<div class="item"><div class="top"><span class="nm">${k.name}・${b.title}</span><b>♥ ${v}/100</b></div><div class="prog"><i style="width:${v}%"></i></div><div class="sub">${nb ? `親密度 ${nb.at} 解鎖「${nb.name}」` : '所有親密動作都解鎖了'}</div></div>`; }).join('');
+        return `<div class="item"><div class="top"><span class="nm">${k.name}・${b.title}</span><b>♥ ${v}</b></div><div class="prog"><i style="width:${bondPct(v)}%"></i></div><div class="sub">${nb ? `親密度 ${nb.at} ${nb.act ? `解鎖「${nb.name}」` : `變成「${nb.title}」`}` : '已經是最高的親密度了'}</div></div>`; }).join('');
       h += '<p class="kh">擴大店面</p>' + EXPANSIONS.map((E, i) => { const done = G.expand > i, next = G.expand === i, locked = E.lv > lv;
         return `<div class="item${locked && !done ? ' locked' : ''}"><div class="top"><span class="nm">${done ? '✓ ' : locked ? '🔒 ' : ''}第 ${i + 1} 次擴建：${E.name}</span><b>${yen(E.price)}</b></div><div class="sub">${E.desc}</div>
           <div class="row" style="margin:0">${done ? '<button disabled>已完成</button>' : !next ? '<button disabled>先完成上一次擴建</button>' : locked ? `<button disabled>店鋪 Lv.${E.lv} 才能擴建</button>` : G.cash < E.price ? '<button disabled>現金不夠</button>' : `<button class="primary" id="expandBtn" ${S.phase === 'settle' ? 'disabled' : ''}>開始擴建</button>`}</div></div>`; }).join('');
@@ -2615,18 +2940,58 @@ function renderPhone() {
         <p id="pgOut" style="text-align:center;margin:6px 0"></p><div class="row" style="margin:0;justify-content:center"><button class="primary" id="pgStart">開始</button></div>`;
     } else if (phoneApp === 'cats') {
       const where = k => k.anim ? '跟店長玩' : k.state === 'sleep' ? '睡覺中' : k.state === 'play' || k.state === 'toPlay' ? '陪客人玩' : k.state === 'eat' ? '吃飯中' : k.floor === 3 ? '休息室' : `在 ${k.floor}F 散步`;
-      h += `<p class="muted">店裡現在有 ${G.cats.length} 隻貓。今天是第 ${G.day} 天。</p><p class="kh">店裡的貓</p>`;
-      for (const c of G.cats) {
-        const d = CAT_DEFS[c.id], k = S.cats.find(k => k.id === c.id), days = catDays(c.id), v = G.bond[c.id] || 0;
-        h += `<div class="item"><div class="top"><span class="nm"><i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${d.body};border:1px solid var(--line);margin-right:6px;vertical-align:-1px"></i>${d.name}・${catRank(days)}</span><b>來店第 ${days} 天</b></div>
-          <div class="sub">${d.desc}。第 ${c.since} 天來到店裡${c.since === 1 ? '（開店元老）' : ''}・現在${k ? where(k) : '不在'}・跟店長玩過 ${c.pets} 次・♥ ${v}/100</div></div>`;
+      const tab = S.catTab || 'mine', cap = dutyCap(), duty = onDuty();
+      const rtag = d => `<span style="font-size:11px;padding:1px 6px;border-radius:8px;color:#fff;background:${RARITY[d.rarity].color};margin-left:4px">${RARITY[d.rarity].name}</span>`;
+      h += `<div class="row" style="margin:0 0 6px;gap:6px">${[['mine', `我的貓 ${G.cats.length}`], ['adopt', '領養中心'], ['dex', `圖鑑 ${G.seen.length}/${CAT_IDS.length}`]].map(([k, n]) => `<button data-ctab="${k}" ${k === tab ? 'class="primary"' : ''}>${n}</button>`).join('')}</div>`;
+      if (tab === 'mine') {
+        h += `<p class="muted">今天是第 ${G.day} 天。店裡同時可以有 ${cap} 隻貓上班（店鋪等級越高、擴建越多，名額越多），其他的貓在貓咪宿舍休息。排班從明天開店生效。點「改名」可以幫貓取名字。</p>`;
+        const list = G.cats.slice().sort((a, b) => (duty.includes(b.id) - duty.includes(a.id)) || (G.bond[b.id] || 0) - (G.bond[a.id] || 0));
+        const pg = S.catPage || 0, per = 30;
+        for (const c of list.slice(pg * per, pg * per + per)) {
+          const d = CAT_DEFS[c.id], k = S.cats.find(k => k.id === c.id), days = catDays(c.id), v = G.bond[c.id] || 0, on = duty.includes(c.id);
+          const st = k ? (on ? `上班中・${where(k)}` : `今天上班中・${where(k)}（明天休息）`) : on ? '明天上班' : '在貓咪宿舍休息';
+          h += `<div class="item"><div class="top"><span class="nm">${catThumb(d, 30)} ${catNameOf(c.id)}${rtag(d)}</span><b>♥ ${v}</b></div>
+            <div class="sub">No.${String(d.no).padStart(3, '0')}・${d.desc}。來店第 ${days} 天（${catRank(days)}）・${BOND[bondLvV(v)].title}・${st}</div>
+            <div class="row" style="margin:0"><button data-rename="${c.id}">改名</button>${on ? `<button data-duty="${c.id}" ${duty.length <= 1 ? 'disabled' : ''}>排休</button>` : `<button class="primary" data-duty="${c.id}" ${duty.length >= cap ? 'disabled' : ''}>${duty.length >= cap ? '上班名額滿了' : '排上班'}</button>`}</div></div>`;
+        }
+        if (list.length > per) h += `<div class="row" style="margin:0;justify-content:center"><button data-cpage="${pg - 1}" ${pg ? '' : 'disabled'}>‹ 上一頁</button><span class="sub">${pg + 1}/${Math.ceil(list.length / per)}</span><button data-cpage="${pg + 1}" ${(pg + 1) * per < list.length ? '' : 'disabled'}>下一頁 ›</button></div>`;
+      } else if (tab === 'adopt') {
+        h += `<p class="muted">中途之家每天會送來 4 隻新的貓，明天會換一批。店鋪 Lv.2 開始會出現「少見」的貓，Lv.4「稀有」，Lv.6「傳說」。領養要付現金，不能賒帳。</p>`;
+        const offers = (S.offers || []).filter(id => !G.cats.some(c => c.id === id)).concat(CAT_IDS.filter(id => CAT_DEFS[id].orig && !G.cats.some(c => c.id === id)));
+        if (!offers.length) h += '<p class="muted">今天的貓都被領養了，明天再來看看吧！</p>';
+        for (const id of offers) {
+          const d = CAT_DEFS[id], locked = d.lv > shopLv();
+          h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}${catThumb(d, 34)} ${d.name}${rtag(d)}</span><b>${yen(d.price)}</b></div><div class="sub">No.${String(d.no).padStart(3, '0')}・${d.desc}</div>
+            <div class="row" style="margin:0">${locked ? `<button disabled>店鋪 Lv.${d.lv} 解鎖</button>` : G.cash < d.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-adopt="${id}" ${S.phase === 'settle' ? 'disabled' : ''}>領養${d.name}</button>`}</div></div>`;
+        }
+      } else {
+        const rf = S.dexR == null ? -1 : S.dexR, ids = CAT_IDS.filter(id => rf < 0 || CAT_DEFS[id].rarity === rf), pg = S.dexPage || 0, per = 48;
+        h += `<p class="muted">全部 ${CAT_IDS.length} 隻貓。見過 ${G.seen.length} 隻（領養中心出現過的貓都會記下來），領養了 ${G.cats.length} 隻。</p>
+          <div class="row" style="margin:0 0 6px;gap:4px;flex-wrap:wrap"><button data-dexr="-1" ${rf < 0 ? 'class="primary"' : ''}>全部</button>${RARITY.map((R, i) => `<button data-dexr="${i}" ${rf === i ? 'class="primary"' : ''}>${R.name} ${CAT_IDS.filter(id => CAT_DEFS[id].rarity === i && G.seen.includes(id)).length}/${CAT_IDS.filter(id => CAT_DEFS[id].rarity === i).length}</button>`).join('')}</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">` +
+          ids.slice(pg * per, pg * per + per).map(id => { const d = CAT_DEFS[id], seen = G.seen.includes(id), own = G.cats.some(c => c.id === id);
+            return `<div class="item" style="margin:0;padding:6px 2px;text-align:center;${seen ? '' : 'opacity:.5'};border-color:${seen ? RARITY[d.rarity].color : 'var(--line)'}"><div style="height:46px;display:flex;align-items:flex-end;justify-content:center">${seen ? catThumb(d, 34) : '<span style="font-size:26px">？</span>'}</div><div style="font-size:11px">No.${String(d.no).padStart(3, '0')}</div><div style="font-size:12px;font-weight:700">${seen ? catNameOf(id) : '？？？'}</div><div style="font-size:10px;color:${RARITY[d.rarity].color}">${own ? '♥ 已領養' : seen ? catCoat(d).name : RARITY[d.rarity].name}</div></div>`; }).join('') + '</div>';
+        if (ids.length > per) h += `<div class="row" style="margin:6px 0 0;justify-content:center"><button data-dpage="${pg - 1}" ${pg ? '' : 'disabled'}>‹ 上一頁</button><span class="sub">${pg + 1}/${Math.ceil(ids.length / per)}</span><button data-dpage="${pg + 1}" ${(pg + 1) * per < ids.length ? '' : 'disabled'}>下一頁 ›</button></div>`;
       }
-      const more = Object.entries(CAT_DEFS).filter(([id]) => !G.cats.some(c => c.id === id));
-      h += '<p class="kh">領養新貓</p>' + (more.length ? `<p class="muted">新貓會從門口走進來，自己找到睡墊。貓越多吃得越多，記得補貓糧。領養要付現金，不能賒帳。</p>` : '<p class="muted">所有的貓都住進來了！</p>');
-      for (const [id, d] of more) {
-        const locked = d.lv > shopLv();
-        h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}<i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${d.body};border:1px solid var(--line);margin-right:6px;vertical-align:-1px"></i>${d.name}</span><b>${yen(d.price)}</b></div><div class="sub">${d.desc}・睡在 ${BEDS[id].f}F ${BEDS[id].basket ? '貓窩' : '層板'}</div>
-          <div class="row" style="margin:0">${locked ? `<button disabled>店鋪 Lv.${d.lv} 解鎖</button>` : G.cash < d.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-adopt="${id}" ${S.phase === 'settle' ? 'disabled' : ''}>領養${d.name}</button>`}</div></div>`;
+    } else if (phoneApp === 'guests') {
+      const got = Object.keys(G.guests).length;
+      h += `<p class="muted">來過店裡的客人都會記在這裡（${got}/${GUEST_DEX.length} 種，累計 ${G.stats.guests} 人次）。店鋪越高級，越有機會遇到稀有顧客，他們會給小費、帶來更多粉絲。</p>`;
+      for (let r = 0; r < GUEST_R.length; r++) {
+        const R = GUEST_R[r], list = GUEST_DEX.filter(x => x.r === r);
+        h += `<p class="kh" style="color:${R.color}">${'★'.repeat(r + 1)} ${R.name}（${list.filter(x => G.guests[x.id]).length}/${list.length}）${r ? `・店鋪 Lv.${R.lv} 以後出現・小費 ${yen(R.tip)}、粉絲 +${R.fans}` : ''}</p><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">`;
+        for (const x of list) {
+          const v = G.guests[x.id];
+          h += v ? `<div class="item" style="margin:0;padding:8px;border-color:${R.color}"><div style="display:flex;gap:8px;align-items:center"><img src="assets/${x.id}_0.webp" alt="" style="height:76px;width:34px;flex:none;object-fit:contain" onerror="this.remove()"><div><div class="nm" style="font-size:13px">${x.name}</div><div class="sub" style="font-size:11px">${x.desc}</div><div class="sub" style="font-size:11px;color:${R.color}">來了 ${v.n} 次・${regularTitle(v.n)}・第 ${v.d} 天初次光臨</div></div></div></div>`
+            : `<div class="item" style="margin:0;padding:8px;opacity:.5"><div style="display:flex;gap:8px;align-items:center"><span style="font-size:30px;width:34px;text-align:center">？</span><div><div class="nm" style="font-size:13px">？？？</div><div class="sub" style="font-size:11px">${x.special ? '第一天的那位客人' : R.lv > shopLv() ? `店鋪 Lv.${R.lv} 以後可能出現` : '還沒來過，再等等看'}</div></div></div></div>`;
+        }
+        h += '</div>';
+      }
+    } else if (phoneApp === 'closet') {
+      h += `<p class="muted">幫${G.mgrName}店長換衣服。買過的衣服可以隨時換穿。</p>`;
+      for (const o of OUTFITS) {
+        const own = G.wardrobe.includes(o.id), wear = G.outfit === o.id, locked = o.lv > shopLv();
+        h += `<div class="item${locked && !own ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${o.spr}_0.webp" alt="" style="height:96px;width:40px;flex:none;object-fit:contain" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${wear ? '✓ ' : locked && !own ? '🔒 ' : ''}${o.name}</span><b>${own ? (wear ? '穿著中' : '已擁有') : yen(o.price)}</b></div><div class="sub">${o.desc}</div>
+          <div class="row" style="margin:0">${wear ? '<button disabled>正在穿</button>' : own ? `<button class="primary" data-wear="${o.id}">換上</button>` : locked ? `<button disabled>店鋪 Lv.${o.lv} 解鎖</button>` : G.cash < o.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-outfit="${o.id}">購買並換上</button>`}</div></div></div></div>`;
       }
     } else if (phoneApp === 'phone') {
       if (CALL) {
@@ -2669,6 +3034,21 @@ function renderPhone() {
   q('#hangUp') && (q('#hangUp').onclick = () => { CALL = null; renderPhone(); });
   sc.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { claimDaily(+b.dataset.claim); renderPhone(); });
   sc.querySelectorAll('[data-adopt]').forEach(b => b.onclick = () => { adoptCat(b.dataset.adopt); renderPhone(); });
+  sc.querySelectorAll('[data-wear]').forEach(b => b.onclick = () => { G.outfit = b.dataset.wear; art(OUTFITS.find(o => o.id === G.outfit).spr + '_0'); say(S.mgr, '換好衣服了！'); saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-outfit]').forEach(b => b.onclick = () => { const o = OUTFITS.find(o => o.id === b.dataset.outfit); if (!o || G.wardrobe.includes(o.id) || o.lv > shopLv() || G.cash < o.price) return;
+    G.cash -= o.price; S.today.spent += o.price; G.wardrobe.push(o.id); G.outfit = o.id; for (let i = 0; i < 3; i++) art(`${o.spr}_${i}`); toast(`買了「${o.name}」，${G.mgrName}店長換上新衣服了！`); say(S.mgr, '好看嗎？'); saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-ctab]').forEach(b => b.onclick = () => { S.catTab = b.dataset.ctab; renderPhone(); });
+  sc.querySelectorAll('[data-cpage]').forEach(b => b.onclick = () => { S.catPage = +b.dataset.cpage; renderPhone(); });
+  sc.querySelectorAll('[data-dpage]').forEach(b => b.onclick = () => { S.dexPage = +b.dataset.dpage; renderPhone(); });
+  sc.querySelectorAll('[data-dexr]').forEach(b => b.onclick = () => { S.dexR = +b.dataset.dexr; S.dexPage = 0; renderPhone(); });
+  sc.querySelectorAll('[data-duty]').forEach(b => b.onclick = () => { const id = b.dataset.duty, i = G.duty.indexOf(id);
+    if (i >= 0) { if (onDuty().length > 1) G.duty.splice(i, 1); } else if (onDuty().length < dutyCap()) G.duty.push(id);
+    toast(`${catNameOf(id)}${G.duty.includes(id) ? '明天開始上班' : '明天起在貓咪宿舍休息'}`); saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-rename]').forEach(b => b.onclick = () => { const id = b.dataset.rename, c = G.cats.find(c => c.id === id); if (!c) return;
+    const v = prompt(`幫${catNameOf(id)}取新名字（最多 6 個字，留空就改回「${CAT_DEFS[id].name}」）`, catNameOf(id)); if (v === null) return;
+    const nm = cleanName(v, '', 6); if (nm && nm !== CAT_DEFS[id].name) c.nm = nm; else delete c.nm;
+    const k = S.cats.find(k => k.id === id); if (k) k.name = catNameOf(id);
+    G.stats.rename++; toast(`以後就叫牠「${catNameOf(id)}」了`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-promo]').forEach(b => b.onclick = () => { doPromo(b.dataset.promo); renderPhone(); });
   if (q('#pgame')) {
     const cvs = q('#pgame'); cvs.addEventListener('pointerdown', e => { cvs.setPointerCapture(e.pointerId); pgPointer(e); }); cvs.addEventListener('pointermove', pgPointer);
@@ -2731,7 +3111,7 @@ function decodeSave(code) {
   const o = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
   const base = freshG();
   const num = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d);
-  return {
+  const out = {
     day: Math.max(1, Math.floor(num(o.day, 1))), cash: num(o.cash, 100), debt: Math.max(0, num(o.debt, 0)), fans: Math.max(0, num(o.fans, 0)),
     stock: { flour: num(o.stock?.flour, 0), food: num(o.stock?.food, 0), catfood: num(o.stock?.catfood, 0), litter: num(o.stock?.litter, 0), beans: Math.max(0, Math.floor(num(o.stock?.beans, 0))), treat: Math.max(0, Math.floor(num(o.stock?.treat, 0))) },
     prices: Object.fromEntries(Object.keys(base.prices).map(k => [k, clamp(num(o.prices?.[k], base.prices[k]), 5, baseOf(k) * 2)])),
@@ -2741,19 +3121,29 @@ function decodeSave(code) {
     exp: Math.max(0, Math.floor(num(o.exp, 0))), earned: Math.max(0, num(o.earned, 0)),
     furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f]))] : [],
     keep: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(num(o.keep?.[d], 0)))])),
-    bond: Object.fromEntries(Object.keys(CAT_DEFS).map(id => [id, clamp(Math.floor(num(o.bond?.[id], 0)), 0, 100)])),
+    bond: Object.fromEntries(Object.keys(o.bond && typeof o.bond === 'object' ? o.bond : {}).filter(id => CAT_DEFS[id]).map(id => [id, clamp(Math.floor(num(o.bond[id], 0)), 0, BOND_MAX)])),
     cats: (() => { const seen = new Set(), day = Math.max(1, Math.floor(num(o.day, 1)));
       const list = (Array.isArray(o.cats) ? o.cats : START_CATS.map(id => ({ id, since: 1 })))
         .filter(c => c && CAT_DEFS[c.id] && !seen.has(c.id) && seen.add(c.id))
-        .map(c => ({ id: c.id, since: clamp(Math.floor(num(c.since, 1)), 1, day), pets: Math.max(0, Math.floor(num(c.pets, 0))) }));
+        .map(c => { const r = { id: c.id, since: clamp(Math.floor(num(c.since, 1)), 1, day), pets: Math.max(0, Math.floor(num(c.pets, 0))) }; const nm = cleanName(c.nm, '', 6); if (nm) r.nm = nm; return r; });
       return list.length ? list : START_CATS.map(id => ({ id, since: 1, pets: 0 })); })(),
     landReady: !!o.landReady, shopName: cleanName(o.shopName, base.shopName, 10), mgrName: cleanName(o.mgrName, base.mgrName, 8),
     music: MUSIC[o.music] ? o.music : base.music,
     badges: Array.isArray(o.badges) ? [...new Set(o.badges.filter(id => BADGES.some(b => b.id === id)))] : [],
     reviews: Array.isArray(o.reviews) ? o.reviews.filter(r => r && typeof r.t === 'string').slice(0, 80).map(r => ({ d: Math.max(1, Math.floor(num(r.d, 1))), s: clamp(Math.floor(num(r.s, 3)), 1, 5), w: cleanName(r.w, '客人', 8), t: cleanName(r.t, '', 60) })) : [],
     revTotal: Math.max(0, Math.floor(num(o.revTotal, 0))),
-    stats: Object.fromEntries(['change', 'perfect', 'promo', 'best'].map(k => [k, Math.max(0, Math.floor(num(o.stats?.[k], 0)))])),
+    stats: Object.fromEntries(Object.keys(base.stats).map(k => [k, Math.max(0, Math.floor(num(o.stats?.[k], 0)))])),
+    duty: Array.isArray(o.duty) ? [...new Set(o.duty.filter(id => CAT_DEFS[id]))] : null,
+    seen: Array.isArray(o.seen) ? [...new Set(o.seen.filter(id => CAT_DEFS[id]))] : [],
+    outfit: OUTFITS.some(x => x.id === o.outfit) ? o.outfit : 'basic',
+    wardrobe: ['basic', ...(Array.isArray(o.wardrobe) ? o.wardrobe.filter(id => id !== 'basic' && OUTFITS.some(x => x.id === id)) : [])].filter((v, i, a) => a.indexOf(v) === i),
+    guests: Object.fromEntries(Object.entries(o.guests && typeof o.guests === 'object' ? o.guests : {}).filter(([id]) => GUEST_DEX.some(x => x.id === id)).map(([id, v]) => [id, { n: Math.max(0, Math.floor(num(v?.n, 0))), d: Math.max(1, Math.floor(num(v?.d, 1))) }])),
   };
+  const own = out.cats.map(c => c.id);
+  out.duty = (out.duty || own).filter(id => own.includes(id)); if (!out.duty.length) out.duty = own.slice(0, 3);
+  for (const id of own) if (!out.seen.includes(id)) out.seen.push(id);
+  if (!out.wardrobe.includes(out.outfit)) out.outfit = 'basic';
+  return out;
 }
 function cleanName(v, d, n) { return String(typeof v === 'string' ? v : '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n) || d; }
 function storeLocal() { try { localStorage.setItem('catloft-save', encodeSave(G)); } catch {} }
@@ -2966,6 +3356,7 @@ function closeDay() {
       <tr><td>餐點營收（正餐＋甜點）</td><td>${yen(T.dessert)}</td></tr>
       <tr><td>2F 入場費</td><td>${yen(T.loft)}</td></tr>
       ${T.treatN ? `<tr><td>貓咪肉泥（賣出 ${T.treatN} 條，${T.fed} 隻次貓咪吃到）</td><td>${yen(T.treat)}</td></tr>` : ''}
+      ${T.tips ? `<tr><td>稀有顧客給的小費</td><td>${yen(T.tips)}</td></tr>` : ''}
       ${T.beansN ? `<tr><td>咖啡豆（賣出 ${T.beansN} 包）</td><td>${yen(T.beans)}</td></tr>` : ''}
       <tr><td>採購支出${T.credit ? `（其中賒帳 ${yen(T.credit)}）` : ''}</td><td>−${yen(T.spent)}</td></tr>
       ${wages ? `<tr><td>員工薪資${owedWages ? `（${yen(owedWages)} 先欠著，記入負債）` : ''}</td><td>−${yen(wages)}</td></tr>` : ''}
@@ -2997,7 +3388,7 @@ function closeDay() {
   $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
   updateButtons();
 }
-function begin(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; if (G.day === 1) { renderTutorial(); openDrawer('tips'); } setMusic(G.music); saveProgress(); }
+function begin(newG) { G = newG; S = null; for (let i = 0; i < 3; i++) art((OUTFITS.find(o => o.id === G.outfit) || OUTFITS[0]).spr + '_' + i); startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; if (G.day === 1) { renderTutorial(); openDrawer('tips'); } setMusic(G.music); saveProgress(); }
 function openSetup() {
   const card = $('chooseCard');
   card.innerHTML = `<h2>幫你的店取名字</h2>
