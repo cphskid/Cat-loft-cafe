@@ -2304,15 +2304,17 @@ const PHASES = [[8, '開門營業'], [10, '午間尖峰'], [14, '午後大掃除
 function phaseName() {
   if (S.phase === 'prep') return '晨間備料・時鐘暫停';
   if (S.phase === 'settle') return '打烊';
+  if (window.TUT && TUT.hold()) return TUT.phase();
   let n = '開門營業'; for (const [h, name] of PHASES) if (S.time / 60 >= h) n = name; return n;
 }
 function update(dt) {
   S.t += dt;
   if (S.phase === 'open') {
-    S.time += dt * 4;
+    const hold = window.TUT && TUT.hold(); // day 1: the clock waits while the guide walks you through the first guest
+    if (!hold) S.time += dt * 4;
     const h = Math.floor(S.time / 60);
     if (h !== S.lastHour) { S.lastHour = h; const p = PHASES.find(p => p[0] === h); if (p) toast(`${String(h).padStart(2, '0')}:00 ${p[1]}`); }
-    S.spawnT -= dt;
+    if (!hold || S.cid === 0) S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
       if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() * rand(.7, 1.3); }
@@ -2357,6 +2359,7 @@ function drawWorld() {
   S.customers.forEach(c => { if (c.floor === f) items.push({ y: c.y + (c.table ? 1 : 0), d: () => drawCustomer(c) }); });
   items.sort((a, b) => a.y - b.y).forEach(i => i.d());
   for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
+  if (window.TUT) TUT.drawWorld(f);
   if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, H / 2, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
   if (S.cook) drawCook();
@@ -2608,25 +2611,8 @@ function updateButtons() {
   $('speedBtn').textContent = `${S.speed}×`;
   $('pauseBtn').textContent = S.paused ? '繼續' : '暫停';
 }
-function renderTutorial() {
-  const el = $('tutorial'); if (!S) return;
-  if (G.day !== 1 || S.phase === 'settle') { el.hidden = $('tipsTab').hidden = true; if ($('drawer').dataset.show === 'tips') closeDrawer(); return; }
-  el.hidden = $('tipsTab').hidden = false;
-  let html;
-  if (S.phase === 'prep') {
-    const items = [
-      [G.stock.flour > 0 || dispTotal() > 0, '打開「店長手機」→「喵喵速達」，買麵粉和貓糧（想賣正餐就加買正餐食材）'],
-      [dispTotal() > 0, '點樓梯旁櫃子下面的烤箱，照步驟親手做一批貓掌餅乾'],
-      [G.bowl > 0, '上 2F，點貓碗把貓糧裝滿'],
-      [S.cats.some(k => k.state !== 'sleep'), '點還在睡的貓咪，把牠摸醒（客人想摸醒著的貓）'],
-      [false, '都準備好了，按「開店營業」'],
-    ];
-    html = '<h3>第一天的晨間備料</h3><ol>' + items.map(([d, t]) => `<li class="${d ? 'done' : ''}">${t}</li>`).join('') + '</ol>';
-  } else {
-    html = '<h3>營業小提示</h3><ol><li>客人排在吧檯前：點吧檯或客人幫他點餐（收錢）。</li><li>頭上有甜點泡泡的客人：點他，店長會從展示櫃拿去送。</li><li>客人吃完會留下髒盤子：點桌子收拾，才有空位。有些客人會再點一份。</li><li>忙不過來時，用手機的「喵才獵人」雇員工幫忙。</li></ol>';
-  }
-  if (el.dataset.h !== html) { el.innerHTML = html; el.dataset.h = html; }
-}
+// the day-1 guide lives in tutorial.js
+function renderTutorial() { $('tipsTab').hidden = true; if (window.TUT) TUT.render(); }
 $('openBtn').onclick = () => { if (S.phase !== 'prep') return; S.phase = 'open'; S.time = 480; S.lastHour = 8; sfx('open_shop'); toast('08:00 開門營業！'); updateButtons(); };
 $('floorBtn').onclick = () => {
   const m = S.mgr, to = S.view === 2 ? 1 : 2;
@@ -3160,7 +3146,7 @@ function closeDay() {
   $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
   updateButtons();
 }
-function begin(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; if (G.day === 1) { renderTutorial(); openDrawer('tips'); } setMusic(G.music); sfx('morning'); saveProgress(); }
+function begin(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; renderTutorial(); setMusic(G.music); sfx('morning'); saveProgress(); }
 function openSetup() {
   const card = $('chooseCard');
   let sex = 'f';
@@ -3224,5 +3210,6 @@ requestAnimationFrame(frame);
 if (document.fonts) document.fonts.ready.then(() => prerender());
 window.__game = { get G() { return G; }, get S() { return S; }, closeDay, startCook, cookPress, cookRelease, setMusic, shopLv, actBake, actBowl, actPet, actOrder, actServe, actClear, buy, hire, takeOrder, adoptCat, actSit, doExpand, startCall };
 </script>
+<script src="tutorial.js"></script>
 </body>
 </html>
