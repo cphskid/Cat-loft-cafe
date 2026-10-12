@@ -254,6 +254,9 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 
 <div class="overlay" id="settleOv" hidden><div class="card" id="settleCard"></div></div>
 <div class="overlay" id="chooseOv" hidden><div class="card" id="chooseCard"></div></div>
+<div class="overlay" id="loadOv" hidden><div class="card" style="text-align:center"><h2 style="font-family:var(--display);color:var(--wood-d);margin:0 0 8px">開店準備中</h2>
+  <p class="muted" id="loadTxt">正在搬貓咪和店員進店裡…</p>
+  <div style="height:10px;border-radius:5px;background:var(--line);overflow:hidden"><div id="loadBar" style="height:100%;width:0;background:var(--accent);transition:width .2s"></div></div></div></div>
 
 <script>
 'use strict';
@@ -1065,6 +1068,7 @@ function pawPrint(x, y, s, c) {
 // ====================== painted art (web/assets, painted with the Gemini image model in the reference style) ======================
 // Every sprite has a hand-drawn canvas fallback, so the game still plays if an image fails to load.
 const ART = {};
+const CORE_ART = []; // backgrounds, people and cats: the game waits for these before opening the shop (see artReady)
 const PEOPLE = ['mgr', 'mgrm', 'cook', 'server', 'cashier', 'feeder', 'sitter', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'];
 const GUESTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c8']; // c6 is 小晴 in her school uniform
 (function loadArt() {
@@ -1072,13 +1076,14 @@ const GUESTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c7', 'c8']; // c6 is 小晴 in he
   for (const id of PEOPLE) for (let i = 0; i < 3; i++) names.push(`${id}_${i}`);
   for (const id of START_CATS.concat(['calico', 'gray', 'tabby', 'milk'])) for (let i = 0; i < 5; i++) names.push(`cat_${id}_${i}`);
   for (const n of names) loadArtImg(n, 0);
+  CORE_ART.push(...names);
 })();
 // On a phone a few of the ~140 parallel image requests can drop (weak signal, switching networks, the tab
 // sleeping). A dropped image used to leave that character on the old canvas drawing for the whole session,
-// so retry failed ones with backoff, and again whenever the page comes back online or into view.
+// so retry failed ones with backoff (never giving up; every 15 s at most), and again whenever the page comes back online or into view.
 function loadArtImg(n, tries) {
   const im = new Image(); im.decoding = 'async';
-  im.onerror = () => { if (ART[n] === im && tries < 8) setTimeout(() => { if (ART[n] === im) loadArtImg(n, tries + 1); }, Math.min(15000, 600 * 2 ** tries)); };
+  im.onerror = () => { if (ART[n] === im) setTimeout(() => { if (ART[n] === im) loadArtImg(n, tries + 1); }, Math.min(15000, 600 * 2 ** Math.min(tries, 5))); };
   im.src = `assets/${n}.webp` + (tries ? `?retry=${tries}` : '');
   ART[n] = im;
 }
@@ -1090,6 +1095,21 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) retr
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
 const LAZY_ART = /^(c(9|1\d|20)|mo\dm?)_\d$/;
+const artOk = n => { const im = ART[n]; return !!(im && im.complete && im.naturalWidth); };
+// Wait (at most ARTWAIT ms) until every core sprite, plus the given extra ones, has arrived; onTick(done, total) shows progress.
+const ARTWAIT = 10000;
+function artReady(extra, onTick) {
+  const want = CORE_ART.concat(extra), t0 = performance.now();
+  return new Promise(res => {
+    const check = () => {
+      const done = want.filter(artOk).length;
+      onTick(done, want.length);
+      if (done === want.length || performance.now() - t0 > ARTWAIT) return res(done === want.length);
+      setTimeout(check, 150);
+    };
+    check();
+  });
+}
 const art = n => { let im = ART[n]; if (!im && LAZY_ART.test(n)) { loadArtImg(n, 0); im = ART[n]; } return im && im.complete && im.naturalWidth ? im : null; };
 // draw an image with its bottom centre at (x, y), h pixels tall, mirrored when flip
 function sprite(im, x, y, h, flip, w) {
@@ -3441,7 +3461,7 @@ function openLogin() {
     const { data: row } = await CLOUD.sb.from('catloft_saves').select('code').eq('user_id', CLOUD.uid).maybeSingle();
     $('chooseOv').hidden = true;
     let g = null; try { g = row && decodeSave(row.code); } catch {}
-    if (g) { begin(g); toast(`歡迎回來，${CLOUD.name}！第 ${G.day} 天`); }
+    if (g) { begin(g); toast(`歡迎回來，${CLOUD.name}！第 ${g.day} 天`); }
     else toast(`已登入「${CLOUD.name}」，這個帳號還沒有存檔，開始新遊戲吧`);
   };
 }
@@ -3614,7 +3634,22 @@ function closeDay() {
   $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
   updateButtons();
 }
-function begin(newG) { G = newG; S = null; for (let i = 0; i < 3; i++) art((OUTFITS.find(o => o.id === G.outfit) || OUTFITS[0]).spr + mgrSfx() + '_' + i); startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; renderTutorial(); setMusic(G.music); sfx('morning'); saveProgress(); }
+// Opening the shop waits on the painted sprites first, so a slow phone connection never shows the backup drawings.
+let opening = false;
+async function begin(newG) {
+  if (opening) return; opening = true;
+  const outfit = [0, 1, 2].map(i => (OUTFITS.find(o => o.id === newG.outfit) || OUTFITS[0]).spr + (newG.mgrSex === 'm' ? 'm' : '') + '_' + i);
+  outfit.forEach(n => art(n));
+  if (![...CORE_ART, ...outfit].every(artOk)) {
+    $('loadOv').hidden = false;
+    const ok = await artReady(outfit, (d, t) => { $('loadBar').style.width = Math.round(d / t * 100) + '%'; $('loadTxt').textContent = `正在搬貓咪和店員進店裡… ${d}/${t}`; });
+    $('loadOv').hidden = true;
+    if (!ok) toast('網路有點慢，有些圖還在下載，下載好會自動換上');
+  }
+  opening = false;
+  openShop(newG);
+}
+function openShop(newG) { G = newG; S = null; startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; renderTutorial(); setMusic(G.music); sfx('morning'); saveProgress(); }
 function openSetup() {
   const card = $('chooseCard');
   let sex = 'f';
@@ -3629,7 +3664,7 @@ function openSetup() {
   $('setupBack').onclick = () => { $('chooseOv').hidden = true; };
   $('setupGo').onclick = () => {
     const ng = freshG(); ng.shopName = cleanName($('inShop').value, ng.shopName, 10); ng.mgrName = cleanName($('inMgr').value, ng.mgrName, 8); ng.mgrSex = sex;
-    $('chooseOv').hidden = true; begin(ng); toast(`歡迎來到${G.shopName}，${G.mgrName}店長！`);
+    $('chooseOv').hidden = true; begin(ng); toast(`歡迎來到${ng.shopName}，${ng.mgrName}店長！`);
   };
 }
 function showPopup(html) {
@@ -3643,7 +3678,7 @@ $('newBtn').onclick = () => {
 };
 $('loginBtn').onclick = () => { if (CLOUD.sb) openLogin(); };
 $('logoutBtn').onclick = () => { if (CLOUD.sb) { $('logoutBtn').disabled = true; logOut(); } };
-$('loadBtn').onclick = () => { try { begin(decodeSave($('loadCode').value)); toast('讀取成功，第 ' + G.day + ' 天'); } catch (e) { toast('讀不到存檔碼：' + e.message); } };
+$('loadBtn').onclick = () => { try { const g = decodeSave($('loadCode').value); begin(g); toast('讀取成功，第 ' + g.day + ' 天'); } catch (e) { toast('讀不到存檔碼：' + e.message); } };
 let localCode = null; try { localCode = localStorage.getItem('catloft-save'); } catch {}
 if (localCode) offerContinue(localCode, '這台裝置');
 initCloud();
