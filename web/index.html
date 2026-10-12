@@ -2,9 +2,10 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>暖陽貓閣</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="feedback.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
@@ -18,7 +19,7 @@
   --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   color-scheme:light;
 }
-html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
 [hidden]{display:none!important}
 body{background:radial-gradient(ellipse at 20% 0%,#FBF3E4 0,rgba(251,243,228,0) 60%),radial-gradient(ellipse at 90% 100%,#EFE2CF 0,rgba(239,226,207,0) 55%),#F2EBE1;color:var(--ink);font-family:var(--body);margin:0;-webkit-tap-highlight-color:transparent}
 /* Full-screen game: the canvas fills the window and every control floats on top of it. */
@@ -151,6 +152,13 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .actbtn{position:absolute;right:calc(20px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));z-index:4;width:84px;height:84px;border-radius:50%;padding:0;font-family:var(--display);font-size:20px;font-weight:700;background:rgba(217,119,62,.85);border-color:rgba(217,119,62,.9);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
 .actbtn:hover{background:#C9682F}
 .game.busy .joy,.game.busy .actbtn,.game.busy .lbtns,.game.busy .drawer,.game.busy .openbtn,.game.busy .rbtns{display:none}
+/* phone 設定 app: tuck the joystick / action button into the corner (smaller, see-through) or hide them */
+.game.joy-mini .joy{width:84px;height:84px;left:calc(4px + env(safe-area-inset-left));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.55}
+.game.joy-mini .joy span{display:none}.game.joy-mini .knob{width:36px;height:36px;margin:-18px 0 0 -18px}
+.game.act-mini .actbtn{width:54px;height:54px;font-size:14px;right:calc(4px + env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.65}
+.game.joy-off .joy,.game.act-off .actbtn{display:none}
+.seg{display:flex;gap:6px;margin:6px 0 0}.seg button{flex:1;padding:6px 4px;font-size:13px}.seg button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
+#phoneBtn .badge{background:var(--accent)}
 @media (max-height:460px){.joy{width:100px;height:100px}.actbtn{width:72px;height:72px;font-size:18px}.rbtns{gap:6px}.rb{width:42px;height:42px}.lbtns{top:calc(58px + env(safe-area-inset-top));flex-direction:row}.drawer{left:calc(10px + env(safe-area-inset-left));top:calc(108px + env(safe-area-inset-top));max-height:calc(100% - 118px);width:min(440px,55%)}}
 </style>
 </head>
@@ -176,7 +184,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   </div>
 
   <div class="rbtns">
-    <button class="rb" id="phoneBtn" aria-label="店長手機">手機</button>
+    <button class="rb" id="phoneBtn" aria-label="店長手機">手機<span class="badge sm" id="phoneBadge" hidden>!</span></button>
     <button class="rb" id="floorBtn"><span id="floorLbl">去 2F</span><span class="badge sm" id="floorBadge" hidden>!</span></button>
     <button class="rb" id="pauseBtn">暫停</button>
     <button class="rb" id="speedBtn" aria-label="遊戲速度">1×</button>
@@ -235,7 +243,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
     </div>
     <p class="muted" style="margin-top:16px">有存檔碼嗎？貼在這裡讀取</p>
     <textarea id="loadCode" placeholder="CAT-..."></textarea>
-    <div class="row"><button id="loadBtn">讀取存檔碼</button><button id="loginBtn" hidden>用帳號登入</button><button id="logoutBtn" hidden>登出／切換帳號</button></div>
+    <div class="row"><button id="loadBtn">讀取存檔碼</button><button id="loginBtn" hidden>用帳號登入</button><button id="logoutBtn" hidden>登出／切換帳號</button><button id="fbTitleBtn" hidden>💬 問題回報</button></div>
     <p class="muted">試玩版以 Stage 1「新手試營運」為主，另外先開放了員工和桌子。</p>
   </div>
 </div>
@@ -256,7 +264,7 @@ const ctx = cv.getContext('2d');
 let g = ctx; // current drawing context (swapped while pre-rendering backgrounds)
 // The canvas fills the window; V maps world (960×600) to screen: screen = world * V.s + (V.tx, V.ty).
 let DPR = 1;
-const V = { s: 1, tx: 0, ty: 0, cx: W / 2 };
+const V = { s: 1, tx: 0, ty: 0, cx: W / 2, cy: H / 2 };
 function fit() {
   DPR = Math.min(2, window.devicePixelRatio || 1);
   const w = Math.max(1, Math.round(cv.clientWidth * DPR)), h = Math.max(1, Math.round(cv.clientHeight * DPR));
@@ -265,29 +273,38 @@ function fit() {
 fit(); addEventListener('resize', fit);
 // Camera: portrait shows about a third of the shop and follows the manager; drag to look around,
 // it drifts back to the manager CAM_HOLD ms after you let go. Landscape fits the whole shop.
-const CAM = { x: 0, hold: 0, snap: true }, CAM_HOLD = 2500, PORTRAIT_VIEW = 320;
+// Landscape phones (short screens) zoom in too, showing LAND_VIEW_H of the shop's height; drag pans both ways.
+const CAM = { x: 0, y: 0, hold: 0, snap: true }, CAM_HOLD = 2500, PORTRAIT_VIEW = 320, LAND_VIEW_H = 330, LAND_MAX_H = 540;
+function viewScale(w, h) {
+  if (h > w) return Math.min(w / PORTRAIT_VIEW, h / H);
+  if (h <= LAND_MAX_H) return Math.max(h / LAND_VIEW_H, Math.min(w / W, h / H));
+  return Math.min(w / W, h / H);
+}
 function updateCam(dt) {
   const w = cv.clientWidth || 1, h = cv.clientHeight || 1;
   const box = S && (S.mini ? MINI_BOX : S.cook ? COOK_BOX : S.reg ? REG_BOX : null);
   if (box) { // mini-games: zoom onto their card
     const s = Math.min(w / (box.w + 24), h / (box.h + 24));
-    V.s = s; V.tx = w / 2 - (box.x + box.w / 2) * s; V.ty = h / 2 - (box.y + box.h / 2) * s; V.cx = box.x + box.w / 2;
+    V.s = s; V.tx = w / 2 - (box.x + box.w / 2) * s; V.ty = h / 2 - (box.y + box.h / 2) * s; V.cx = box.x + box.w / 2; V.cy = box.y + box.h / 2;
     return;
   }
-  const s = h > w ? Math.min(w / PORTRAIT_VIEW, h / H) : Math.min(w / W, h / H), vw = w / s, maxX = W - vw;
+  const s = viewScale(w, h), vw = w / s, vh = h / s, maxX = W - vw, maxY = H - vh;
+  const m = S && S.mgr, follow = m && m.floor === S.view && !DRAG.moved && performance.now() > CAM.hold;
+  const k = CAM.snap ? 1 : Math.min(1, dt * 5);
   if (maxX <= 0) CAM.x = maxX / 2;
   else {
-    const m = S && S.mgr;
-    if (m && m.floor === S.view && !DRAG.moved && performance.now() > CAM.hold) {
-      const tgt = clamp(m.x - vw / 2, 0, maxX);
-      CAM.x = CAM.snap ? tgt : CAM.x + (tgt - CAM.x) * Math.min(1, dt * 5);
-      CAM.snap = false;
-    }
+    if (follow) CAM.x += (clamp(m.x - vw / 2, 0, maxX) - CAM.x) * k;
     CAM.x = clamp(CAM.x, 0, maxX);
   }
-  V.s = s; V.tx = -CAM.x * s; V.ty = Math.max(0, (h - H * s) / 2); V.cx = CAM.x + vw / 2;
+  if (maxY <= 0) CAM.y = maxY / 2;
+  else { // the manager's feet sit about two thirds down the screen
+    if (follow) CAM.y += (clamp(m.y - vh * .68, 0, maxY) - CAM.y) * k;
+    CAM.y = clamp(CAM.y, 0, maxY);
+  }
+  if (follow) CAM.snap = false;
+  V.s = s; V.tx = -CAM.x * s; V.ty = -CAM.y * s; V.cx = CAM.x + vw / 2; V.cy = CAM.y + vh / 2;
 }
-const DRAG = { id: null, x0: 0, y0: 0, cam0: 0, moved: false };
+const DRAG = { id: null, x0: 0, y0: 0, cam0: 0, camy0: 0, moved: false };
 
 const INK = '#6A4B3A';
 const FONT = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
@@ -2689,7 +2706,7 @@ function drawWorld() {
   items.sort((a, b) => a.y - b.y).forEach(i => i.d());
   for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
   if (window.TUT) TUT.drawWorld(f);
-  if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, H / 2, 40, '#FFFFFF', 'center', DFONT, 700); }
+  if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, V.cy, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
   if (S.cook) drawCook();
   if (S.reg) drawReg();
@@ -2752,7 +2769,7 @@ cv.addEventListener('pointerdown', e => {
   if (S.reg) { regClick(p); return; }
   if (S.cook) { if (Math.hypot(p.x - COOK_X.x, p.y - COOK_X.y) < 22) cancelCook(); else { cookPress(); cv.setPointerCapture(e.pointerId); } return; }
   // a tap acts on release; a drag pans the camera instead
-  DRAG.id = e.pointerId; DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.cam0 = CAM.x; DRAG.moved = false;
+  DRAG.id = e.pointerId; DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.cam0 = CAM.x; DRAG.camy0 = CAM.y; DRAG.moved = false;
   cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointerup', e => {
@@ -2766,9 +2783,9 @@ cv.addEventListener('pointerup', e => {
 cv.addEventListener('pointercancel', e => { cookRelease(); if (DRAG.id === e.pointerId) { DRAG.id = null; DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; } });
 cv.addEventListener('pointermove', e => {
   if (DRAG.id === e.pointerId) {
-    const dx = e.clientX - DRAG.x0;
-    if (!DRAG.moved && Math.hypot(dx, e.clientY - DRAG.y0) > 10) DRAG.moved = true;
-    if (DRAG.moved) CAM.x = DRAG.cam0 - dx / V.s;
+    const dx = e.clientX - DRAG.x0, dy = e.clientY - DRAG.y0;
+    if (!DRAG.moved && Math.hypot(dx, dy) > 10) DRAG.moved = true;
+    if (DRAG.moved) { CAM.x = DRAG.cam0 - dx / V.s; CAM.y = DRAG.camy0 - dy / V.s; }
     return;
   }
   if (!S || S.cook) return;
@@ -2777,6 +2794,30 @@ cv.addEventListener('pointermove', e => {
   const h = started && hitTest(p.x, p.y);
   cv.style.cursor = h && !h.weak ? 'pointer' : 'default';
 });
+// ---- control layout (phone 設定 app): joystick / action button normal, tucked in the corner, or hidden; kept per device ----
+const UI = { joy: 'on', act: 'on' };
+try { Object.assign(UI, JSON.parse(localStorage.getItem('catloft-ui') || '{}')); } catch {}
+function saveUi() { try { localStorage.setItem('catloft-ui', JSON.stringify(UI)); } catch {} }
+function applyUi() {
+  const c = document.getElementById('game').classList;
+  for (const k of ['joy', 'act']) { c.toggle(k + '-mini', UI[k] === 'mini'); c.toggle(k + '-off', UI[k] === 'off'); }
+}
+applyUi();
+// iPhone Safari zooms on a quick double tap (and pinch) even with touch-action set, which threw the controls off screen.
+// Swallow the second tap's default zoom; buttons still get their click.
+(() => {
+  let lastEnd = 0;
+  document.addEventListener('touchend', e => {
+    const now = e.timeStamp, quick = now - lastEnd < 350; lastEnd = now;
+    if (!quick || e.touches.length) return;
+    const t = e.target, el = t && t.closest ? t : t && t.parentElement;
+    if (!el || el.closest('input, textarea, select, [contenteditable]')) return;
+    e.preventDefault();
+    const b = el.closest('button, a, label, summary, [data-app]');
+    if (b && !b.disabled) b.click();
+  }, { passive: false });
+  for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+})();
 // ---- circular joystick + action button + keyboard ----
 const JOY = { x: 0, y: 0 }, KEYV = { x: 0, y: 0 }, KEYS = {};
 (() => {
@@ -3000,12 +3041,13 @@ function renderPhone() {
     const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '喵喵速達', '材料・傢俱', '#D9773E', '送'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
                   ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
-                  ['save', '存檔碼', '複製進度', '#7A8DA6', '存']];
+                  ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
+    if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
-      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
+      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃' };
+    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -3161,6 +3203,11 @@ function renderPhone() {
       const all = G.reviews, avg = S.today.ratings.length ? (S.today.ratings.reduce((a, b) => a + b, 0) / S.today.ratings.length).toFixed(1) : '—';
       h += `<div class="item"><div class="top"><span class="nm">累計留言</span><b>${G.revTotal} 則</b></div><div class="sub">今天 ${S.today.reviews} 則留言・今日平均 ${avg} ★・大約一半的客人離開時會留言</div></div>`;
       h += all.length ? all.slice(0, 40).map(r => `<div class="item"><div class="top"><span class="nm">${r.w}</span><span class="sub">第 ${r.d} 天・<span style="color:#D9A23A">${'★'.repeat(r.s)}${'☆'.repeat(5 - r.s)}</span></span></div><div>「${r.t}」</div></div>`).join('') : '<p class="muted">還沒有留言，開門營業後客人會陸續留言。</p>';
+    } else if (phoneApp === 'settings') {
+      const seg = (k, opts) => `<div class="seg">${opts.map(([v, t]) => `<button data-ui="${k}:${v}" class="${UI[k] === v ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+      h += `<p class="muted" style="margin:0">搖桿或動作鍵擋住要點的人物時，可以縮小收到角落，或是整個藏起來。這個設定只存在這台裝置。</p>
+        <div class="item"><div class="top"><span class="nm">方向搖桿</span></div><div class="sub">藏起來之後，直接點畫面上的東西，店長一樣會自己走過去。</div>${seg('joy', [['on', '正常'], ['mini', '縮小靠邊'], ['off', '隱藏']])}</div>
+        <div class="item"><div class="top"><span class="nm">動作鍵</span></div><div class="sub">藏起來之後，直接點店長旁邊的東西一樣能互動（鍵盤 E 也可以）。</div>${seg('act', [['on', '正常'], ['mini', '縮小靠邊'], ['off', '隱藏']])}</div>`;
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
@@ -3169,7 +3216,8 @@ function renderPhone() {
     h += '</div>';
   }
   sc.innerHTML = h;
-  sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { sfx('app_switch'); phoneApp = b.dataset.app; renderPhone(); });
+  sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { sfx('app_switch'); if (b.dataset.app === 'report') { openFeedback(); return; } phoneApp = b.dataset.app; renderPhone(); });
+  sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
   const q = s => sc.querySelector(s);
   q('#pClose') && (q('#pClose').onclick = closePhone);
   q('#pBack') && (q('#pBack').onclick = () => { if (CALL && CALL.result) CALL = null; if (!CALL) { phoneApp = 'home'; renderPhone(); } });
@@ -3454,7 +3502,32 @@ async function initCloud() {
   } catch {}
   CLOUD.ready = true; showAcct();
   if (started) saveProgress();
+  mountFeedback();
 }
+// ---- 💬 問題回報 (feedback.js; same inbox as 時光冒險樂園, see supabase/catloft_feedback.sql) ----
+const FB = { unread: 0 };
+async function ensurePlayer() { // reporting needs a player id; make the anonymous user now instead of on the first save
+  if (CLOUD.uid || !CLOUD.sb) return;
+  const { data, error } = await CLOUD.sb.auth.signInAnonymously();
+  if (error) throw error;
+  CLOUD.uid = data.user.id;
+}
+function mountFeedback() {
+  if (!window.CatFeedback || !CLOUD.sb) return;
+  $('fbTitleBtn').hidden = false;
+  CatFeedback.mount({
+    client: () => CLOUD.sb,
+    ensureUser: ensurePlayer,
+    context: () => started && S ? {
+      screen: [S.view === 3 ? '休息室' : S.view + 'F', !$('phoneOv').hidden && '手機:' + phoneApp, S.cook && '做菜', S.mini && '甜點', S.reg && '找錢'].filter(Boolean).join('/'),
+      day: G.day, phase: S.phase, time: `${String(Math.floor(S.time / 60)).padStart(2, '0')}:${String(Math.floor(S.time % 60)).padStart(2, '0')}`,
+      level: 'Lv.' + shopLv(), cash: G.cash, shop: G.shopName, ui: `${UI.joy}/${UI.act}`,
+    } : { screen: '標題畫面' },
+    onDot: n => { FB.unread = n; $('phoneBadge').hidden = !n; if (!$('phoneOv').hidden && phoneApp === 'home') renderPhone(); },
+  });
+}
+function openFeedback() { if (window.CatFeedback && CLOUD.sb) CatFeedback.open(); }
+$('fbTitleBtn').onclick = openFeedback;
 
 // ---- day flow ----
 function closeDay() {
