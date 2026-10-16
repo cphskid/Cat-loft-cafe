@@ -388,7 +388,7 @@ const MGR_COUNTER = { x: 498, y: 484 };
 const CASHIER_SPOT = { x: 586, y: 484 };
 const SERVER_PICK = { x: 650, y: 504 };
 const OVEN_SPOT = { x: 336, y: 506 };
-const KGATE = { x: 648, y: 500 };
+const KGATE = { x: 648, y: 500 }, KGATE_L = { x: 440, y: 500 }; // the counter can be walked around on either end
 const TABLE_POS = [{ x: 690, y: 524 }, { x: 880, y: 524 }, { x: 785, y: 594 }, { x: 625, y: 594 }, { x: 925, y: 594 }, { x: 262, y: 594 }];
 const TABLE_PRICE = 150, MAX_TABLES = TABLE_POS.length;
 // expanding the shop: each step needs a shop level and money, and makes room for more guests
@@ -1712,7 +1712,10 @@ function routeTo(e, f, x, y) {
   leg(path, cf, cx, cy, x, y); e.path = path;
 }
 function leg(path, f, x0, y0, x1, y1) {
-  if (behindCounter(f, x0, y0) !== behindCounter(f, x1, y1)) path.push({ f, x: KGATE.x, y: KGATE.y });
+  if (behindCounter(f, x0, y0) !== behindCounter(f, x1, y1)) { // go round whichever end of the counter is shorter
+    const via = gt => Math.hypot(gt.x - x0, gt.y - y0) + Math.hypot(x1 - gt.x, y1 - gt.y);
+    const gt = via(KGATE_L) < via(KGATE) ? KGATE_L : KGATE; path.push({ f, x: gt.x, y: gt.y });
+  }
   path.push({ f, x: x1, y: y1 });
 }
 
@@ -1887,7 +1890,7 @@ function putDown(k = heldCat()) {
   const m = S.mgr;
   if (m.floor === 3) { toast(`休息室不能放貓，回到 1F 或 2F 再放下${k.name}`); return; }
   k.anim = null; k.onBed = false; k.floor = m.floor; k.x = clamp(m.x + 36 * m.face, 160, 900); k.y = clamp(m.y + 6, 490, 594);
-  if (behindCounter(k.floor, k.x, k.y)) { k.x = KGATE.x + 60; k.y = clamp(k.y, 540, 594); }
+  if (behindCounter(k.floor, k.x, k.y)) { k.x = k.x < 540 ? KGATE_L.x - 40 : KGATE.x + 60; k.y = clamp(k.y, 540, 594); }
   k.state = 'idle'; k.t = rand(1, 3); k.hearts = 1.2;
   say(k, pick(['喵～', '還要抱抱', '呼嚕～'])); say(m, pick(['乖乖，去玩吧', `${k.name}好重喔～`, '下次再抱你']));
 }
