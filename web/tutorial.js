@@ -99,6 +99,12 @@
   // which step / hint is showing now: { text, target, ok, n }
   function current() {
     const T = state();
+    if (S.phase === 'closing') { // 21:00: walk the first closing through too
+      const C = S.close, n = '第一天教學・打烊';
+      if (!C.sign) return { text: '21:00 打烊了！點門口的牌子，把它翻成「打烊」。', target: atFloor({ f: 1, x: 33, y: 504 }), n };
+      if (C.wind == null) return { text: '牌子翻好了。還在店裡的客人會吃完再走，有人在等餐就幫他送過去。', target: null, n };
+      return { text: '客人都回家了，貓咪也睡了。點睡著的貓跟牠說晚安，好了按「結束今天，回顧一下」。', target: { dom: '#endBtn' }, n };
+    }
     while (T.i < STEPS.length) {
       const st = STEPS[T.i];
       if ((st.ok && T.okd[st.key]) || (!st.ok && st.done())) { T.i++; T.t = 0; continue; }
