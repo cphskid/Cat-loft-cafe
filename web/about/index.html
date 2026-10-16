@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>暖陽貓閣｜手繪水彩貓咪咖啡廳經營遊戲</title>
+<meta name="description" content="巷子裡一間小小的雙層貓咪咖啡廳。招呼客人、親手做甜點、收銀找錢、上 2F 吸貓，免費、免下載，手機電腦都能玩。">
+<meta name="theme-color" content="#F6E9D6">
+<link rel="canonical" href="https://catloftcafe.ciyulab.com/about/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="暖陽貓閣 Cat Loft Cafe">
+<meta property="og:title" content="暖陽貓閣｜今天開始，你是貓咪咖啡廳的店長">
+<meta property="og:description" content="手繪水彩風的雙層貓咪咖啡廳經營遊戲。做甜點、找零錢、摸貓咪，免費線上試玩。">
+<meta property="og:url" content="https://catloftcafe.ciyulab.com/about/">
+<meta property="og:image" content="https://catloftcafe.ciyulab.com/about/media/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Same warm paper palette as the game itself (../index.html). */
+:root{
+  --wood:#8D6E63; --wood-d:#5D4037; --wood-l:#C9A27E;
+  --paper:#FDFBF7; --ink:#4A3428; --muted:#8B776B; --line:#E6DACB;
+  --sun:#F6E7C8; --accent:#D9773E; --accent-d:#B85F2C; --good:#6E9B4E;
+  --display:"LXGW WenKai TC","Noto Sans TC","PingFang TC","Microsoft JhengHei",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:var(--body);line-height:1.7;-webkit-text-size-adjust:100%;
+  background:radial-gradient(ellipse at 15% 0%,#FBF3E4 0,rgba(251,243,228,0) 55%),radial-gradient(ellipse at 90% 40%,#EFE2CF 0,rgba(239,226,207,0) 50%),#F5EEE4}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--accent-d)}
+.wrap{width:min(1080px,100% - 32px);margin:0 auto}
+h1,h2,h3{font-family:var(--display);color:var(--wood-d);line-height:1.25;margin:0}
+h2{font-size:clamp(26px,4.5vw,36px);text-align:center}
+.kicker{display:block;text-align:center;letter-spacing:.3em;font-size:13px;color:var(--muted);margin-bottom:6px;font-family:var(--body)}
+section{padding:clamp(48px,8vw,88px) 0}
+.lead{text-align:center;color:var(--muted);max-width:36em;margin:12px auto 0}
+
+/* top bar */
+.bar{position:sticky;top:0;z-index:10;background:rgba(253,251,247,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;gap:12px}
+.bar .logo{font-family:var(--display);font-weight:700;font-size:20px;color:var(--wood-d);text-decoration:none;letter-spacing:.06em;white-space:nowrap}
+.bar nav{display:flex;align-items:center;gap:18px;font-size:15px}
+.bar nav a.nl{color:var(--ink);text-decoration:none}
+.bar nav a.nl:hover{color:var(--accent-d)}
+@media (max-width:640px){.bar nav a.nl{display:none}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:12px 28px;font-weight:700;font-size:17px;text-decoration:none;
+  font-family:var(--display);transition:transform .15s,box-shadow .15s,background .15s;border:2px solid transparent;white-space:nowrap}
+.btn.primary{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(217,119,62,.35)}
+.btn.primary:hover{background:var(--accent-d);transform:translateY(-2px)}
+.btn.ghost{border-color:var(--wood-l);color:var(--wood-d);background:rgba(255,255,255,.6)}
+.btn.ghost:hover{background:#fff}
+.btn.sm{padding:7px 18px;font-size:15px;box-shadow:none}
+.btn:focus-visible{outline:3px solid var(--wood-d);outline-offset:3px}
+
+/* hero */
+.hero{padding:clamp(28px,5vw,56px) 0 clamp(40px,6vw,72px)}
+.hero .wrap{display:grid;grid-template-columns:1.25fr 1fr;gap:clamp(24px,4vw,52px);align-items:center}
+.hero .art{position:relative}
+.hero .art img{border-radius:22px;box-shadow:0 18px 40px rgba(60,40,30,.22);border:6px solid #fff;transform:rotate(-1.2deg)}
+.hero .art .cat{position:absolute;width:clamp(56px,9vw,86px);bottom:-18px;right:-10px;transform:none;border:0;box-shadow:none;border-radius:0;filter:drop-shadow(0 4px 6px rgba(60,40,30,.25))}
+.hero .en{letter-spacing:.32em;font-size:14px;color:var(--muted)}
+.hero h1{font-size:clamp(46px,8vw,76px);margin:4px 0 12px;letter-spacing:.04em}
+.hero p.tag{font-size:clamp(17px,2.2vw,20px);margin:0 0 22px;font-family:var(--display)}
+.hero .ctas{display:flex;flex-wrap:wrap;gap:12px}
+.hero .note{font-size:14px;color:var(--muted);margin-top:14px}
+@media (max-width:820px){.hero .wrap{grid-template-columns:1fr}.hero .copy{text-align:center}.hero .ctas{justify-content:center}}
+
+/* video */
+.video-box{margin:28px auto 0;max-width:960px;border-radius:20px;overflow:hidden;background:#2E221B;box-shadow:0 16px 40px rgba(60,40,30,.25);border:6px solid #fff;aspect-ratio:16/9}
+.video-box video{width:100%;height:100%;display:block}
+
+/* features */
+.feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;margin-top:36px}
+.feat{background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 4px 14px rgba(60,40,30,.06)}
+.feat img{aspect-ratio:16/9;object-fit:cover;width:100%;border-bottom:1px solid var(--line)}
+.feat .tx{padding:16px 18px 18px}
+.feat h3{font-size:21px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.feat h3 img{width:30px;height:30px;aspect-ratio:auto;border:0;border-radius:8px}
+.feat p{margin:0;color:var(--muted);font-size:15px}
+
+/* cats */
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;margin-top:32px}
+.cat-c{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:16px 10px 14px;text-align:center}
+.cat-c img{height:96px;width:auto;margin:0 auto 8px;object-fit:contain}
+.cat-c b{font-family:var(--display);font-size:19px;color:var(--wood-d);display:block}
+.cat-c span{font-size:13px;color:var(--muted);display:block;line-height:1.5}
+.cat-c .tagn{display:inline-block;font-size:12px;background:var(--sun);color:var(--wood-d);border-radius:999px;padding:0 9px;margin-top:6px}
+.band{background:linear-gradient(180deg,rgba(246,231,200,.0),rgba(246,231,200,.55) 20%,rgba(246,231,200,.55) 80%,rgba(246,231,200,0))}
+
+/* how */
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;margin-top:32px}
+.how .card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:20px 22px}
+.how h3{font-size:20px;margin-bottom:8px}
+.how ol{margin:0;padding-left:1.3em;color:var(--ink);font-size:15px}
+.how p{margin:0;font-size:15px;color:var(--muted)}
+kbd{font-family:var(--body);background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px;font-size:13px}
+
+/* final cta */
+.final{text-align:center}
+.final .box{background:var(--paper);border:2px solid var(--wood-l);border-radius:28px;padding:clamp(28px,5vw,48px) 20px;position:relative;overflow:hidden}
+.final .box img.c{position:absolute;bottom:0;width:clamp(60px,9vw,90px)}
+.final .box img.c.l{left:4%}.final .box img.c.r{right:4%}
+.final p{margin:10px 0 22px;font-family:var(--display);font-size:18px}
+@media (max-width:560px){.final .box img.c{display:none}}
+footer{padding:28px 0 40px;text-align:center;font-size:13px;color:var(--muted)}
+footer a{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <a class="logo" href="#top">🐾 暖陽貓閣</a>
+    <nav>
+      <a class="nl" href="#video">介紹影片</a>
+      <a class="nl" href="#play">玩法</a>
+      <a class="nl" href="#cats">店貓</a>
+      <a class="btn primary sm" href="../">立即試玩</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div class="art">
+        <img src="../assets/title.webp" width="1600" height="893" alt="巷子裡的暖陽貓閣，店長在門口揮手">
+        <img class="cat" src="../assets/cat_orange_1.webp" alt="">
+      </div>
+      <div class="copy">
+        <div class="en">CAT LOFT CAFE</div>
+        <h1>暖陽貓閣</h1>
+        <p class="tag">巷子裡一間小小的雙層貓咪咖啡廳。<br>今天開始，你是這間店的店長。</p>
+        <div class="ctas">
+          <a class="btn primary" href="../">▶ 立即試玩</a>
+          <a class="btn ghost" href="#video">看介紹影片</a>
+        </div>
+        <p class="note">免費・免下載・手機和電腦的瀏覽器都能玩</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="video" style="padding-top:0">
+    <div class="wrap">
+      <span class="kicker">GAMEPLAY</span>
+      <h2>一分鐘看懂暖陽貓閣</h2>
+      <div class="video-box">
+        <video controls playsinline muted preload="metadata" poster="media/poster.jpg">
+          <source src="media/promo.mp4" type="video/mp4">
+        </video>
+      </div>
+      <p class="lead">影片裡的畫面全部來自遊戲本身，音樂也是遊戲裡的配樂。<br><a href="media/promo-vertical.mp4" download>下載直式 30 秒短影音</a>（適合 IG／FB Reels、YouTube Shorts）</p>
+    </div>
+  </section>
+
+  <section id="play" class="band">
+    <div class="wrap">
+      <span class="kicker">HOW TO PLAY</span>
+      <h2>從早上開門，忙到打烊結算</h2>
+      <p class="lead">一樓是咖啡廳，二樓是貓咪們的閣樓。客人進門、點餐、上樓吸貓，每一天都有不一樣的故事。</p>
+      <div class="feats">
+        <article class="feat"><img src="media/shot-1f.webp" alt="一樓咖啡廳，客人坐在桌邊用餐" loading="lazy">
+          <div class="tx"><h3><img src="../assets/ic_menu.webp" alt="">經營咖啡廳</h3><p>招呼客人、點餐、送餐、收桌子。請店員來幫忙，店越來越熱鬧。</p></div></article>
+        <article class="feat"><img src="media/shot-cook.webp" alt="做貓掌奶油餅乾的小遊戲" loading="lazy">
+          <div class="tx"><h3><img src="../assets/ic_shop.webp" alt="">親手做料理</h3><p>甜點和正餐一步一步做：倒麵粉、攪拌、壓出貓掌，再看準火候按下去。</p></div></article>
+        <article class="feat"><img src="media/shot-reg.webp" alt="收銀台找錢的小遊戲" loading="lazy">
+          <div class="tx"><h3><img src="../assets/ic_wallet.webp" alt="">收銀找錢</h3><p>客人付了一張大鈔，要找多少？算對了，客人開心給五星。</p></div></article>
+        <article class="feat"><img src="media/shot-2f.webp" alt="二樓貓閣，客人和貓咪玩" loading="lazy">
+          <div class="tx"><h3><img src="../assets/ic_cats.webp" alt="">上 2F 吸貓</h3><p>摸摸頭、擊掌、抱抱。每隻貓都有自己的親密度，越熟解鎖越多互動。</p></div></article>
+        <article class="feat"><img src="media/shot-phone.webp" alt="店長手機裡的喵喵家族 App" loading="lazy">
+          <div class="tx"><h3><img src="../assets/ic_guests.webp" alt="">收集圖鑑</h3><p>領養新貓咪，收集 300 多種貓和稀有顧客，每天還有任務和客人留言。</p></div></article>
+        <article class="feat"><img src="media/shot-room.webp" alt="員工休息室" loading="lazy">
+          <div class="tx"><h3><img src="../assets/ic_myshop.webp" alt="">把店做大</h3><p>買傢俱、擴建店面、解鎖新菜單，一路升到 Lv.7。用帳號登入就能在手機和電腦接著玩。</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="cats">
+    <div class="wrap">
+      <span class="kicker">MEET THE CATS</span>
+      <h2>店裡的貓咪們</h2>
+      <p class="lead">開店第一天就有三隻店貓陪你，升級之後還能領養更多。</p>
+      <div class="cats">
+        <div class="cat-c"><img src="../assets/cat_orange_1.webp" alt="" loading="lazy"><b>橘子</b><span>貪吃又愛撒嬌的橘貓</span><em class="tagn">開店就在</em></div>
+        <div class="cat-c"><img src="../assets/cat_tux_1.webp" alt="" loading="lazy"><b>黑豆</b><span>穿著燕尾服的酷酷賓士貓</span><em class="tagn">開店就在</em></div>
+        <div class="cat-c"><img src="../assets/cat_fluffy_1.webp" alt="" loading="lazy"><b>雪球</b><span>毛蓬蓬、最愛睡高處</span><em class="tagn">開店就在</em></div>
+        <div class="cat-c"><img src="../assets/cat_calico_1.webp" alt="" loading="lazy"><b>咪咪</b><span>三花貓，客人一看到就走不動</span><em class="tagn">Lv.2 領養</em></div>
+        <div class="cat-c"><img src="../assets/cat_gray_1.webp" alt="" loading="lazy"><b>灰灰</b><span>安靜的藍灰貓，喜歡貓跳台</span><em class="tagn">Lv.3 領養</em></div>
+        <div class="cat-c"><img src="../assets/cat_tabby_1.webp" alt="" loading="lazy"><b>條條</b><span>虎斑貓，精力旺盛很愛玩</span><em class="tagn">Lv.4 領養</em></div>
+        <div class="cat-c"><img src="../assets/cat_milk_1.webp" alt="" loading="lazy"><b>奶茶</b><span>暹羅貓，會在門口迎接客人</span><em class="tagn">Lv.5 領養</em></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <span class="kicker">START</span>
+      <h2>怎麼開始玩</h2>
+      <div class="how">
+        <div class="card"><h3>💻 電腦</h3><p>用瀏覽器打開遊戲就能玩。方向鍵或 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 走路，<kbd>空白鍵</kbd> 做動作，也可以直接用滑鼠點。</p></div>
+        <div class="card"><h3>📱 iPhone 加到主畫面</h3><ol><li>用 Safari 打開遊戲</li><li>點下方的「分享」按鈕</li><li>選「加入主畫面」，就像 App 一樣一點就開</li></ol></div>
+        <div class="card"><h3>📱 Android 加到主畫面</h3><ol><li>用 Chrome 打開遊戲</li><li>點右上角「⋮」</li><li>選「加到主畫面」</li></ol></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" style="padding-top:0">
+    <div class="wrap">
+      <div class="box">
+        <img class="c l" src="../assets/cat_tux_1.webp" alt="">
+        <img class="c r" src="../assets/cat_calico_1.webp" alt="">
+        <h2>店門已經打開了</h2>
+        <p>貓咪們在等你，快來當店長吧！</p>
+        <a class="btn primary" href="../">▶ 立即試玩</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">暖陽貓閣 Cat Loft Cafe・<a href="../">catloftcafe.ciyulab.com</a></div>
+</footer>
+</body>
+</html>

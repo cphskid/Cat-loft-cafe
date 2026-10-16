@@ -4,3 +4,8 @@
 node_modules/
 .DS_Store
 tools/audio/raw/
+tools/promo/frames_*/
+tools/promo/stills_*/
+tools/promo/*.m4a
+tools/promo/*.mp4
+tools/promo/*.png
