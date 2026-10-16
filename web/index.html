@@ -88,7 +88,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .item{background:rgba(255,255,255,.92)}
 .screen.home>p{background:rgba(253,251,247,.85);margin:0 12px 12px!important;border-radius:10px;padding:6px 10px!important}
 .stabs{display:flex;gap:6px;position:sticky;top:0;z-index:1;background:var(--paper);padding:2px 0 6px}
-.cpv{width:56px;height:56px;flex:none;background:#FBF4EA;border-radius:10px}
+.cpv{width:56px;height:56px;flex:none;object-fit:contain;background:#FBF4EA;border-radius:10px;padding:4px}
 .stabs button{flex:1;padding:6px 2px;font-size:13px}
 .stabs button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
 .item .tg{font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:6px}
@@ -223,7 +223,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li><b>貓咪親密度</b>：店長每摸一次頭，那隻貓的親密度 +1（名字下面的愛心數字）。到 10、25、45、70、100 會解鎖蹭蹭腳、擊掌、翻肚子、抱抱、碰鼻子，點貓咪就能選。</li>
       <li><b>收銀台</b>：店長幫客人點餐時要自己找錢，點錢幣和鈔票放進找零盤，再按「找錢給客人」。少找客人會不開心，多找會虧錢。</li>
       <li>貓咪頭上出現「摸摸我」時，走過去摸牠會很開心，會更常去陪客人玩；放著不理牠會鬧脾氣一陣子。手機的「喵音樂」可以換背景音樂。</li>
-      <li>手機的「商店」可以買材料、新桌子（最多 5 張）、解鎖的傢俱、店長的衣服和小道具；每個月還有節日活動，活動營收達標就能買限定吊飾戴在店長或貓咪身上。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
+      <li>手機的「商店」可以買材料、新桌子（最多 5 張）、解鎖的傢俱、店長的衣服和小道具；每個月還有節日活動，活動營收達標就能買限定飾品戴在店長或貓咪身上。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
       <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算。每天開店前和打烊後會自動存檔（有登入就存在帳號裡），下次打開按「繼續」就好；營業到一半關掉，會回到當天早上。</li>
       <li>快捷鍵：方向鍵移動、E 動作、F 切換樓層、空白鍵暫停。</li>
     </ul>
@@ -389,11 +389,11 @@ const TOOLS = {
 };
 // 每月活動 (real calendar month). Earning `need` during the event unlocks each charm in 商店 → 活動; bought charms are kept for good.
 const EVENTS = [
-  { id: 'halloween', month: 10, name: '萬聖節', icon: '🎃', desc: '十月是萬聖節！活動期間的營收累積到目標，就能買限定吊飾掛在身上。' },
+  { id: 'halloween', month: 10, name: '萬聖節', icon: '🎃', desc: '十月是萬聖節！活動期間的營收累積到目標，就能買限定飾品戴在身上。' },
 ];
 const CHARMS = {
-  pumpkin: { ev: 'halloween', who: 'mgr', name: '南瓜燈吊飾', price: 200, need: 1000, desc: '掛在店長腰間，會一晃一晃的小南瓜燈' },
-  bat:     { ev: 'halloween', who: 'cat', name: '小蝙蝠鈴鐺', price: 300, need: 3000, desc: '戴在貓咪脖子上的小蝙蝠鈴鐺，挑一隻貓幫牠戴' },
+  pumpkin: { ev: 'halloween', who: 'mgr', name: '萬聖節南瓜領巾', price: 200, need: 1000, img: 'acc_scarf', desc: '橘色蝙蝠點點領巾，打個結再掛一個小南瓜燈，繫在店長脖子上' },
+  bat:     { ev: 'halloween', who: 'cat', name: '蝙蝠鈴鐺項圈', price: 300, need: 3000, img: 'acc_bell', desc: '紫色項圈掛著長了蝙蝠翅膀的小金鈴，挑一隻貓幫牠戴' },
 };
 const evNow = () => { const d = new Date(); const E = EVENTS.find(e => e.month === d.getMonth() + 1); return E && { ...E, key: E.id + d.getFullYear() }; };
 const evEarned = E => (E && G.ev[E.key]) || 0;
@@ -1116,7 +1116,7 @@ window.addEventListener('online', retryMissingArt);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
-const LAZY_ART = /^(c(9|1\d|20)|mo\dm?)_\d$/;
+const LAZY_ART = /^((c(9|1\d|20)|mo\dm?)_\d|acc_\w+)$/;
 const artOk = n => { const im = ART[n]; return !!(im && im.complete && im.naturalWidth); };
 // Wait (at most ARTWAIT ms) until every core sprite, plus the given extra ones, has arrived; onTick(done, total) shows progress.
 const ARTWAIT = 10000;
@@ -1550,10 +1550,42 @@ function drawCharm(id, x, y, sc) {
   }
   g.restore();
 }
+// Painted accessories sit on the painted sprites. Manager: the neck is a fixed height above the feet in every outfit
+// (natural px: stand/walk 245, sit 177) and a little in front of / behind the sprite's centre.
+const MGR_NECK = [[4, 245], [6, 245], [-16, 177]];
+function drawMgrWorn(id, m) {
+  const C = CHARMS[id], sp = mgrSpr(), sit = m.sitting, pose = sit ? 2 : m.moving && Math.floor(S.t * 5) % 2 ? 1 : 0;
+  const im = art(`${sp}_${pose}`) || art(`${sp}_0`), acc = C.img && art(C.img), f = m.face || 1;
+  if (!im || !acc) { drawCharm(id, m.x - 13 * f, m.y - (sit ? 52 : 70), 1); return; }
+  if (G.outfit === 'mo5') return; // the Christmas sweater already has a scarf
+  const k = PH / 300, bob = m.moving ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0, [nx, ny] = MGR_NECK[pose];
+  const w = 30 * k, h = acc.naturalHeight * w / acc.naturalWidth;
+  g.save(); g.translate(m.x + f * nx * k, m.y - bob - ny * k); if (f < 0) g.scale(-1, 1); g.drawImage(acc, -w / 2, -h * .06, w, h); g.restore();
+}
+// Cats: nape → throat of the collar in % of each painted pose (walk, sit, pounce; asleep or belly-up hides it)
+const CAT_NECK = {
+  orange: { 0: [73, 29, 82, 55], 1: [55, 32, 90, 35], 3: [60, 34, 77, 37] },
+  tabby:  { 0: [69, 31, 82, 55], 1: [60, 31, 91, 33], 3: [66, 33, 80, 35] },
+  gray:   { 0: [75, 16, 84, 45], 1: [63, 28, 88, 31], 3: [74, 17, 82, 39] },
+  tux:    { 0: [78, 13, 86, 45], 1: [55, 31, 88, 33], 3: [68, 29, 82, 32] },
+  fluffy: { 0: [78, 39, 85, 57], 1: [55, 31, 91, 32], 3: [58, 35, 80, 36] },
+  calico: { 0: [72, 35, 83, 55], 1: [52, 29, 91, 31], 3: [55, 30, 68, 32] },
+  milk:   { 0: [76, 23, 84, 47], 1: [60, 31, 88, 33], 3: [66, 31, 80, 35] },
+};
+function drawCatWorn(id, k, ci, pose, x, y, f) {
+  const C = CHARMS[id], acc = C.img && art(C.img), a = (CAT_NECK[k.def.base] || CAT_NECK.orange)[pose]; if (!acc || !a) return;
+  const s = CATK * k.size.s, w = ci.naturalWidth * CATK * k.size.sx, h = ci.naturalHeight * s;
+  const P = (px, py) => [(px / 100 - .5) * w, -h + py / 100 * h], [ax, ay] = P(a[0], a[1]), [bx, by] = P(a[2], a[3]);
+  const dx = bx - ax, dy = by - ay, cx = (ax + bx) / 2 - dy * .2, cy = (ay + by) / 2 + dx * .2; // bow towards the chest
+  g.save(); g.translate(x, y); if (f < 0) g.scale(-1, 1); g.lineCap = 'round';
+  for (const [c, lw] of [[INK, 7 * s + 1.4], ['#9C86C4', 7 * s]]) { g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo(cx, cy, bx, by); g.strokeStyle = c; g.lineWidth = lw; g.stroke(); }
+  const bh = 22 * s, bw = acc.naturalWidth * bh / acc.naturalHeight, sw = Math.sin(S.t * 4 + x * .05) * .12;
+  g.translate(bx, by - bh * .1); g.rotate(sw); g.drawImage(acc, -bw / 2, 0, bw, bh); g.restore();
+}
 function drawMgr() {
   const m = S.mgr;
   drawPerson(m, { spr: mgrSpr(), shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: G.mgrSex !== 'm', sit: m.sitting });
-  for (const [id, w] of Object.entries(G.acc.on)) if (w === 'mgr') drawCharm(id, m.x - 13 * (m.face || 1), m.y - (m.sitting ? 52 : 70), 1);
+  for (const [id, w] of Object.entries(G.acc.on)) if (w === 'mgr') drawMgrWorn(id, m);
   const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
   if (hk) { // the manager carries the cat in their arms
     const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
@@ -1663,6 +1695,7 @@ function drawCat(k) {
   const pose = k.state === 'sleep' ? 2 : (k.jumpFrom || k.state === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
   const ci = catImg(k.def, pose);
   if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK * k.size.s, f < 0, ci.naturalWidth * CATK * k.size.sx);
+  if (ci && pose !== 2) for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCatWorn(id, k, ci, pose, x, y + 1, f);
   if (k.state === 'sleep') {
     if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
@@ -1677,7 +1710,6 @@ function drawCat(k) {
     if (k.tux) ell(x + 16 * f, y - 8, 5, 4, k.belly);
     if (k.points) ell(x + 15 * f, y - 10, 5, 4, k.dark);
     }
-    for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCharm(id, x + 12 * f, y - 10, .7);
     const t = (S.t * .7 + x) % 1; g.globalAlpha = 1 - t; text('z', x + 20 * f + t * 10, y - 30 - t * 18, 12 + t * 6, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1;
   } else {
     const hx = x + 19 * f, hy = y - 26;
@@ -1697,7 +1729,7 @@ function drawCat(k) {
     if (k.points) ell(hx + 3 * f, hy + 2, 6, 5, k.dark);
     ell(hx + 4 * f, hy - 1, 1.4, 2, k.tux ? '#F2E6A0' : k.points ? '#7FB3D9' : INK);
     }
-    for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCharm(id, hx - 6 * f, hy + 4, .7);
+    for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCharm(id, hx - 6 * f, hy + 4, .7); // old canvas cat only
     if (k.state === 'eat') text('喀', hx + 14 * f, hy - 16, 11, '#8B776B');
     if (k.say) bubble(hx, hy - 34, k.say.text);
     else if (k.wantPet) {
@@ -3153,7 +3185,7 @@ function renderPhone() {
         for (const o of OUTFITS) if (o.price) h += outfitItem(o);
       } else if (storeTab === 'event') {
         h += E ? `<div class="item"><div class="top"><span class="nm">${E.icon} ${E.name}活動</span><b>${yen(evEarned(E))}</b></div><div class="sub">${E.desc}<br>這個月的活動營收：${yen(evEarned(E))}</div></div>`
-               : `<p class="muted">現在沒有活動。每個月會有不同的節日活動，下次是 ${EVENTS.map(e => `${e.month} 月${e.name}`).join('、')}。買過的吊飾隨時可以戴。</p>`;
+               : `<p class="muted">現在沒有活動。每個月會有不同的節日活動，下次是 ${EVENTS.map(e => `${e.month} 月${e.name}`).join('、')}。買過的飾品隨時可以戴。</p>`;
         for (const [id, C] of Object.entries(CHARMS)) {
           const own = G.acc.own.includes(id), live = E && E.id === C.ev; if (!own && !live) continue;
           const on = G.acc.on[id], ok = live && evEarned(E) >= C.need;
@@ -3161,7 +3193,7 @@ function renderPhone() {
           if (!own) act = !ok ? `<button disabled>活動營收 ${yen(C.need)} 解鎖（還差 ${yen(C.need - evEarned(E))}）</button>` : G.cash < C.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-charm="${id}">購買</button>`;
           else if (C.who === 'mgr') act = on ? `<button data-wearc="${id}" data-on="">拿下來</button>` : `<button class="primary" data-wearc="${id}" data-on="mgr">幫店長戴上</button>`;
           else act = S.cats.map(k => `<button class="${on === k.id ? 'primary' : ''}" data-wearc="${id}" data-on="${on === k.id ? '' : k.id}">${on === k.id ? '✓ ' : ''}${k.name}</button>`).join('');
-          h += `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><canvas class="cpv" data-cpv="${id}" width="112" height="112"></canvas><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${C.who === 'mgr' ? '店長' : '貓咪'}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
+          h += `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${C.who === 'mgr' ? '店長' : '貓咪'}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
             <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
         }
       } else {
@@ -3322,7 +3354,6 @@ function renderPhone() {
     G.prices[id] = clamp(G.prices[id] + +b.dataset.d, 5, base * 2); renderPhone();
   });
   sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
-  sc.querySelectorAll('[data-cpv]').forEach(cv => { const og = g; g = cv.getContext('2d'); g.scale(2, 2); drawCharm(cv.dataset.cpv, 28, 8, 1.6); g = og; });
   sc.querySelectorAll('[data-charm]').forEach(b => b.onclick = () => { const id = b.dataset.charm, C = CHARMS[id], E = evNow();
     if (G.acc.own.includes(id) || !E || E.id !== C.ev || evEarned(E) < C.need || G.cash < C.price) return;
     G.cash -= C.price; S.today.spent += C.price; G.acc.own.push(id); if (C.who === 'mgr') G.acc.on[id] = 'mgr';
