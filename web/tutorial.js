@@ -37,19 +37,20 @@
     if (!phoneOpen()) return { dom: '#phoneBtn' };
     if (phoneApp === 'home') return { dom: '[data-app="shop"]' };
     if (phoneApp !== 'shop') return { dom: '#pBack' };
+    if (storeTab !== 'stock') return { dom: '[data-stab="stock"]' };
     return { dom: `[data-buy="${id}"],[data-credit="${id}"]` };
   }
   // the cookies the first guest is waiting for: buy flour, then bake
   function needCookies() {
     if (dispTotal() > 0 || S.baking.cookie) return null;
-    if (G.stock.flour <= 0) return { text: '展示櫃是空的，先用「手機」→「喵喵速達」買一袋麵粉。', target: buyPath('flour') };
+    if (G.stock.flour <= 0) return { text: '展示櫃是空的，先用「手機」→「商店」買一袋麵粉。', target: buyPath('flour') };
     return { text: '展示櫃是空的，先點烤箱做一批貓掌餅乾。', target: atFloor(OVEN) };
   }
 
   // one guided step after another; a step is skipped as soon as its done() is true
   const STEPS = [
     { key: 'hi', ok: true, text: () => `歡迎來到${G.shopName}！今天我陪你開店一整天，跟著箭頭做就好。`, done: () => S.phase !== 'prep' && S.tut.i > 0 },
-    { key: 'buy', text: () => '店裡還沒有材料。點「手機」→「喵喵速達」，買一袋麵粉和一包貓糧。',
+    { key: 'buy', text: () => '店裡還沒有材料。點「手機」→「商店」，買一袋麵粉和一包貓糧。',
       done: () => S.phase !== 'prep' || ((G.stock.flour > 0 || dispTotal() > 0) && (G.stock.catfood > 0 || G.bowl > 0)),
       target: () => buyPath(G.stock.flour > 0 || dispTotal() > 0 ? 'catfood' : 'flour') },
     { key: 'bake', text: () => '點樓梯旁的烤箱，選「貓掌奶油餅乾」，照畫面上的步驟做一批。',
@@ -76,7 +77,7 @@
   // after the guided steps: one-off reminders, each shown at most once on day 1
   const HINTS = [
     { key: 'empty', when: () => S.phase === 'open' && dispTotal() === 0 && !Object.values(S.baking).some(Boolean),
-      text: () => G.stock.flour > 0 ? '展示櫃賣光了，再去烤箱做一批。' : '麵粉用完了，用手機「喵喵速達」買一袋，再去烤。',
+      text: () => G.stock.flour > 0 ? '展示櫃賣光了，再去烤箱做一批。' : '麵粉用完了，用手機「商店」買一袋，再去烤。',
       target: () => G.stock.flour > 0 ? atFloor(OVEN) : buyPath('flour') },
     { key: 'noon', when: () => S.time >= 600, text: () => '10:00 午間尖峰，客人會變多！忙不過來可以用手機「喵才獵人」雇員工。' },
     { key: 'wc', when: () => S.restroomDirt >= 3, text: () => '洗手間髒了，點洗手間去打掃。', target: () => atFloor({ f: 1, x: 808, y: 330 }) },
