@@ -103,6 +103,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .settle-tab td:last-child{text-align:right}
 .settle-tab tr.tot td{font-weight:700;border-bottom:none;font-size:16px}
 .review{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px;font-family:var(--display);line-height:1.6}
+.mem{margin:12px 0 4px}.memrow{display:flex;gap:10px;align-items:center;background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px;font-family:var(--display);line-height:1.6}.memrow .ic{flex:0 0 38px;text-align:center;font-size:22px}.memrow .st{color:var(--warn);letter-spacing:2px}
 .review .st{color:var(--warn);letter-spacing:2px}
 .prog{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
 .prog i{display:block;height:100%;background:var(--wood)}
@@ -226,6 +227,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   </div>
 
   <button id="openBtn" class="primary openbtn">開店營業</button>
+  <button id="endBtn" class="primary openbtn" hidden>結束今天，回顧一下</button>
   <div class="joy" id="joy" aria-label="方向搖桿：拖曳移動店長"><span class="u">▲</span><span class="d">▼</span><span class="l">◀</span><span class="r">▶</span><div class="knob" id="knob"></div></div>
   <button class="actbtn" id="actBtn" aria-label="動作：和店長旁邊的東西互動">動作</button>
 </div>
@@ -682,6 +684,7 @@ function addBond(k, n) {
   n += (k.P && k.P.bond) || 0;
   const before = bondLv(k); G.bond[k.id] = Math.min(BOND_MAX, bondOf(k) + n);
   const rc = G.cats.find(c => c.id === k.id); if (rc) rc.pets++;
+  if (S) S.today.bond[k.id] = (S.today.bond[k.id] || 0) + n;
   floatText(k.floor, k.x, k.y - 96, `親密度 +${n}`, '#E07A7A');
   const after = bondLv(k);
   if (after > before) { const B = BOND[after]; toast(B.act ? `${k.name}跟${G.mgrName}更親了！解鎖「${B.name}」` : `${k.name}跟${G.mgrName}變成「${B.title}」了！`); floatText(k.floor, k.x, k.y - 120, `♥ ${B.title}`, '#E07A7A'); }
@@ -960,7 +963,7 @@ function startDay() {
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
     startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false,
-    today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0 },
+    today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0, bond: {}, refunds: 0 },
     daily: pickDaily(), offers: dailyOffers(), rareToday: {}, base: { ...G.stats, pets: G.cats.reduce((a, c) => a + c.pets, 0) },
     cats: makeCats(),
     staff: G.staff.map(r => makeStaff(r, false)),
@@ -1449,8 +1452,10 @@ function alertMark(x, y, c = '#D9773E') {
   ell(x, y + b, 10, 10, c, INK, 1.2); text('!', x, y + b + 1, 14, '#FFFFFF', 'center', FONT, 700);
 }
 function doorSign() {
-  rrect(8, 520, 50, 20, 5, S.phase === 'open' ? '#FFFFFF' : '#E9DCC4', INK, 1.1);
-  text(S.phase === 'open' ? 'OPEN' : '準備中', 33, 530, 10, INK, 'center', FONT, 700);
+  const shut = S.phase === 'settle' || (S.close && S.close.sign), lit = S.phase === 'open' || (S.phase === 'closing' && !shut);
+  rrect(8, 520, 50, 20, 5, lit ? '#FFFFFF' : shut ? '#E3B9A4' : '#E9DCC4', INK, 1.1);
+  text(shut ? '打烊囉' : lit ? 'OPEN' : '準備中', 33, 530, 10, INK, 'center', FONT, 700);
+  if (S.phase === 'closing' && !shut) alertMark(33, 492);
   text('← 入口', 33, 552, 10, '#9B8577');
 }
 
@@ -1798,7 +1803,7 @@ function serveTask(c, from) {
       w.carry = null;
       if (c.state !== 'waitFood') { S.display[d]++; return; }
       if (c.wait > 25) { c.stars -= 1; c.notes.push('等餐太久'); }
-      sfx('serve', 1); c.state = 'eating'; c.t = MENU[d].meal ? rand(16, 22) : rand(10, 14);
+      sfx('serve', 1); c.state = 'eating'; c.t = S.phase === 'closing' ? rand(5, 8) : MENU[d].meal ? rand(16, 22) : rand(10, 14);
       say(w, '請慢用～'); later(1.3, () => { if (c.state === 'eating' && !c.say) sayFor(c, pick(['謝謝！', '看起來好好吃', '哇，好可愛！', '捨不得吃了'])); }); } },
   ], onEnd: w => { c.assigned = false; if (w.carry) { S.display[w.carry]++; w.carry = null; } } };
 }
@@ -1893,6 +1898,7 @@ function putDown(k = heldCat()) {
 function actPet(k) {
   if (k.anim && k.anim.kind === 'hug') { putDown(k); return; }
   if (k.hold || k.anim) return;
+  if (S.phase === 'closing' && k.state === 'sleep') { goodnight(k); return; }
   if (k.state !== 'sleep' && bondLv(k) >= 1) chooseBond(k); else queueTask(petTask(k));
 }
 function chooseBond(k) {
@@ -1925,7 +1931,8 @@ function findJob(s) {
   switch (s.role) {
     case 'cook': {
       if (Object.values(S.baking).some(Boolean) || S.cook) return null;
-      const can = unlockedDishes().filter(d => G.stock[RES(d)] > 0);
+      const can = unlockedDishes().filter(d => G.stock[RES(d)] > 0 && (S.phase !== 'closing' || S.customers.some(c => c.state === 'waitFood' && c.order.dish === d && !S.display[d])));
+      if (S.phase === 'closing') return can.length ? bakeTask(can[0]) : null; // after closing time only cook what a waiting guest still needs
       if (!can.length) { warnOnce('flour', '阿杰：麵粉和食材都用完了，沒辦法做'); return null; }
       const d = can.sort((a, b) => S.display[a] - S.display[b])[0];
       if (S.display[d] >= (unlockedDishes().length > 2 ? 3 : 4)) return null;
@@ -1973,9 +1980,10 @@ function findJob(s) {
 }
 // is this person supposed to be at work right now? (morning prep counts as the morning shift)
 function onShift(s) {
+  if (S.close && S.close.off) return false; // the shop has closed and the guests are gone: everyone goes home
   if (s.shift === 'all') return true;
   if (s.shift === 'am') return S.phase === 'prep' || S.time < SHIFT_SPLIT;
-  if (s.shift === 'pm') return S.phase === 'open' && S.time >= SHIFT_SPLIT;
+  if (s.shift === 'pm') return (S.phase === 'open' || S.phase === 'closing') && S.time >= SHIFT_SPLIT;
   return false;
 }
 const seatOf = s => SOFA_SEATS[Math.max(0, G.staff.indexOf(s.role)) % SOFA_SEATS.length];
@@ -2146,7 +2154,7 @@ function goLoft(c) {
 function afterEat(c) {
   // customers linger: some order a second dessert at the same table
   const hadMeal = MENU[c.order.dish].meal; // after a meal, half of them want dessert
-  if (!c.reordered && Math.random() < (hadMeal ? .5 : .35)) {
+  if (!c.reordered && S.phase === 'open' && Math.random() < (hadMeal ? .5 : .35)) {
     const p = pickDish(c, hadMeal);
     if (p.dish) {
       c.reordered = true; c.order.dish = p.dish; c.state = 'waitFood'; c.pat = c.maxPat = 55 * patMul(); c.wait = 0;
@@ -2200,9 +2208,9 @@ function updCust(c, dt) {
   switch (c.state) {
     case 'queue': c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '等太久了'); break;
     case 'toTable': if (arrived) { c.state = 'waitFood'; c.pat = c.maxPat = (c.special ? 70 : 55) * patMul(); c.wait = 0; c.face = 1; } break;
-    case 'waitFood': c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '餐點一直沒來'); break;
+    case 'waitFood': if (S.phase === 'open') c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '餐點一直沒來'); break;
     case 'eating': c.t -= dt; if (c.t <= 0) afterEat(c); break;
-    case 'toLoft': if (arrived) { c.state = 'petting'; c.t = rand(18, 28); c.face = c.x > 770 ? -1 : 1; } break;
+    case 'toLoft': if (arrived) { c.state = 'petting'; c.t = S.phase === 'closing' ? rand(6, 9) : rand(18, 28); c.face = c.x > 770 ? -1 : 1; } break;
     case 'petting':
       c.t -= dt;
       if (!c.sawCat && S.cats.some(k => k.floor === 2 && k.state !== 'sleep' && !k.onBed && Math.abs(k.x - c.x) < 120 && Math.abs(k.y - c.y) < 70)) c.sawCat = true;
@@ -2666,10 +2674,12 @@ document.addEventListener('visibilitychange', () => { if (AUD.ctx) document.hidd
 
 // ====================== main update & draw ======================
 function hourMult(t) { const h = t / 60; if (h < 10) return 1; if (h < 14) return 1.7; if (h < 15) return .8; if (h < 17) return 1; if (h < 19) return 1.4; if (h < 20.5) return .8; return 0; }
+const SIGN_SPOT = { x: 118, y: 556 }; // where the manager stands to flip the door sign
 const PHASES = [[8, '開門營業'], [10, '午間尖峰'], [14, '午後大掃除'], [15, '悠閒午後'], [17, '下班人潮'], [19, '悠閒午後']];
 function phaseName() {
   if (S.phase === 'prep') return '晨間備料・時鐘暫停';
   if (S.phase === 'settle') return '打烊';
+  if (S.phase === 'closing') return S.close.wind == null ? '打烊・送最後的客人' : '打烊・跟貓咪說晚安';
   if (window.TUT && TUT.hold()) return TUT.phase();
   let n = '開門營業'; for (const [h, name] of PHASES) if (S.time / 60 >= h) n = name; return n;
 }
@@ -2686,8 +2696,9 @@ function update(dt) {
       if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() * rand(.7, 1.3); }
       else S.spawnT = 5;
     }
-    if (S.time >= 1260) { closeDay(); return; }
-  }
+    if (S.time >= 1230 && !S.lastCall) { S.lastCall = true; sfx('notify'); toast('20:30 最後點餐，之後不再接新客人囉'); }
+    if (S.time >= 1260) { startClosing(); return; }
+  } else if (S.phase === 'closing') updClosing(dt);
   updMgr(dt);
   S.staff.forEach(s => updStaff(s, dt));
   S.cats.forEach(k => updCat(k, dt));
@@ -2725,6 +2736,7 @@ function drawWorld() {
   S.customers.forEach(c => { if (c.floor === f) items.push({ y: c.y + (c.table ? 1 : 0), d: () => drawCustomer(c) }); });
   items.sort((a, b) => a.y - b.y).forEach(i => i.d());
   for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
+  if (S.close && S.close.dim) drawNight(f);
   if (window.TUT) TUT.drawWorld(f);
   if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, V.cy, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
@@ -2759,6 +2771,7 @@ function hitTest(x, y) {
   for (const k of S.cats) if (k.floor === f && Math.abs(x - k.x) < 32 && y < k.y + 8 && y > k.y - 46) return { act: () => actPet(k) };
   for (const s of S.staff) if (s.floor === f && !s.hidden && hitPerson(s, x, y)) return { act: () => toast(`${s.name}（${s.title}）體力 ${Math.round(s.stamina)}${s.task ? '・正在' + s.task.label : ''}`) };
   if (f === 1) {
+    if (S.phase === 'closing' && !S.close.sign && x < 96 && y > 505 && y < 566) return { act: actFlipSign };
     for (const t of S.tables) if (x > t.x - 76 && x < t.x + 46 && y > t.y - 60 && y < t.y + 12) {
       if (t.cust && t.cust.state === 'waitFood') return { act: () => actServe(t.cust) };
       if (t.dirty) return { act: () => actClear(t) };
@@ -2896,6 +2909,7 @@ function nearbyActions() {
       else if (t.dirty) add(t.x, t.y, '收桌子', () => actClear(t));
     }
     if (S.restroomDirt > 0) add(WC.door.x, WC.door.y, '打掃洗手間', actRestroom);
+    if (S.phase === 'closing' && !S.close.sign) add(SIGN_SPOT.x, SIGN_SPOT.y, '把門牌翻成「打烊」', actFlipSign);
   } else if (f === 2) {
     add(BOWL.staff.x, BOWL.staff.y, '補貓糧', actBowl);
     add(LITTER.staff.x, LITTER.staff.y, '清貓砂', actLitter);
@@ -2908,7 +2922,7 @@ function nearbyActions() {
   }
   for (const k of S.cats) if (k.floor === f && k !== hk) {
     const p = k.onBed ? k.bed.ground : k;
-    add(p.x, p.y, (k.state === 'sleep' ? '叫醒' : '摸摸') + k.name, () => actPet(k));
+    add(p.x, p.y, k.state === 'sleep' ? (S.phase === 'closing' ? `跟${k.name}說晚安` : '叫醒' + k.name) : '摸摸' + k.name, () => actPet(k));
   }
   if (f !== 3) add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
   return list.filter(a => a.d < 100).sort((a, b) => a.d - b.d);
@@ -2997,6 +3011,7 @@ function updateButtons() {
   const of = otherFloor(), oa = floorAlerts(of), fa = $('floorAlert');
   fa.hidden = !started || S.phase === 'settle' || !oa.length; if (oa.length) { fa.dataset.f = of; $('floorAlertTxt').textContent = `${of}F：${oa[0]}`; }
   $('openBtn').hidden = S.phase !== 'prep';
+  $('endBtn').hidden = !(S.phase === 'closing' && S.close.wind != null);
   $('game').classList.toggle('busy', !!(S.mini || S.cook || S.reg));
   $('speedBtn').textContent = `${S.speed}×`;
   $('pauseBtn').textContent = S.paused ? '繼續' : '暫停';
@@ -3549,10 +3564,92 @@ function mountFeedback() {
 function openFeedback() { if (window.CatFeedback && CLOUD.sb) CatFeedback.open(); }
 $('fbTitleBtn').onclick = openFeedback;
 
+// ---- closing time: 21:00 the shop doesn't just vanish into the summary ----
+// the last guests finish up, the manager flips the door sign, staff head home, the cats curl up and the lights go down;
+// then a 今日回憶 card, and only after that the money.
+const STAFF_BYE = ['店長辛苦了，明天見！', '今天好充實喔～', '我先回家囉，晚安！', '明天也一起加油！'];
+function startClosing() {
+  S.phase = 'closing'; S.time = 1260; S.close = { t: 0, sign: false, wind: null, dim: 0, night: {} };
+  sfx('notify'); toast('21:00 打烊囉！去門口把牌子翻成「打烊」');
+  for (const c of S.customers) if (c.state === 'eating' || c.state === 'petting') c.t = Math.min(c.t, rand(5, 8)); // the last guests finish up
+  for (const c of S.queue.splice(0)) { // still in line: nothing ordered yet, they just come back tomorrow
+    c.state = 'leaving'; sayFor(c, pick(['打烊了啊，明天再來！', '下次早點來～', '明天見！'])); routeTo(c, 1, DOOR.x, DOOR.y);
+  }
+  updateButtons();
+}
+function actFlipSign() {
+  if (S.close.sign || S.tasks.some(t => t.kind === 'sign') || S.mgr.task?.kind === 'sign') return;
+  addTask('把門牌翻成「打烊」', [{ f: 1, ...SIGN_SPOT, dur: 1, fn: flipSign }], { kind: 'sign' });
+}
+function flipSign(w) {
+  if (S.close.sign) return;
+  S.close.sign = true; sfx('door_bell', 1); w.face = -1;
+  floatText(1, 33, 500, '打烊囉', '#D9773E'); say(w, S.customers.length ? '最後幾位客人慢慢來喔～' : '今天辛苦了！');
+}
+function goodnight(k) {
+  if (S.close.night[k.id]) { say(S.mgr, `${k.name}已經睡熟了，噓～`); return; }
+  k.hold = true;
+  queueTask({ label: `跟${k.name}說晚安`, steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? k.bed.ground.x + 30 : k.x + 36, 150, 880), y: k.onBed ? k.bed.ground.y : clamp(k.y + 6, 490, 594) }), dur: 1,
+    fn: w => {
+      if (S.close.night[k.id]) return;
+      S.close.night[k.id] = true; k.hearts = 1.4; addBond(k, 1);
+      say(w, pick([`晚安，${k.name}`, `${k.name}今天辛苦了`, '做個好夢喔～'])); later(.9, () => { say(k, pick(['呼嚕…zzz', '喵…（翻身）', 'zzz…'])); sfx('purr', k.floor); });
+      if (S.cats.every(c => S.close.night[c.id])) later(2.2, () => toast('每隻貓咪都說過晚安了，可以按「結束今天」'));
+    } }], onEnd: () => k.hold = false });
+}
+function updClosing(dt) {
+  const C = S.close; C.t += dt;
+  if (!C.sign && C.t > 14) actFlipSign(); // the manager remembers on her own if nobody taps the sign
+  if (C.t > 45) for (const c of S.customers) { // nobody could bring their food: refund and send them home kindly
+    if (c.state !== 'waitFood' || c.assigned) continue;
+    const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; S.today.refunds++; S.today.ratings.push(2);
+    if (c.table) { c.table.cust = null; c.table = null; }
+    c.state = 'leaving'; sayFor(c, '沒關係，下次再來吃'); routeTo(c, 1, DOOR.x, DOOR.y);
+  }
+  if (C.t > 100) S.customers.forEach(c => c.gone = true); // never leave the night hanging on someone stuck somewhere
+  if (C.wind == null) {
+    if (!C.sign || S.customers.length) return;
+    C.wind = 0; C.off = true;
+    toast('客人都回家了。去跟貓咪們說晚安吧'); updateButtons();
+    S.staff.filter(s => !s.hidden).forEach((s, i) => later(.6 + i * 1.1, () => say(s, STAFF_BYE[i % STAFF_BYE.length])));
+    later(1.5, () => say(S.mgr, '今天也謝謝大家～'));
+  }
+  C.wind += dt; C.dim = Math.min(.6, C.wind * .1);
+  for (const k of S.cats) if (!k.anim && !k.hold && k.state !== 'sleep' && k.state !== 'toBed') { endPlay(k); k.wantPet = 0; goBed(k); }
+}
+function drawNight(f) {
+  const d = S.close.dim;
+  g.save(); g.globalCompositeOperation = 'multiply';
+  g.fillStyle = `rgba(78,70,138,${d})`; g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = 'screen'; // warm pools of light: the floor lamp on 1F, and one that follows the manager
+  const glow = (x, y, r, a) => { const gr = g.createRadialGradient(x, y, 8, x, y, r); gr.addColorStop(0, `rgba(255,196,120,${a})`); gr.addColorStop(1, 'rgba(255,196,120,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
+  if (f === 1) glow(688, 365, 130, d * .5);
+  const m = S.mgr; if (m.floor === f) glow(m.x, m.y - 70, 160, d * .4);
+  g.restore();
+}
+document.getElementById('endBtn').onclick = () => { if (S && S.phase === 'closing' && S.close.wind != null) closeDay(); };
+function memoriesHtml(day, T, gained) {
+  const items = [];
+  const best = G.reviews.filter(r => r.d === day).sort((a, b) => b.s - a.s)[0];
+  items.push(['☕', `今天有 ${T.ratings.length} 位客人來過${G.shopName}`]);
+  if (best) items.push(['💬', `今天最棒的一句話：<br><span class="st">${starsTxt(best.s)}</span> 「${best.t}」<span class="muted">— ${best.w}</span>`]);
+  items.push(['💛', T.fans > 0 ? `新增了 ${T.fans} 位粉絲，現在一共 ${G.fans} 位` : `今天沒有新粉絲，不過粉絲一位都沒少，一共 ${G.fans} 位`]);
+  const top = Object.entries(T.bond).filter(([id]) => CAT_DEFS[id]).sort((a, b) => b[1] - a[1])[0];
+  if (top) items.push([catThumb(catDef(top[0]), 34), `今天最黏${G.mgrName}的是 <b>${catNameOf(top[0])}</b>（親密度 +${top[1]}）`]);
+  const rare = Object.keys(S.rareToday).map(id => guestOf(id).name);
+  if (rare.length) items.push(['✨', `遇到了稀有顧客：${rare.join('、')}`]);
+  if (T.fed) items.push(['🐟', `客人餵貓咪吃了 ${T.fed} 次肉泥`]);
+  const nights = Object.keys(S.close?.night || {}).length;
+  if (nights) items.push(['🌙', `你跟 ${nights} 隻貓咪說了晚安`]);
+  if (gained.length) items.push(['🎉', `店鋪升到了 Lv.${gained[gained.length - 1]}！`]);
+  return `<h2>第 ${day} 天的回憶</h2><p class="muted">打烊後的${G.shopName}，貓咪們都睡著了</p>
+    <div class="mem">${items.map(([i, t]) => `<div class="memrow"><span class="ic">${i}</span><span>${t}</span></div>`).join('')}</div>
+    <div class="row"><button class="primary" id="seeMoney">看今天的營業額</button></div>`;
+}
 // ---- day flow ----
 function closeDay() {
   sfx('day_end'); S.phase = 'settle'; S.time = 1260; S.tasks = []; S.mgr.task = null; S.mini = null; S.cook = null; S.reg = null; S.baking = {}; closePhone(true); closeChoose();
-  let refunds = 0;
+  let refunds = S.today.refunds;
   for (const c of S.customers) {
     if (c.state === 'waitFood' && c.order?.dish) { const p = G.prices[c.order.dish]; G.cash -= p; S.today.dessert -= p; refunds++; S.today.ratings.push(2); }
   }
@@ -3595,7 +3692,7 @@ function closeDay() {
       ? `<div class="review"><span class="st">${starsTxt(xq.stars)}</span><br>「貓掌餅乾好可愛！樓上的貓咪也好黏人，我一定會再來！」<br><span class="muted">— 高中生 小晴，留下了這間店的第一則評價</span></div>`
       : `<div class="review"><span class="st">${starsTxt(xq.stars)}</span><br>「店很可愛，可是${xq.notes[0] || '有點可惜'}…」<br><span class="muted">— 高中生 小晴</span></div>`;
   }
-  $('settleCard').innerHTML = `
+  const money = `
     <h2>${G.shopName}・第 ${day} 天打烊</h2>
     <p class="muted">今天共接待 ${T.ratings.length} 位客人${T.reorders ? `，${T.reorders} 次加點` : ''}${T.angry ? `，${T.angry} 位生氣離開` : ''}${refunds ? `，${refunds} 位沒等到餐點已退款` : ''}。</p>
     <table class="settle-tab">
@@ -3629,9 +3726,13 @@ function closeDay() {
     <p class="muted" style="margin-top:12px">存檔碼（第 ${G.day} 天開店前）</p>
     <textarea id="settleCode" readonly>${code}</textarea>
     <div class="row"><button id="settleCopy">複製存檔碼</button><button class="primary" id="nextDay">迎接第 ${G.day} 天</button></div>`;
-  $('settleOv').hidden = false;
-  $('settleCopy').onclick = () => copyText($('settleCode'));
-  $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
+  $('settleCard').innerHTML = memoriesHtml(day, T, gained);
+  $('settleOv').hidden = false; $('settleCard').scrollTop = 0;
+  $('seeMoney').onclick = () => {
+    sfx('coins'); $('settleCard').innerHTML = money; $('settleCard').scrollTop = 0;
+    $('settleCopy').onclick = () => copyText($('settleCode'));
+    $('nextDay').onclick = () => { $('settleOv').hidden = true; startDay(); S.startG = snapshotG(G); };
+  };
   updateButtons();
 }
 // Opening the shop waits on the painted sprites first, so a slow phone connection never shows the backup drawings.
