@@ -1521,6 +1521,7 @@ function drawMgr() {
     hk.x = cx; hk.y = cy; hk._inAnim = true; drawCat(hk); hk._inAnim = false; hk.x = ox; hk.y = oy; g.restore();
     g.globalAlpha = clamp(hk.hearts, 0, 1); heart(m.x + 18, m.y - 150 - (1 - hk.hearts) * 16, 8); g.globalAlpha = 1;
   }
+  const lbl = hk && m.floor !== 3 ? '放下' : '動作', ab = $('actBtn'); if (ab.textContent !== lbl) ab.textContent = lbl; // holding a cat: the big button says so
   if (m.task && m.mode === 'act' && m.task.steps[m.si].dur > .3) progressRing(m, m.y - 150);
   else if (!m.task && started && S.phase !== 'settle') {
     const a = nearbyActions()[0];
@@ -1744,7 +1745,7 @@ function updMgr(dt) {
     m.manual = true; m.path = [];
     const sp = m.speed * Math.min(1, mag);
     m.x = clamp(m.x + jx / mag * sp * dt, 12, 948);
-    m.y = clamp(m.y + jy / mag * sp * dt * .6, 484, 594);
+    m.y = clamp(m.y + jy / mag * sp * dt, 484, 594); // full speed up/down too: the floor is shallow, so a slower vertical felt like left/right only
     if (Math.abs(jx) > .1) m.face = jx > 0 ? 1 : -1;
     m.moving = true;
     if (S.view !== m.floor) { S.view = m.floor; updateButtons(); }
@@ -2750,7 +2751,9 @@ function floorAlerts(f) {
 function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left - V.tx) / V.s, y: (e.clientY - r.top - V.ty) / V.s }; }
 function hitPerson(p, x, y, sit) { return Math.abs(x - p.x) < 26 && y < p.y + 6 && y > p.y - (sit ? 80 : 100) * PS; }
 function hitTest(x, y) {
-  const f = S.view;
+  const f = S.view, hk = heldCat(), m = S.mgr;
+  // the held cat is drawn in the manager's arms, so tapping her (or the cat) puts it down
+  if (hk && m.floor === f && f !== 3 && Math.abs(x - m.x) < 40 && y < m.y + 8 && y > m.y - 130) return { act: () => putDown(hk) };
   for (const c of S.customers) {
     if (c.floor !== f || c.hidden) continue;
     if (c.state === 'waitFood' && hitPerson(c, x, y, true)) return { act: () => actServe(c) };
@@ -2887,7 +2890,7 @@ function nearbyActions() {
   const m = S.mgr, f = m.floor, list = [];
   const add = (x, y, label, fn) => list.push({ label, fn, d: Math.hypot(m.x - x, (m.y - y) * 1.6) });
   const hk = heldCat();
-  if (hk && f !== 3) list.push({ label: '放下' + hk.name, fn: () => putDown(hk), d: 99 }); // always offered, after anything closer
+  if (hk && f !== 3) return [{ label: '放下' + hk.name, fn: () => putDown(hk), d: 0 }]; // holding a cat: the action button only puts it down
   if (f === 1) {
     add(OVEN_SPOT.x, OVEN_SPOT.y, '廚房（甜點・正餐）', chooseBake);
     if (S.queue.length) { add(MGR_COUNTER.x, MGR_COUNTER.y, '幫客人點餐', actOrder); add(QUEUE[0].x, QUEUE[0].y, '幫客人點餐', actOrder); }
