@@ -87,6 +87,11 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .app-ic small{font-size:11px;color:var(--muted)}
 .item{background:rgba(255,255,255,.92)}
 .screen.home>p{background:rgba(253,251,247,.85);margin:0 12px 12px!important;border-radius:10px;padding:6px 10px!important}
+.stabs{display:flex;gap:6px;position:sticky;top:0;z-index:1;background:var(--paper);padding:2px 0 6px}
+.cpv{width:56px;height:56px;flex:none;object-fit:contain;background:#FBF4EA;border-radius:10px;padding:4px}
+.stabs button{flex:1;padding:6px 2px;font-size:13px}
+.stabs button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
+.item .tg{font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:6px}
 .item .thumb{width:54px;height:40px;object-fit:contain;float:left;margin:0 10px 0 0}
 .item{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .item .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -219,7 +224,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li><b>貓咪親密度</b>：店長每摸一次頭，那隻貓的親密度 +1（名字下面的愛心數字）。到 10、25、45、70、100 會解鎖蹭蹭腳、擊掌、翻肚子、抱抱、碰鼻子，點貓咪就能選。</li>
       <li><b>收銀台</b>：店長幫客人點餐時要自己找錢，點錢幣和鈔票放進找零盤，再按「找錢給客人」。少找客人會不開心，多找會虧錢。</li>
       <li>貓咪頭上出現「摸摸我」時，走過去摸牠會很開心，會更常去陪客人玩；放著不理牠會鬧脾氣一陣子。手機的「喵音樂」可以換背景音樂。</li>
-      <li>手機的「喵喵速達」可以買材料、新桌子（最多 5 張）和解鎖的傢俱。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
+      <li>手機的「商店」可以買材料、新桌子（最多 5 張）、解鎖的傢俱、店長的衣服和小道具；每個月還有節日活動，活動營收達標就能買限定飾品戴在店長或貓咪身上。錢不夠可以賒帳或跟阿嬤借，不會倒店；但還有負債時不能雇新員工。</li>
       <li>晨間備料時時鐘暫停，準備好再按「開店營業」。21:00 打烊結算。每天開店前和打烊後會自動存檔（有登入就存在帳號裡），下次打開按「繼續」就好；營業到一半關掉，會回到當天早上。</li>
       <li>快捷鍵：方向鍵移動、E 動作、F 切換樓層、空白鍵暫停。</li>
     </ul>
@@ -390,6 +395,23 @@ const SHOP = [
   { id: 'treat',   name: '貓咪肉泥', desc: '一盒 10 條，2F 客人買來親手餵貓（每條成本 ¥6）', price: 60, amt: 10, unit: '條' },
   { id: 'beans',   name: '自家烘焙咖啡豆', desc: '一箱 5 包，擺在吧檯賣給客人帶回家（每包成本 ¥30）', price: 150, amt: 5, unit: '包' },
 ];
+// 商店「道具」: `keep` ones stay forever (saved in G.furn like furniture), the others only last for today (S.buff)
+const TOOLS = {
+  wand:   { name: '逗貓棒',       price: 150, lv: 1, keep: true, desc: '店長摸貓時，親密度每次多 +1' },
+  lucky:  { name: '招財貓擺飾',   price: 400, lv: 2, keep: true, desc: '擺在收銀台旁，給 5 星的客人有機會留下 ¥10 小費' },
+  catnip: { name: '貓薄荷',       price: 40,  lv: 1, desc: '今天一整天，貓咪體力消耗慢 40%，比較不會累到去睡覺' },
+  brew:   { name: '員工提神咖啡', price: 60,  lv: 2, staff: true, desc: '請員工喝一杯，今天一整天員工走路快 25%' },
+};
+// 每月活動 (real calendar month). Earning `need` during the event unlocks each charm in 商店 → 活動; bought charms are kept for good.
+const EVENTS = [
+  { id: 'halloween', month: 10, name: '萬聖節', icon: '🎃', desc: '十月是萬聖節！活動期間的營收累積到目標，就能買限定飾品戴在身上。' },
+];
+const CHARMS = {
+  pumpkin: { ev: 'halloween', who: 'mgr', name: '萬聖節南瓜領巾', price: 200, need: 1000, img: 'acc_scarf', desc: '橘色蝙蝠點點領巾，打個結再掛一個小南瓜燈，繫在店長脖子上' },
+  bat:     { ev: 'halloween', who: 'cat', name: '蝙蝠鈴鐺項圈', price: 300, need: 3000, img: 'acc_bell', desc: '紫色項圈掛著長了蝙蝠翅膀的小金鈴，挑一隻貓幫牠戴' },
+};
+const evNow = () => { const d = new Date(); const E = EVENTS.find(e => e.month === d.getMonth() + 1); return E && { ...E, key: E.id + d.getFullYear() }; };
+const evEarned = E => (E && G.ev[E.key]) || 0;
 const LV2_FANS = 60;
 
 // ---- 1F layout (mirrors the reference illustration: stairs left, shelf + oven, counter centre, loft railing above, window right)
@@ -660,7 +682,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [],
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {} };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], on: {} } };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
@@ -936,7 +958,7 @@ function pgEnd() {
 }
 function pgPointer(e) { const cvs = $('pgame'); if (!cvs || !PG.run) return; const r = cvs.getBoundingClientRect(); PG.x = clamp((e.clientX - r.left) * 300 / r.width, 24, 276); }
 function gainExp(n) { G.exp += n; if (S) S.today.exp += n; }
-function gainEarned(n) { G.earned += n; if (!G.landReady && G.earned >= LAND_GOAL) { G.landReady = true; S.landUp = true; } }
+function gainEarned(n) { G.earned += n; const E = evNow(); if (E) G.ev[E.key] = evEarned(E) + n; if (!G.landReady && G.earned >= LAND_GOAL) { G.landReady = true; S.landUp = true; } }
 function makeCat(id, b) {
   const d = CAT_DEFS[id];
   return { id, def: d, bed: b, P: PERSONAS[d.pers] || {}, size: BODIES[d.size] || BODIES[1], name: catNameOf(id), body: d.body, dark: d.dark, belly: d.belly, fluffy: !!d.fluffy, stripes: !!d.stripes, tux: !!d.tux, spots: d.spots, points: !!d.points,
@@ -975,7 +997,7 @@ function startDay() {
     cushions: CUSHION_POS.concat(furnCushions(), expandCushions()).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
-    startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false,
+    startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false, buff: {},
     today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0, bond: {}, refunds: 0 },
     daily: pickDaily(), offers: dailyOffers(), rareToday: {}, base: { ...G.stats, pets: G.cats.reduce((a, c) => a + c.pets, 0) },
     cats: makeCats(),
@@ -1110,7 +1132,7 @@ window.addEventListener('online', retryMissingArt);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
-const LAZY_ART = /^(c(9|1\d|20)|mo\dm?)_\d$/;
+const LAZY_ART = /^((c(9|1\d|20)|mo\dm?)_\d|acc_\w+)$/;
 const artOk = n => { const im = ART[n]; return !!(im && im.complete && im.naturalWidth); };
 // Wait (at most ARTWAIT ms) until every core sprite, plus the given extra ones, has arrived; onTick(done, total) shows progress.
 const ARTWAIT = 10000;
@@ -1538,9 +1560,59 @@ function progressRing(w, y) {
 const outfitName = o => (G.mgrSex === 'm' && o.nameM) || o.name;
 const mgrSfx = () => G.mgrSex === 'm' ? 'm' : '';
 const mgrSpr = () => { const o = OUTFITS.find(x => x.id === G.outfit), s = mgrSfx(), base = (o ? o.spr : 'mgr') + s; return art(base + '_0') ? base : art('mgr' + s + '_0') ? 'mgr' + s : 'mgr'; };
+// small hanging charms (每月活動), drawn on top of the painted sprites
+function drawCharm(id, x, y, sc) {
+  const sw = Math.sin(S.t * 3 + x * .03) * .25;
+  g.save(); g.translate(x, y); g.scale(sc, sc); g.rotate(sw);
+  line(0, 0, 0, 8, '#8B6B4A', 1.2);
+  if (id === 'pumpkin') {
+    ell(0, 15, 9, 7.5, '#E8873A', INK, 1.1); line(-3, 9, -4, 21, 'rgba(120,60,20,.5)', 1); line(3, 9, 4, 21, 'rgba(120,60,20,.5)', 1);
+    rect(-1.5, 6, 3, 3.5, '#6E8B4E', INK, .8);
+    poly([[-5, 13], [-2, 13], [-3.5, 10.5]], '#FFE08A'); poly([[2, 13], [5, 13], [3.5, 10.5]], '#FFE08A');
+    poly([[-4, 17], [4, 17], [2, 19.5], [-2, 19.5]], '#FFE08A');
+  } else if (id === 'bat') {
+    ell(0, 13, 4.5, 4.5, '#E6B43C', INK, 1); line(-2, 15, 2, 15, INK, .8);
+    poly([[-3, 10], [-13, 6], [-10, 10], [-12, 13], [-4, 13]], '#4A3D52', INK, .9);
+    poly([[3, 10], [13, 6], [10, 10], [12, 13], [4, 13]], '#4A3D52', INK, .9);
+  }
+  g.restore();
+}
+// Painted accessories sit on the painted sprites. Manager: the neck is a fixed height above the feet in every outfit
+// (natural px: stand/walk 245, sit 177) and a little in front of / behind the sprite's centre.
+const MGR_NECK = [[4, 245], [6, 245], [-16, 177]];
+function drawMgrWorn(id, m) {
+  const C = CHARMS[id], sp = mgrSpr(), sit = m.sitting, pose = sit ? 2 : m.moving && Math.floor(S.t * 5) % 2 ? 1 : 0;
+  const im = art(`${sp}_${pose}`) || art(`${sp}_0`), acc = C.img && art(C.img), f = m.face || 1;
+  if (!im || !acc) { drawCharm(id, m.x - 13 * f, m.y - (sit ? 52 : 70), 1); return; }
+  if (G.outfit === 'mo5') return; // the Christmas sweater already has a scarf
+  const k = PH / 300, bob = m.moving ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0, [nx, ny] = MGR_NECK[pose];
+  const w = 30 * k, h = acc.naturalHeight * w / acc.naturalWidth;
+  g.save(); g.translate(m.x + f * nx * k, m.y - bob - ny * k); if (f < 0) g.scale(-1, 1); g.drawImage(acc, -w / 2, -h * .06, w, h); g.restore();
+}
+// Cats: nape → throat of the collar in % of each painted pose (walk, sit, pounce; asleep or belly-up hides it)
+const CAT_NECK = {
+  orange: { 0: [73, 29, 82, 55], 1: [55, 32, 90, 35], 3: [60, 34, 77, 37] },
+  tabby:  { 0: [69, 31, 82, 55], 1: [60, 31, 91, 33], 3: [66, 33, 80, 35] },
+  gray:   { 0: [75, 16, 84, 45], 1: [63, 28, 88, 31], 3: [74, 17, 82, 39] },
+  tux:    { 0: [78, 13, 86, 45], 1: [55, 31, 88, 33], 3: [68, 29, 82, 32] },
+  fluffy: { 0: [78, 39, 85, 57], 1: [55, 31, 91, 32], 3: [58, 35, 80, 36] },
+  calico: { 0: [72, 35, 83, 55], 1: [52, 29, 91, 31], 3: [55, 30, 68, 32] },
+  milk:   { 0: [76, 23, 84, 47], 1: [60, 31, 88, 33], 3: [66, 31, 80, 35] },
+};
+function drawCatWorn(id, k, ci, pose, x, y, f) {
+  const C = CHARMS[id], acc = C.img && art(C.img), a = (CAT_NECK[k.def.base] || CAT_NECK.orange)[pose]; if (!acc || !a) return;
+  const s = CATK * k.size.s, w = ci.naturalWidth * CATK * k.size.sx, h = ci.naturalHeight * s;
+  const P = (px, py) => [(px / 100 - .5) * w, -h + py / 100 * h], [ax, ay] = P(a[0], a[1]), [bx, by] = P(a[2], a[3]);
+  const dx = bx - ax, dy = by - ay, cx = (ax + bx) / 2 - dy * .2, cy = (ay + by) / 2 + dx * .2; // bow towards the chest
+  g.save(); g.translate(x, y); if (f < 0) g.scale(-1, 1); g.lineCap = 'round';
+  for (const [c, lw] of [[INK, 7 * s + 1.4], ['#9C86C4', 7 * s]]) { g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo(cx, cy, bx, by); g.strokeStyle = c; g.lineWidth = lw; g.stroke(); }
+  const bh = 22 * s, bw = acc.naturalWidth * bh / acc.naturalHeight, sw = Math.sin(S.t * 4 + x * .05) * .12;
+  g.translate(bx, by - bh * .1); g.rotate(sw); g.drawImage(acc, -bw / 2, 0, bw, bh); g.restore();
+}
 function drawMgr() {
   const m = S.mgr;
   drawPerson(m, { spr: mgrSpr(), shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: G.mgrSex !== 'm', sit: m.sitting });
+  for (const [id, w] of Object.entries(G.acc.on)) if (w === 'mgr') drawMgrWorn(id, m);
   const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
   if (hk) { // the manager carries the cat in their arms
     const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
@@ -1653,6 +1725,7 @@ function drawCat(k) {
   const pose = k.state === 'sleep' ? 2 : (k.jumpFrom || k.state === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
   const ci = catImg(k.def, pose);
   if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK * k.size.s, f < 0, ci.naturalWidth * CATK * k.size.sx);
+  if (ci && pose !== 2) for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCatWorn(id, k, ci, pose, x, y + 1, f);
   if (k.state === 'sleep') {
     if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
@@ -1686,6 +1759,7 @@ function drawCat(k) {
     if (k.points) ell(hx + 3 * f, hy + 2, 6, 5, k.dark);
     ell(hx + 4 * f, hy - 1, 1.4, 2, k.tux ? '#F2E6A0' : k.points ? '#7FB3D9' : INK);
     }
+    for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCharm(id, hx - 6 * f, hy + 4, .7); // old canvas cat only
     if (k.state === 'eat') text('喀', hx + 14 * f, hy - 16, 11, '#8B776B');
     if (k.say) bubble(hx, hy - 34, k.say.text);
     else if (k.wantPet) {
@@ -1717,9 +1791,9 @@ function moveAlong(e, dt) {
       if (t >= 1) { e.jumpFrom = null; e.path.shift(); continue; }
       return false;
     }
-    const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy), step = e.speed * dt;
+    const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy), sp = e.speed * (e.role && S.buff.brew ? 1.25 : 1), step = sp * dt;
     if (Math.abs(dx) > 2) e.face = dx > 0 ? 1 : -1;
-    if (d <= step) { e.x = p.x; e.y = p.y; e.path.shift(); dt -= d / e.speed; if (dt <= 0) return !e.path.length; continue; }
+    if (d <= step) { e.x = p.x; e.y = p.y; e.path.shift(); dt -= d / sp; if (dt <= 0) return !e.path.length; continue; }
     e.x += dx / d * step; e.y += dy / d * step; e.moving = true; return false;
   }
   return true;
@@ -1812,7 +1886,7 @@ const isMgr = w => w === S.mgr;
 function bakeTask(dish, byMgr) {
   const M = MENU[dish]; S.baking[dish] = true;
   const res = RES(dish);
-  const pre = w => { if (G.stock[res] <= 0) { if (isMgr(w)) toast(`沒有${RES_NAME[res]}了，打開手機的「喵喵速達」買`); return false; } };
+  const pre = w => { if (G.stock[res] <= 0) { if (isMgr(w)) toast(`沒有${RES_NAME[res]}了，打開手機的「商店」買`); return false; } };
   if (byMgr) return { label: '做' + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: .2, pre, fn: () => startCook(dish) }],
     onEnd: () => { if (!S.cook || S.cook.dish !== dish) S.baking[dish] = false; } };
   return { label: (M.meal ? '煮' : '烤') + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: M.bake, pre,
@@ -1841,12 +1915,12 @@ function clearTask(t) {
 }
 function bowlTask() {
   return { label: '補貓糧', steps: [{ f: 2, ...BOWL.staff, dur: 1,
-    pre: w => { if (G.bowl >= 6) { if (isMgr(w)) toast('貓碗還是滿的'); return false; } if (G.stock.catfood <= 0) { if (isMgr(w)) toast('沒有貓糧了，打開手機的「喵喵速達」買'); return false; } },
+    pre: w => { if (G.bowl >= 6) { if (isMgr(w)) toast('貓碗還是滿的'); return false; } if (G.stock.catfood <= 0) { if (isMgr(w)) toast('沒有貓糧了，打開手機的「商店」買'); return false; } },
     fn: () => { sfx('kibble', 2); G.stock.catfood--; G.bowl = 6; floatText(2, BOWL.x, BOWL.y - 60, '裝滿了', '#6E9B4E'); } }] };
 }
 function litterTask() {
   return { label: '清貓砂', steps: [{ f: 2, ...LITTER.staff, dur: 1.4,
-    pre: w => { if (G.litterDirt <= 0) { if (isMgr(w)) toast('貓砂盆很乾淨'); return false; } if (G.stock.litter <= 0) { if (isMgr(w)) toast('沒有貓砂了，打開手機的「喵喵速達」買'); return false; } },
+    pre: w => { if (G.litterDirt <= 0) { if (isMgr(w)) toast('貓砂盆很乾淨'); return false; } if (G.stock.litter <= 0) { if (isMgr(w)) toast('沒有貓砂了，打開手機的「商店」買'); return false; } },
     fn: () => { sfx('litter', 2); G.stock.litter--; G.litterDirt = 0; floatText(2, LITTER.x, LITTER.y - 50, '乾淨了', '#6E9B4E'); } }] };
 }
 // what the high-bond actions do for the shop
@@ -1883,10 +1957,10 @@ function petTask(k, label, act = 'pet') {
         if (act === 'belly') k.energy = Math.min(100, k.energy + 20);
         if (act === 'hug' || act === 'kiss' || BOND.findIndex(b => b.act === act) >= 6) k.happy = 90;
         bondAct(k, act);
-        addBond(k, B.gain); gainExp(1);
+        addBond(k, B.gain + (hasF('wand') ? 1 : 0)); gainExp(1);
         return;
       }
-      if (isMgr(w)) addBond(k, k.wantPet ? 3 : 1);
+      if (isMgr(w)) addBond(k, (k.wantPet ? 3 : 1) + (hasF('wand') ? 1 : 0));
       if (k.wantPet && isMgr(w)) {
         k.wantPet = 0; k.petCool = 45; k.happy = 60; k.sulk = 0; gainExp(2);
         say(w, pick(['乖乖～好舒服吧', '最喜歡你了', '好軟喔～'])); say(k, '呼嚕呼嚕～'); sfx('purr', k.floor);
@@ -2216,6 +2290,9 @@ function leave(c) {
   if (c.rare && s >= 3 && !c.special && c.order && (c.order.dish || c.order.loft || c.order.beans)) { // rare guests tip and tell their friends
     const R = GUEST_R[c.rare]; df += R.fans; gainExp(R.exp); G.cash += R.tip; gainEarned(R.tip); G.stats.tips += R.tip; S.today.tips = (S.today.tips || 0) + R.tip;
     floatText(c.floor, c.x, c.y - 140, `小費 +${yen(R.tip)}・粉絲 +${R.fans}`, '#D9A23A');
+  } else if (s === 5 && hasF('lucky') && c.order && Math.random() < .3) { // 招財貓: a happy guest leaves a little tip
+    G.cash += 10; gainEarned(10); G.stats.tips += 10; S.today.tips = (S.today.tips || 0) + 10;
+    floatText(c.floor, c.x, c.y - 140, `小費 +${yen(10)}`, '#D9A23A');
   }
   G.fans = Math.max(0, G.fans + df); S.today.fans += df;
   if (c.special) S.today.xiaoqing = { stars: s, notes: c.notes.slice() };
@@ -2299,7 +2376,7 @@ function updCat(k, dt) {
   for (const key of ['happy', 'sulk', 'petCool']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
   if (k.wantPet) { k.wantPet -= dt; if (k.wantPet <= 0 || k.state === 'sleep') { k.wantPet = 0; if (k.state !== 'sleep') { k.sulk = 30; say(k, '哼…'); sfx('cat_grumpy', k.floor); } } }
   if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
-  if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
+  if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * (S.buff.catnip ? .6 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
   const arrived = moveAlong(k, dt);
   switch (k.state) {
     case 'toBed': if (arrived) { k.state = 'sleep'; k.onBed = true; } break;
@@ -3095,7 +3172,12 @@ function chooseBake() {
 function closeChoose() { $('chooseOv').hidden = true; if (S) S.uiPause = false; }
 
 // ---- phone ----
-let phoneApp = 'home';
+function outfitItem(o) {
+  const own = G.wardrobe.includes(o.id), wear = G.outfit === o.id, locked = o.lv > shopLv();
+  return `<div class="item${locked && !own ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${o.spr + mgrSfx()}_0.webp" alt="" style="height:96px;width:40px;flex:none;object-fit:contain" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${wear ? '✓ ' : locked && !own ? '🔒 ' : ''}${outfitName(o)}</span><b>${own ? (wear ? '穿著中' : '已擁有') : yen(o.price)}</b></div><div class="sub">${(G.mgrSex === 'm' && o.descM) || o.desc}</div>
+          <div class="row" style="margin:0">${wear ? '<button disabled>正在穿</button>' : own ? `<button class="primary" data-wear="${o.id}">換上</button>` : locked ? `<button disabled>店鋪 Lv.${o.lv} 解鎖</button>` : G.cash < o.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-outfit="${o.id}">購買並換上</button>`}</div></div></div></div>`;
+}
+let phoneApp = 'home', storeTab = 'stock';
 function openPhone(app) { sfx('phone_open'); phoneApp = app; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
 function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; if (PG.run) playMusic(G.music); if (!$('phoneOv').hidden) sfx('phone_close'); PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
 $('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
@@ -3104,7 +3186,7 @@ function renderPhone() {
   const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
   let h = `<div class="sbar"><span>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span><span>遊戲暫停中</span><span>${yen(G.cash)}</span></div>`;
   if (phoneApp === 'home') {
-    const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '喵喵速達', '材料・傢俱', '#D9773E', '送'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
+    const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
                   ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
@@ -3113,7 +3195,7 @@ function renderPhone() {
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '喵喵速達', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定' };
+    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -3127,17 +3209,47 @@ function renderPhone() {
       }
       for (const d of DISHES.filter(d => MENU[d].lv > shopLv())) h += `<div class="item locked"><div class="top"><span class="nm">🔒 ${MENU[d].name}</span><span class="sub">店鋪 Lv.${MENU[d].lv} 解鎖</span></div></div>`;
     } else if (phoneApp === 'shop') {
-      h += `<p class="muted">下單後馬上送到。錢不夠時可以先賒帳，會記在負債裡。</p>`;
+      const E = evNow(), tabs = [['stock', '食材'], ['furn', '傢俱'], ['wear', '衣服'], ['tool', '道具'], ['event', E ? E.icon + '活動' : '活動']];
+      h += `<div class="stabs">${tabs.map(t => `<button class="${storeTab === t[0] ? 'on' : ''}" data-stab="${t[0]}">${t[1]}</button>`).join('')}</div>`;
       const btn = (key, price) => G.cash >= price ? `<button class="primary" data-buy="${key}">購買</button>` : `<button data-credit="${key}">錢不夠，賒帳購買</button>`;
-      for (const it of SHOP) h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(it.price)}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div><div class="row" style="margin:0">${btn(it.id, it.price)}</div></div>`;
-      const full = G.tables >= maxTables();
-      h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(TABLE_PRICE)}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < EXPANSIONS.length ? `（擴大店面後可以放 ${G.expand < 1 ? 6 : MAX_TABLES} 張）` : ''}</div>
-        <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', TABLE_PRICE)}</div></div>`;
-      for (const [id, F] of Object.entries(FURN)) {
-        const own = hasF(id), locked = F.lv > shopLv();
-        const th = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf', bar: 'winbar', beanbag: 'beanbag', wallwalk: 'wallwalk', showcase: 'showcase', hammock: 'eggchair', mural: 'mural' }[id];
-        h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(F.price)}</b></div><div class="sub">${F.desc}</div>
-          <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, F.price)}</div></div>`;
+      if (storeTab === 'stock') {
+        h += `<p class="muted">下單後馬上送到。錢不夠時可以先賒帳，會記在負債裡。</p>`;
+        for (const it of SHOP) h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(it.price)}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div><div class="row" style="margin:0">${btn(it.id, it.price)}</div></div>`;
+      } else if (storeTab === 'furn') {
+        h += `<p class="muted">傢俱買了會一直擺在店裡。錢不夠時可以先賒帳。</p>`;
+        const full = G.tables >= maxTables();
+        h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(TABLE_PRICE)}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < EXPANSIONS.length ? `（擴大店面後可以放 ${G.expand < 1 ? 6 : MAX_TABLES} 張）` : ''}</div>
+          <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', TABLE_PRICE)}</div></div>`;
+        for (const [id, F] of Object.entries(FURN)) {
+          const own = hasF(id), locked = F.lv > shopLv();
+          const th = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf', bar: 'winbar', beanbag: 'beanbag', wallwalk: 'wallwalk', showcase: 'showcase', hammock: 'eggchair', mural: 'mural' }[id];
+          h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(F.price)}</b></div><div class="sub">${F.desc}</div>
+            <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, F.price)}</div></div>`;
+        }
+      } else if (storeTab === 'wear') {
+        h += `<p class="muted">買了馬上換上，之後在「衣櫃」可以隨時換穿。</p>`;
+        for (const o of OUTFITS) if (o.price) h += outfitItem(o);
+      } else if (storeTab === 'event') {
+        h += E ? `<div class="item"><div class="top"><span class="nm">${E.icon} ${E.name}活動</span><b>${yen(evEarned(E))}</b></div><div class="sub">${E.desc}<br>這個月的活動營收：${yen(evEarned(E))}</div></div>`
+               : `<p class="muted">現在沒有活動。每個月會有不同的節日活動，下次是 ${EVENTS.map(e => `${e.month} 月${e.name}`).join('、')}。買過的飾品隨時可以戴。</p>`;
+        for (const [id, C] of Object.entries(CHARMS)) {
+          const own = G.acc.own.includes(id), live = E && E.id === C.ev; if (!own && !live) continue;
+          const on = G.acc.on[id], ok = live && evEarned(E) >= C.need;
+          let act;
+          if (!own) act = !ok ? `<button disabled>活動營收 ${yen(C.need)} 解鎖（還差 ${yen(C.need - evEarned(E))}）</button>` : G.cash < C.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-charm="${id}">購買</button>`;
+          else if (C.who === 'mgr') act = on ? `<button data-wearc="${id}" data-on="">拿下來</button>` : `<button class="primary" data-wearc="${id}" data-on="mgr">幫店長戴上</button>`;
+          else act = S.cats.map(k => `<button class="${on === k.id ? 'primary' : ''}" data-wearc="${id}" data-on="${on === k.id ? '' : k.id}">${on === k.id ? '✓ ' : ''}${k.name}</button>`).join('');
+          h += `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${C.who === 'mgr' ? '店長' : '貓咪'}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
+            <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
+        }
+      } else {
+        const day = S.phase !== 'settle';
+        h += `<p class="muted">幫店裡加點小幫手。標「今天」的道具只有今天有效，明天要再買。</p>`;
+        for (const [id, T] of Object.entries(TOOLS)) {
+          const own = T.keep ? hasF(id) : S.buff[id], locked = T.lv > shopLv(), noStaff = T.staff && !S.staff.length;
+          h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}${T.name}<small class="tg">${T.keep ? '永久' : '今天'}</small></span><b>${yen(T.price)}</b></div><div class="sub">${T.desc}</div>
+            <div class="row" style="margin:0">${own ? `<button disabled>${T.keep ? '已經有了' : '今天已經用了'}</button>` : locked ? `<button disabled>店鋪 Lv.${T.lv} 解鎖</button>` : noStaff ? '<button disabled>還沒有員工</button>' : !T.keep && !day ? '<button disabled>打烊了，明天再買</button>' : btn(id, T.price)}</div></div>`;
+        }
       }
     } else if (phoneApp === 'hire') {
       const blocked = G.debt > 0;
@@ -3245,11 +3357,7 @@ function renderPhone() {
       }
     } else if (phoneApp === 'closet') {
       h += `<p class="muted">幫${G.mgrName}店長換衣服。買過的衣服可以隨時換穿。</p>`;
-      for (const o of OUTFITS) {
-        const own = G.wardrobe.includes(o.id), wear = G.outfit === o.id, locked = o.lv > shopLv();
-        h += `<div class="item${locked && !own ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${o.spr + mgrSfx()}_0.webp" alt="" style="height:96px;width:40px;flex:none;object-fit:contain" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${wear ? '✓ ' : locked && !own ? '🔒 ' : ''}${outfitName(o)}</span><b>${own ? (wear ? '穿著中' : '已擁有') : yen(o.price)}</b></div><div class="sub">${(G.mgrSex === 'm' && o.descM) || o.desc}</div>
-          <div class="row" style="margin:0">${wear ? '<button disabled>正在穿</button>' : own ? `<button class="primary" data-wear="${o.id}">換上</button>` : locked ? `<button disabled>店鋪 Lv.${o.lv} 解鎖</button>` : G.cash < o.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-outfit="${o.id}">購買並換上</button>`}</div></div></div></div>`;
-      }
+      for (const o of OUTFITS) h += outfitItem(o);
     } else if (phoneApp === 'phone') {
       if (CALL) {
         const C = CALL.C;
@@ -3292,6 +3400,13 @@ function renderPhone() {
     G.prices[id] = clamp(G.prices[id] + +b.dataset.d, 5, base * 2); renderPhone();
   });
   sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
+  sc.querySelectorAll('[data-charm]').forEach(b => b.onclick = () => { const id = b.dataset.charm, C = CHARMS[id], E = evNow();
+    if (G.acc.own.includes(id) || !E || E.id !== C.ev || evEarned(E) < C.need || G.cash < C.price) return;
+    G.cash -= C.price; S.today.spent += C.price; G.acc.own.push(id); if (C.who === 'mgr') G.acc.on[id] = 'mgr';
+    sfx('delivery'); toast(C.who === 'mgr' ? `${G.mgrName}店長戴上了「${C.name}」！` : `買了「${C.name}」，挑一隻貓幫牠戴上吧`); saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-wearc]').forEach(b => b.onclick = () => { const id = b.dataset.wearc; if (!G.acc.own.includes(id)) return;
+    if (b.dataset.on) G.acc.on[id] = b.dataset.on; else delete G.acc.on[id]; saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => { sfx('app_switch'); storeTab = b.dataset.stab; renderPhone(); });
   q('#expandBtn') && (q('#expandBtn').onclick = () => { doExpand(); renderPhone(); });
   sc.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(b.dataset.call));
   q('#hangUp') && (q('#hangUp').onclick = () => { CALL = null; renderPhone(); });
@@ -3351,6 +3466,9 @@ function buy(id, credit) {
     if (id === 'cushion') S.cushions.push(...CUSHION_EXTRA.map(p => ({ ...p, cust: null })));
     if (id === 'beanbag' || id === 'hammock') S.cushions.push(...furnCushions().filter(p => p.kind === id).map(p => ({ ...p, cust: null })));
     S.tables.push(...furnSeats(id));
+  } else if (TOOLS[id]) {
+    const T = TOOLS[id]; if (T.lv > shopLv() || (T.keep ? hasF(id) : S.buff[id] || S.phase === 'settle')) return;
+    name = T.name; price = T.price; if (T.keep) G.furn.push(id); else S.buff[id] = true;
   } else {
     const it = SHOP.find(s => s.id === id); name = it.name; price = it.price; G.stock[id] += it.amt;
   }
@@ -3387,7 +3505,10 @@ function decodeSave(code) {
     tables: clamp(Math.floor(num(o.tables, 4)), 4, MAX_TABLES), expand: clamp(Math.floor(num(o.expand, 0)), 0, EXPANSIONS.length),
     staff: Array.isArray(o.staff) ? [...new Set(o.staff.filter(r => ROLES[r]))] : [],
     exp: Math.max(0, Math.floor(num(o.exp, 0))), earned: Math.max(0, num(o.earned, 0)),
-    furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f]))] : [],
+    ev: Object.fromEntries(Object.entries(o.ev && typeof o.ev === 'object' ? o.ev : {}).filter(([k]) => /^[a-z]+\d{4}$/.test(k)).map(([k, v]) => [k, Math.max(0, num(v, 0))])),
+    acc: (() => { const own = Array.isArray(o.acc?.own) ? [...new Set(o.acc.own.filter(id => CHARMS[id]))] : [];
+      return { own, on: Object.fromEntries(own.filter(id => typeof o.acc?.on?.[id] === 'string').map(id => [id, o.acc.on[id]])) }; })(),
+    furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f] || (TOOLS[f] && TOOLS[f].keep)))] : [],
     keep: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(num(o.keep?.[d], 0)))])),
     bond: Object.fromEntries(Object.keys(o.bond && typeof o.bond === 'object' ? o.bond : {}).filter(id => CAT_DEFS[id]).map(id => [id, clamp(Math.floor(num(o.bond[id], 0)), 0, BOND_MAX)])),
     cats: (() => { const seen = new Set(), day = Math.max(1, Math.floor(num(o.day, 1)));
@@ -3834,7 +3955,7 @@ function frame(now) {
         const l = ++S.lvShown; sfx('levelup');
         showPopup(`<h2>🎉 ${G.shopName} 升到 Lv.${l}！</h2><ul class="unl">` +
           DISHES.filter(d => MENU[d].lv === l).map(d => `<li>${MENU[d].meal ? '新正餐' : '新甜點'}：<b>${MENU[d].name}</b>（已經加進菜單，到廚房就能做）</li>`).join('') +
-          Object.keys(FURN).filter(f => FURN[f].lv === l).map(f => `<li>新傢俱：<b>${FURN[f].name}</b>，${FURN[f].desc}（手機「喵喵速達」購買）</li>`).join('') + '</ul>');
+          Object.keys(FURN).filter(f => FURN[f].lv === l).map(f => `<li>新傢俱：<b>${FURN[f].name}</b>，${FURN[f].desc}（手機「商店」購買）</li>`).join('') + '</ul>');
       } else if (S.landUp) {
         S.landUp = false; sfx('levelup');
         showPopup(`<h2>🌱 累計營收突破 ${yen(LAND_GOAL)}！</h2><p>${G.shopName}已經可以開拓新土地了。新土地「貓咪庭院」會在下一版開放，進度已經記在存檔裡。</p>`);
