@@ -34,3 +34,4 @@ if what=='rest':
     for i,n in enumerate(['badge','game','phone','cats','daily','save','review']):
         Image.open(f'cut/j2_{i}.png').resize((144,144),Image.LANCZOS).save(f'{OUT}/ic_{n}.webp',quality=86,method=6)
 if what=='props3': props([('p3_0','lamp',90),('p3_1','cattree',200),('p3_2','chalkboard',110),('p3_3','bookshelf',180)])
+if what=='props4': props([('p4_0','winbar',360),('p4_1','showcase',200),('p4_2','beanbag',160),('p4_3','eggchair',160),('p4_4','wallwalk',320),('p4_5','mural',150)])
