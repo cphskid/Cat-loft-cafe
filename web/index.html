@@ -2115,6 +2115,7 @@ function updStaff(s, dt) {
     if (done) { s.resting = false; s.hidden = false; say(s, pick(['休息好了，回去工作！', '充好電了～', '好，繼續加油！'])); }
     return;
   }
+  if (s.chatting > 0) { s.chatting -= dt; return; }
   if (S.phase === 'open') s.stamina -= dt * (s.task ? .7 : .2);
   s.cool -= dt; s.coffeeCool -= dt;
   if (s.task) { runTask(s, dt); return; }
@@ -2685,10 +2686,65 @@ const LOFT_TALK = [['牠剛剛蹭我的手！', '好羨慕～'], ['這隻是橘�
 const STAFF_TALK = [['今天也要加油喔', '嗯，一起努力吧'], ['剛剛有客人說甜點很好吃', '太好了！'], ['樓上的貓咪好黏人', '牠們很喜歡大家呢'], ['這首歌好好聽', '是我挑的喔']];
 const BREAK_TALK = [['呼～終於可以坐一下了', '這張沙發好好坐'], ['你要喝咖啡嗎？', '好啊，幫我加牛奶'], ['剛剛有貓跑到廚房門口', '還好沒進去，哈哈'], ['休息完再一起加油吧', '嗯！'], ['店長泡的咖啡最好喝', '我也這麼覺得'], ['你明天也有排班嗎？', '有，我排早班']];
 const CREW_TALK = [['今天好忙喔', '加油，快下班了'], ['你午餐吃什麼？', '剩下的布丁！'], ['橘子又在偷睡覺', '好羨慕牠'], ['客人好多喔', '這間店越來越有名了']];
+// ---- 跟員工聊天: walk up to a staff member and press the action button. Each person has their own set conversations,
+// played as bubbles taking turns ('m' = manager, 's' = staff); a new day starts on the next one in the list.
+const STAFF_CHATS = {
+  cook: [
+    [['m', '阿杰，今天的點心準備得怎麼樣？'], ['s', '麵糊已經打好了，等一下就進烤箱！'], ['m', '辛苦你了，聞起來好香']],
+    [['s', '店長，你知道我為什麼想當廚師嗎？'], ['m', '為什麼呀？'], ['s', '小時候奶奶烤的餅乾，讓我覺得好幸福'], ['m', '所以你也想讓客人幸福吧']],
+    [['m', '剛剛有客人說蛋包飯很好吃喔'], ['s', '真的嗎！我偷偷多加了一點奶油'], ['m', '原來是祕密武器～']],
+    [['s', '橘子剛剛一直在廚房門口偷看'], ['m', '牠一定是聞到香味了'], ['s', '貓咪不能吃甜點啦，我只好假裝沒看到']],
+    [['m', '你有想做的新甜點嗎？'], ['s', '我想做貓掌形狀的鬆餅！'], ['m', '聽起來好可愛，等店再大一點就來試試']],
+    [['s', '店長，烤箱溫度我都記在筆記本上了'], ['m', '你好認真喔'], ['s', '這樣每一盤都能烤得一樣好吃']],
+  ],
+  server: [
+    [['m', '小美，今天的客人還好嗎？'], ['s', '大家都很開心！還有人跟我說謝謝'], ['m', '因為你笑得很可愛呀']],
+    [['s', '店長，我今天又沒有打翻盤子喔！'], ['m', '好厲害，越來越穩了'], ['s', '嘿嘿，我有偷偷練習']],
+    [['m', '洗手間今天也好乾淨'], ['s', '乾淨的店客人才會想再來嘛'], ['m', '你說得對，謝謝你']],
+    [['s', '剛剛有一個小朋友說想住在這裡'], ['m', '哈哈，這裡有貓又有點心嘛'], ['s', '我小時候也一定會這樣說']],
+    [['m', '腳會不會很痠？'], ['s', '有一點，可是看到客人笑就忘記了'], ['m', '累了要記得去休息室坐一下喔']],
+    [['s', '店長，雪球今天跟我撒嬌了！'], ['m', '牠很少主動撒嬌耶'], ['s', '我要把這件事記一整天']],
+  ],
+  cashier: [
+    [['m', '阿哲，今天收銀還順利嗎？'], ['s', '一塊錢都沒有算錯！'], ['m', '有你在我好放心']],
+    [['s', '店長，有客人問可不可以只來看貓'], ['m', '你怎麼回答？'], ['s', '我說點一杯飲料就可以上樓摸貓喔'], ['m', '回答得太好了']],
+    [['m', '你記得常客的名字嗎？'], ['s', '記得啊，戴眼鏡的林先生都點拿鐵'], ['m', '難怪大家都喜歡找你點餐']],
+    [['s', '今天排隊的人好多，我有點緊張'], ['m', '慢慢來，笑著跟客人說話就好'], ['s', '嗯！我會加油的']],
+    [['m', '你本來就很會算數嗎？'], ['s', '其實我以前數學很差'], ['s', '來這裡打工以後越算越快了'], ['m', '那這是店裡的功勞囉']],
+    [['s', '黑豆剛剛跳上吧檯偷看收銀機'], ['m', '牠是想幫忙數錢嗎？'], ['s', '牠只是想睡在發票上面啦']],
+  ],
+  feeder: [
+    [['m', '小芸，貓咪們今天吃得好嗎？'], ['s', '大家都吃光光了，橘子還想再要'], ['m', '橘子要控制一下喔']],
+    [['s', '店長，我幫每隻貓都畫了一張圖'], ['m', '好棒，可以給我看嗎？'], ['s', '下次帶來給你看！']],
+    [['m', '貓砂盆好乾淨，謝謝你'], ['s', '貓咪很愛乾淨，不乾淨牠們會生氣'], ['m', '你真的很懂貓耶']],
+    [['s', '雪球最喜歡吃飯前先蹭我的腳'], ['m', '那是在跟你說謝謝吧'], ['s', '我也是這樣想的']],
+    [['m', '你為什麼這麼喜歡貓呀？'], ['s', '因為貓咪不會說話，可是什麼都懂'], ['m', '這句話說得真好']],
+    [['s', '店長，有一隻貓今天好像比較沒精神'], ['m', '我們多注意一下，不行就打給貓咪醫生'], ['s', '好，我會一直看著牠']],
+  ],
+  sitter: [
+    [['m', '阿凱，今天陪貓咪玩了嗎？'], ['s', '玩了好多回合的逗貓棒！'], ['m', '你的手臂還好嗎？哈哈']],
+    [['s', '店長，我發現黑豆最喜歡羽毛'], ['m', '那橘子呢？'], ['s', '橘子什麼都不喜歡，只喜歡睡覺']],
+    [['m', '客人都說你很會帶貓'], ['s', '其實是貓咪在帶我啦'], ['m', '你們是好搭檔']],
+    [['s', '我今天叫醒一隻貓，牠瞪了我好久'], ['m', '你打擾牠的美夢了'], ['s', '下次我要更溫柔一點']],
+    [['m', '你覺得哪隻貓最受歡迎？'], ['s', '每隻都說是自己吧'], ['m', '這答案很安全喔']],
+    [['s', '店長，我想幫貓咪辦一場運動會！'], ['m', '比賽項目是什麼？'], ['s', '比誰睡得最久'], ['m', '那橘子一定冠軍']],
+  ],
+};
+// tapping a staff member walks the manager over first, then they talk
+function walkChat(s) { const side = S.mgr.floor === s.floor && S.mgr.x > s.x ? 60 : -60; addTask(`跟${s.name}聊天`, [{ pos: () => ({ f: s.floor, x: s.x + side, y: s.y + 4 }), dur: 0, fn: () => { if (!s.hidden && !s.resting) actChatStaff(s); } }]); }
+function actChatStaff(s) {
+  const m = S.mgr, list = STAFF_CHATS[s.role]; if (!list) return;
+  S.chatN = S.chatN || {}; const n = S.chatN[s.role] = (S.chatN[s.role] || 0) + 1;
+  const lines = list[(G.day - 2 + n) % list.length];
+  m.face = s.x > m.x ? 1 : -1; s.face = m.x > s.x ? 1 : -1;
+  s.chatting = m.chatting = lines.length * 2.2 + .6; // the staff member stops what she's doing to listen
+  lines.forEach(([who, t], i) => later(i * 2.2, () => { const e = who === 'm' ? m : s; if (!e.gone && !e.hidden) say(e, t, 2.4); }));
+}
 function chatter(dt) {
+  if (S.mgr.chatting > 0) S.mgr.chatting -= dt;
   S.chatT -= dt; if (S.chatT > 0) return;
   S.chatT = rand(6, 11);
-  const free = e => e && !e.say && !e.hidden && !e.resting;
+  const free = e => e && !e.say && !e.hidden && !e.resting && !(e.chatting > 0);
   const near = (a, b, d = 340) => a !== b && a.floor === b.floor && Math.abs(a.x - b.x) < d;
   const m = S.mgr, opts = [];
   const seated = S.customers.filter(c => free(c) && (c.state === 'eating' || c.state === 'petting'));
@@ -2878,7 +2934,7 @@ function hitTest(x, y) {
     if (c.state === 'queue' && hitPerson(c, x, y)) return { act: actOrder };
   }
   for (const k of S.cats) if (k.floor === f && Math.abs(x - k.x) < 32 && y < k.y + 8 && y > k.y - 46) return { act: () => actPet(k) };
-  for (const s of S.staff) if (s.floor === f && !s.hidden && hitPerson(s, x, y)) return { act: () => toast(`${s.name}（${s.title}）體力 ${Math.round(s.stamina)}${s.task ? '・正在' + s.task.label : ''}`) };
+  for (const s of S.staff) if (s.floor === f && !s.hidden && hitPerson(s, x, y)) return { act: () => { toast(`${s.name}（${s.title}）體力 ${Math.round(s.stamina)}${s.task ? '・正在' + s.task.label : ''}`); if (!s.resting && !(s.chatting > 0)) walkChat(s); } };
   if (f === 1) {
     if (S.phase === 'closing' && !S.close.sign && x < 96 && y > 505 && y < 566) return { act: actFlipSign };
     for (const t of S.tables) if (x > t.x - 76 && x < t.x + 46 && y > t.y - 60 && y < t.y + 12) {
@@ -3029,6 +3085,7 @@ function nearbyActions() {
     if (!m.sitting) for (const p of SOFA_SEATS) add(p.x, p.y, '坐下休息', () => actSit(p.x));
     for (const s of S.staff) if (s.floor === 3 && s.resting) add(s.x, s.y, `幫${s.name}打氣`, () => actCheer(s));
   }
+  for (const s of S.staff) if (s.floor === f && !s.hidden && !s.away && !s.resting && !(s.chatting > 0)) add(s.x, s.y, `跟${s.name}聊天`, () => actChatStaff(s));
   for (const k of S.cats) if (k.floor === f && k !== hk) {
     const p = k.onBed ? k.bed.ground : k;
     add(p.x, p.y, k.state === 'sleep' ? (S.phase === 'closing' ? `跟${k.name}說晚安` : '叫醒' + k.name) : '摸摸' + k.name, () => actPet(k));
