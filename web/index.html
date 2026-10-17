@@ -622,6 +622,33 @@ const ROLES = {
   feeder:  { name: '小芸', title: '餵食人員',   wage: 80,  desc: '顧好 2F 的貓碗和貓砂盆（要有貓糧、貓砂）', apron: '#E3AE97', hair: '#4C3A30', shirt: '#FFFFFF', home: { f: 2, x: 372, y: 528 }, long: true },
   sitter:  { name: '阿凱', title: '逗貓人員',   wage: 80,  desc: '叫醒睡飽的貓，帶貓去陪 2F 的客人',         apron: '#D8C27A', hair: '#A0703F', shirt: '#F4F0E8', home: { f: 2, x: 760, y: 520 } },
 };
+// ---- job interviews: the manager picks who to hire; a poor pick works slowly and fewer guests come in (fans never drop)
+const HIRE_FEE = [9000, 12000];
+const IV_Q = ['為什麼想來我們店工作？', '客人突然變很多的時候，你會怎麼做？', '一個禮拜可以來幾天？'];
+const IV_A = {
+  good: [['我很喜歡貓，之前在咖啡廳打工過兩年。', '我養了三隻貓，也考過咖啡證照喔。'], ['先跟排隊的客人打招呼，再一件一件做好。', '不要慌，先做最急的事，再請同事幫忙。'], ['每天都可以，早班晚班都行！', '平日假日都可以，臨時缺人也可以找我。']],
+  meh:  [['因為離我家很近……', '嗯……我朋友說這裡不錯。'], ['呃……我會盡量快一點吧。', '可能會有點緊張，但我會努力。'], ['大概可以吧，看情況。', '一個禮拜三、四天應該可以。']],
+  lazy: [['聽說可以一直摸貓，不用做什麼事？', '我想找比較輕鬆的工作。'], ['那就讓他們等一下吧。', '人多就先去休息室躲一下？'], ['下雨天我不想出門。', '早上起不來，可以中午再來嗎？']],
+  kid:  [['我想跟貓咪玩！媽媽說放學可以來。', '我是三年級的，我最喜歡貓了！'], ['我會跑很快！可是會不會跌倒啊？', '我、我會叫店長來幫忙！'], ['寫完功課就來！', '禮拜三下午沒有安親班喔。']],
+};
+const IV_Q_LV = { good: 1, meh: .75, lazy: .5, kid: .5 };
+const IV_NOTE = { good: '做事很可靠', meh: '表現普通，有點慢', lazy: '常常偷懶，客人會變少', kid: '還是小學生，做得很慢，客人會變少' };
+const KID_NAMES = ['小宇', '豆豆', '小安', '妞妞', '小樂', '小可'], ADULT_NAMES = ['阿明', '小晴', '阿翔', '佳佳', '阿德', '小蓉', '志明', '春嬌'];
+function applicants(role) {
+  let seed = (G.day * 7349 + role.length * 131 + role.charCodeAt(0)) % 2147483647; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647, pk = a => a[Math.floor(rnd() * a.length)];
+  const fee = (a, b) => Math.round((a + rnd() * (b - a)) / 100) * 100;
+  const other = pk(ADULT_NAMES.filter(n => n !== ROLES[role].name));
+  const list = [
+    { name: ROLES[role].name, age: 20 + Math.floor(rnd() * 8), tier: 'good', fee: fee(11000, 12000) },
+    { name: other, age: 19 + Math.floor(rnd() * 20), tier: pk(['good', 'meh', 'meh', 'lazy']), fee: fee(9500, 11500) },
+    { name: pk(KID_NAMES), age: 8 + Math.floor(rnd() * 4), tier: 'kid', fee: HIRE_FEE[0] },
+  ];
+  for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+  return list.map((a, i) => ({ ...a, i, ans: IV_A[a.tier].map(v => v[Math.floor(rnd() * 2)]) }));
+}
+const hireInfo = role => (G.hired || {})[role];
+// guests come less often for each poorly picked staff member on shift
+const staffDrag = () => 1 + (S.staff || []).filter(s => !s.away).reduce((a, s) => a + (1 - (s.q || 1)) * .6, 0);
 // ---- manager outfits (phone app 衣櫃)
 const OUTFITS = [
   { id: 'basic', name: '咖啡廳圍裙', desc: '開店第一天穿的白襯衫和米色圍裙', price: 0, lv: 1, spr: 'mgr' },
@@ -691,7 +718,7 @@ let started = false;
 function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
-           prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [],
+           prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
            exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], on: {} }, collab: null };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
@@ -994,6 +1021,7 @@ function makeStaff(role, atDoor) {
   const s = { role, ...R, floor: atDoor ? 1 : h.f, x: atDoor ? DOOR.x : h.x, y: atDoor ? DOOR.y : h.y, path: [], speed: 230, face: 1,
     stamina: 100, task: null, mode: 'idle', actT: 0, si: 0, carry: null, cool: 0, resting: false, hidden: false,
     ...schedOf(role), away: false, brkDone: false, coffeeCool: rand(20, 60) };
+  const hi = hireInfo(role); if (hi) { s.name = hi.name; s.q = IV_Q_LV[hi.tier]; s.kid = hi.tier === 'kid'; s.speed *= .6 + .4 * s.q; }
   if (atDoor) routeTo(s, h.f, h.x, h.y);
   return s;
 }
@@ -1642,7 +1670,9 @@ function drawMgr() {
 }
 function drawStaff(s) {
   if (s.hidden) return;
+  if (s.kid) { g.save(); g.translate(s.x, s.y); g.scale(.8, .8); g.translate(-s.x, -s.y); }
   drawPerson(s, { spr: s.role, shirt: s.shirt, pants: '#4A4542', hair: s.hair, apron: s.apron, long: s.long, sit: s.resting });
+  if (s.kid) g.restore();
   if (s.resting) { const t = (S.t * .7 + s.x) % 1; g.globalAlpha = 1 - t; text('z', s.x + 18 + t * 10, s.y - 120 - t * 18, 13 + t * 6, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1; }
   if (s.task && s.mode === 'act' && s.task.steps[s.si].dur > .3) progressRing(s, s.y - 150);
   if (s.say) bubble(s.x, s.y - 166, s.say.text);
@@ -1880,7 +1910,7 @@ function runTask(w, dt) {
   if (w.mode === 'walk') {
     if (moveAlong(w, dt)) { w.mode = 'act'; w.actT = 0; if (st.pre && st.pre(w) === false) return endTask(w); }
   } else {
-    w.actT += dt;
+    w.actT += dt * (w.q || 1);
     if (w.actT >= st.dur) {
       const ok = st.fn ? st.fn(w) : true;
       if (!w.task) return;
@@ -2144,16 +2174,20 @@ function updStaff(s, dt) {
   if (!moveAlong(s, dt)) return;
   if (Math.random() < dt * .25) { const h = s.home; routeTo(s, h.f, clamp(h.x + rand(-40, 40), 150, 880), clamp(h.y + rand(-8, 12), 484, 594)); }
 }
-function hire(role) {
-  if (G.staff.includes(role)) return;
+function hire(role, i = 0) {
+  const a = applicants(role)[i];
+  if (G.staff.includes(role) || !a || G.cash < a.fee || G.debt > 0) return;
+  G.cash -= a.fee; (G.hired || (G.hired = {}))[role] = { name: a.name, tier: a.tier }; ivSeen = {};
   G.staff.push(role); const s = makeStaff(role, true); if (!onShift(s)) s.shift = 'all'; S.staff.push(s); sfx('hire');
-  toast(`${ROLES[role].name}（${ROLES[role].title}）來上班了`);
+  toast(`${a.name}（${ROLES[role].title}）來上班了`);
+  if (s.kid) later(2, () => say(s, '店長好！我會加油的！'));
+  saveProgress();
 }
 function fire(role) {
   G.staff = G.staff.filter(r => r !== role);
   const s = S.staff.find(s => s.role === role);
   if (s) { if (s.task) endTask(s); S.staff = S.staff.filter(x => x !== s); }
-  toast(`${ROLES[role].name}離職了`);
+  toast(`${s ? s.name : ROLES[role].name}離職了`); if (G.hired) delete G.hired[role];
 }
 // shift changes count from tomorrow (or right away before opening); a new break hour counts right away
 function setSched(role, ch) {
@@ -2871,7 +2905,7 @@ function update(dt) {
     if (!hold || S.cid === 0) S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
-      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / (collabNow()?.guests || 1) * rand(.7, 1.3); }
+      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / (collabNow()?.guests || 1) * staffDrag() * rand(.7, 1.3); }
       else S.spawnT = 5;
     }
     if (S.time >= 1230 && !S.lastCall) { S.lastCall = true; sfx('notify'); toast('20:30 最後點餐，之後不再接新客人囉'); }
@@ -3250,7 +3284,7 @@ function outfitItem(o) {
   return `<div class="item${locked && !own ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${o.spr + mgrSfx()}_0.webp" alt="" style="height:96px;width:40px;flex:none;object-fit:contain" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${wear ? '✓ ' : locked && !own ? '🔒 ' : ''}${outfitName(o)}</span><b>${own ? (wear ? '穿著中' : '已擁有') : yen(o.price)}</b></div><div class="sub">${(G.mgrSex === 'm' && o.descM) || o.desc}</div>
           <div class="row" style="margin:0">${wear ? '<button disabled>正在穿</button>' : own ? `<button class="primary" data-wear="${o.id}">換上</button>` : locked ? `<button disabled>店鋪 Lv.${o.lv} 解鎖</button>` : G.cash < o.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-outfit="${o.id}">購買並換上</button>`}</div></div></div></div>`;
 }
-let phoneApp = 'home', storeTab = 'stock';
+let phoneApp = 'home', storeTab = 'stock', ivRole = null, ivSeen = {};
 function openPhone(app) { sfx('phone_open'); phoneApp = app; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
 function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; if (PG.run) playMusic(G.music); if (!$('phoneOv').hidden) sfx('phone_close'); PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
 $('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
@@ -3343,11 +3377,20 @@ function renderPhone() {
       h += `<p class="muted">員工會自己找事做，打烊時領日薪。今天雇用也要付今天的薪水。今天的薪資 ${yen(wages)}。</p>`;
       if (G.staff.length) h += `<p class="muted">排班：早班、晚班領 6 成薪水，休假不用付薪水。${S.phase === 'prep' ? '開門前改的班今天就生效。' : '改的班明天生效，休息時間馬上生效。'}</p>`;
       if (blocked) h += `<p style="color:var(--bad);font-size:13px;margin:0">還有負債 ${yen(G.debt)}，還清前不能雇新員工。</p>`;
-      for (const [id, R] of Object.entries(ROLES)) {
-        const has = G.staff.includes(id);
-        h += `<div class="item"><div class="top"><span class="nm">${R.name}・${R.title}</span><b>日薪 ${yen(R.wage)}</b></div><div class="sub">${R.desc}</div>
-          ${has ? schedHtml(id) : ''}
-          <div class="row" style="margin:0">${has ? `<button data-fire="${id}">請他離職</button>` : `<button class="primary" data-hire="${id}" ${blocked || S.phase === 'settle' ? 'disabled' : ''}>錄用</button>`}</div></div>`;
+      if (ivRole && !G.staff.includes(ivRole)) {
+        const R = ROLES[ivRole];
+        h += `<div class="row" style="margin:0 0 8px"><button id="ivBack">← 回到職缺</button></div><p class="muted">${R.title}今天有 3 位來應徵。店長要親自面試，聽完回答再決定要錄用誰。選錯人會做得很慢，客人也會變少。錄用時付一次雇用費。</p>`;
+        for (const a of applicants(ivRole)) {
+          const k = ivRole + a.i, seen = ivSeen[k];
+          h += `<div class="item"><div class="top"><span class="nm">${a.name}・${a.age} 歲${a.tier === 'kid' ? '（小學生）' : ''}</span><b>雇用費 ${yen(a.fee)}</b></div>
+            ${seen ? IV_Q.map((qq, j) => `<div class="sub"><b>店長：</b>${qq}<br><b>${a.name}：</b>「${a.ans[j]}」</div>`).join('') : ''}
+            <div class="row" style="margin:0">${seen ? `<button class="primary" data-hire="${ivRole}:${a.i}" ${blocked || S.phase === 'settle' || G.cash < a.fee ? 'disabled' : ''}>${G.cash < a.fee ? '錢不夠' : '錄用'}</button>` : `<button class="primary" data-iv="${k}">面試</button>`}</div></div>`;
+        }
+      } else for (const [id, R] of Object.entries(ROLES)) {
+        const has = G.staff.includes(id), hi = has && hireInfo(id);
+        h += `<div class="item"><div class="top"><span class="nm">${has ? (hi ? hi.name : R.name) + '・' : ''}${R.title}</span><b>日薪 ${yen(R.wage)}</b></div><div class="sub">${R.desc}${hi ? `<br>工作表現：${IV_NOTE[hi.tier]}` : ''}</div>
+          ${has ? schedHtml(id) : `<div class="sub">雇用費 ${yen(HIRE_FEE[0])}～${yen(HIRE_FEE[1])}，要先面試</div>`}
+          <div class="row" style="margin:0">${has ? `<button data-fire="${id}">請他離職</button>` : `<button class="primary" data-ivrole="${id}" ${blocked || S.phase === 'settle' ? 'disabled' : ''}>看應徵者</button>`}</div></div>`;
       }
     } else if (phoneApp === 'wallet') {
       h += `<div class="item"><div class="top"><span class="nm">現金</span><b>${yen(G.cash)}</b></div><div class="top"><span class="nm">負債</span><b style="color:var(--bad)">${yen(G.debt)}</b></div>
@@ -3482,7 +3525,7 @@ function renderPhone() {
   sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
   const q = s => sc.querySelector(s);
   q('#pClose') && (q('#pClose').onclick = closePhone);
-  q('#pBack') && (q('#pBack').onclick = () => { if (CALL && CALL.result) CALL = null; if (!CALL) { phoneApp = 'home'; renderPhone(); } });
+  q('#pBack') && (q('#pBack').onclick = () => { if (CALL && CALL.result) CALL = null; if (!CALL) { phoneApp = 'home'; ivRole = null; renderPhone(); } });
   sc.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
     const id = b.dataset.p, base = baseOf(id);
     G.prices[id] = clamp(G.prices[id] + +b.dataset.d, 5, base * 2); renderPhone();
@@ -3528,7 +3571,10 @@ function renderPhone() {
   q('#sfxBtn') && (q('#sfxBtn').onclick = () => { G.sfx = !sfxOn(); sfx('ui_click'); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-music]').forEach(b => b.onclick = () => { setMusic(b.dataset.music); toast(b.dataset.music === 'off' ? '音樂關掉了' : '現在播放：' + MUSIC[b.dataset.music].name); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-credit]').forEach(b => b.onclick = () => buy(b.dataset.credit, true));
-  sc.querySelectorAll('[data-hire]').forEach(b => b.onclick = () => { hire(b.dataset.hire); renderPhone(); });
+  sc.querySelectorAll('[data-hire]').forEach(b => b.onclick = () => { const [r, i] = b.dataset.hire.split(':'); hire(r, +i); ivRole = null; renderPhone(); });
+  sc.querySelectorAll('[data-ivrole]').forEach(b => b.onclick = () => { ivRole = b.dataset.ivrole; sfx('ui_click'); renderPhone(); });
+  sc.querySelectorAll('[data-iv]').forEach(b => b.onclick = () => { ivSeen[b.dataset.iv] = true; sfx('ui_click'); renderPhone(); });
+  q('#ivBack') && (q('#ivBack').onclick = () => { ivRole = null; renderPhone(); });
   sc.querySelectorAll('[data-fire]').forEach(b => b.onclick = () => { fire(b.dataset.fire); renderPhone(); });
   sc.querySelectorAll('[data-shift]').forEach(b => b.onclick = () => { const [r, v] = b.dataset.shift.split(':'); setSched(r, { shift: v }); renderPhone(); });
   sc.querySelectorAll('[data-brk]').forEach(b => b.onclick = () => { const [r, v] = b.dataset.brk.split(':'); setSched(r, { brk: +v }); renderPhone(); });
@@ -3596,6 +3642,7 @@ function decodeSave(code) {
     bowl: clamp(num(o.bowl, 0), 0, 6), litterDirt: Math.max(0, num(o.litterDirt, 0)),
     tables: clamp(Math.floor(num(o.tables, 4)), 4, MAX_TABLES), expand: clamp(Math.floor(num(o.expand, 0)), 0, EXPANSIONS.length),
     staff: Array.isArray(o.staff) ? [...new Set(o.staff.filter(r => ROLES[r]))] : [],
+    hired: Object.fromEntries(Object.keys(ROLES).filter(r => o.hired?.[r] && IV_A[o.hired[r].tier]).map(r => [r, { name: cleanName(o.hired[r].name, ROLES[r].name, 6), tier: o.hired[r].tier }])),
     exp: Math.max(0, Math.floor(num(o.exp, 0))), earned: Math.max(0, num(o.earned, 0)),
     ev: Object.fromEntries(Object.entries(o.ev && typeof o.ev === 'object' ? o.ev : {}).filter(([k]) => /^[a-z]+\d{4}$/.test(k)).map(([k, v]) => [k, Math.max(0, num(v, 0))])),
     acc: (() => { const own = Array.isArray(o.acc?.own) ? [...new Set(o.acc.own.filter(id => CHARMS[id]))] : [];
