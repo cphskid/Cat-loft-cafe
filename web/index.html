@@ -2212,13 +2212,14 @@ function pickGuestLook() {
   return pick(GUESTS);
 }
 function updQueue() { S.queue.forEach((c, i) => { if (c.slot !== i) { c.slot = i; routeTo(c, 1, QUEUE[i].x, QUEUE[i].y); } }); }
-function zone(price, base) { const r = price / base; return r <= 1.0001 ? 'green' : r <= 1.4001 ? 'yellow' : 'red'; }
+// green up to 25% over the base price, yellow (some guests hesitate) up to 60% over, red beyond that
+function zone(price, base) { const r = price / base; return r <= 1.2501 ? 'green' : r <= 1.6001 ? 'yellow' : 'red'; }
 function pickDish(c, sweetOnly) {
   const un = unlockedDishes(), meals = un.filter(d => MENU[d].meal), sweets = un.filter(d => !MENU[d].meal);
   const want = !sweetOnly && meals.length && Math.random() < .4 ? pick(meals) : pick(sweets);
   const z = zone(G.prices[want], MENU[want].base);
   if (z === 'red') return { dish: null, red: true };
-  if (z === 'yellow' && Math.random() < .25 && !c.special) return { dish: null };
+  if (z === 'yellow' && Math.random() < .15 && !c.special) return { dish: null };
   return { dish: want };
 }
 function decideOrder(c) {
@@ -2228,17 +2229,17 @@ function decideOrder(c) {
   if (c.special || Math.random() < .62) {
     const z = zone(G.prices.loft, LOFT_BASE);
     if (z === 'red') { c.stars -= 1; c.notes.push('入場費太貴'); o.say = o.say || '樓上好貴喔'; }
-    else if (!(z === 'yellow' && Math.random() < .25 && !c.special)) o.loft = true;
+    else if (!(z === 'yellow' && Math.random() < .15 && !c.special)) o.loft = true;
   }
   // most 2F guests want a stick of meat paste to feed the cats themselves
   if (o.loft && G.stock.treat > 0 && Math.random() < (c.special ? 1 : .45)) {
     const z = zone(G.prices.treat, TREAT_BASE);
-    if (z === 'green' || (z === 'yellow' && Math.random() < .6)) o.treat = true;
+    if (z === 'green' || (z === 'yellow' && Math.random() < .8)) o.treat = true;
   }
   // about a quarter of the guests also take a bag of beans home, if there is any on the counter
   if (!c.special && G.stock.beans > 0 && Math.random() < (hasF('chalk') ? .4 : .25)) {
     const z = zone(G.prices.beans, BEANS_BASE);
-    if (z === 'green' || (z === 'yellow' && Math.random() < .6)) o.beans = true;
+    if (z === 'green' || (z === 'yellow' && Math.random() < .8)) o.beans = true;
   }
   return o;
 }
@@ -3234,13 +3235,13 @@ function renderPhone() {
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
-      h += `<p class="muted">綠色是合理價，客人一定買。黃色是精品價，大約四分之一的客人會打退堂鼓。紅色太貴，客人不會買，還會給低分。</p>`;
+      h += `<p class="muted">比基準價貴 25% 以內都是綠色的合理價，客人照樣買。黃色是精品價（貴 25%～60%），少數客人會打退堂鼓。紅色太貴，客人不會買，還會給低分。</p>`;
       for (const [id, name, base] of rows) {
         const p = G.prices[id], z = zone(p, base), pos = clamp((p / base - .5) / 1.5, 0, 1) * 100;
         const zl = { green: ['合理價', 'var(--good)', '😊'], yellow: ['精品價', 'var(--warn)', '😐'], red: ['太貴了', 'var(--bad)', '😠'] }[z];
         h += `<div class="item"><div class="top"><span class="nm">${name}</span><span class="zl" style="color:${zl[1]}">${zl[2]} ${zl[0]}</span></div>
           <div class="price-ctl"><button data-p="${id}" data-d="-5">−5</button><b>${yen(p)}</b><button data-p="${id}" data-d="5">+5</button><span class="sub">基準 ${yen(base)}</span></div>
-          <div class="zone" style="background:linear-gradient(90deg,var(--good) 0 ${100 / 3}%,var(--warn) ${100 / 3}% 60%,var(--bad) 60% 100%)"><i style="left:${pos}%"></i></div></div>`;
+          <div class="zone" style="background:linear-gradient(90deg,var(--good) 0 50%,var(--warn) 50% 73.3%,var(--bad) 73.3% 100%)"><i style="left:${pos}%"></i></div></div>`;
       }
       for (const d of DISHES.filter(d => MENU[d].lv > shopLv())) h += `<div class="item locked"><div class="top"><span class="nm">🔒 ${MENU[d].name}</span><span class="sub">店鋪 Lv.${MENU[d].lv} 解鎖</span></div></div>`;
     } else if (phoneApp === 'shop') {
