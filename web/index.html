@@ -3042,7 +3042,7 @@ function update(dt) {
     if (!hold || S.cid === 0) S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
-      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / (collabNow()?.guests || 1) * staffDrag() * rand(.7, 1.3); }
+      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / (collabNow()?.guests || 1) / (window.FRIENDS ? FRIENDS.boost() : 1) * staffDrag() * rand(.7, 1.3); }
       else S.spawnT = 5;
     }
     if (S.time >= 1230 && !S.lastCall) { S.lastCall = true; sfx('notify'); toast('20:30 最後點餐，之後不再接新客人囉'); }
@@ -3435,12 +3435,13 @@ function renderPhone() {
                   ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '今天誰最會賺', '#C9A03A', '榜']);
+    if (CLOUD.sb && !CLOUD.db && window.FRIENDS) apps.splice(apps.length - 2, 0, ['friend', '好友', FRIENDS.sub(), '#D98AA0', '友']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作' };
+    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -3652,6 +3653,8 @@ function renderPhone() {
         <div class="item"><div class="top"><span class="nm">動作鍵</span></div><div class="sub">藏起來之後，直接點店長旁邊的東西一樣能互動（鍵盤 E 也可以）。</div>${seg('act', [['on', '正常'], ['mini', '縮小靠邊'], ['off', '隱藏']])}</div>`;
     } else if (phoneApp === 'rank') {
       h += boardHtml();
+    } else if (phoneApp === 'friend') {
+      h += FRIENDS.appHtml();
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
@@ -3660,6 +3663,7 @@ function renderPhone() {
     h += '</div>';
   }
   sc.innerHTML = h;
+  if (phoneApp === 'friend') FRIENDS.bind(sc);
   sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { sfx('app_switch'); if (b.dataset.app === 'report') { openFeedback(); return; } phoneApp = b.dataset.app; renderPhone(); });
   sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
   const q = s => sc.querySelector(s);
@@ -3971,6 +3975,7 @@ async function initCloud() {
   } catch {}
   CLOUD.ready = true; showAcct();
   if (started) saveProgress();
+  if (CLOUD.uid && !CLOUD.db) window.FRIENDS?.load(true); // cooperation boost and pending knocks
   mountFeedback();
 }
 // ---- 🏆 今日排行榜 (supabase/catloft_board.sql) ----
@@ -3998,7 +4003,7 @@ function boardHtml() {
   if (!BOARD.rows) return h + `<p class="muted">${BOARD.err ? '連不上排行榜，等一下再試試' : '排行榜載入中…'}</p>`;
   if (!BOARD.rows.length) return h + `<p class="muted">今天還沒有店打烊，第一名就是你的！</p>`;
   const medal = ['🥇', '🥈', '🥉'];
-  h += BOARD.rows.map(r => `<div class="item"${r.is_me ? ' style="border-color:#D9A23A;background:#FFF6E0"' : ''}><div class="top"><span class="nm">${medal[r.rank - 1] || Number(r.rank) + '.'} ${cleanName(r.shop_name, '貓咪咖啡廳', 12)}${r.is_me ? '（你的店）' : ''}</span><b>${yen(Number(r.revenue) || 0)}</b></div><div class="sub">店鋪 Lv.${Number(r.lv) || 1}・第 ${Number(r.day) || 1} 天</div></div>`).join('');
+  h += BOARD.rows.map(r => `<div class="item"${r.is_me ? ' style="border-color:#D9A23A;background:#FFF6E0"' : ''}><div class="top"><span class="nm">${medal[r.rank - 1] || Number(r.rank) + '.'} ${cleanName(r.shop_name, '貓咪咖啡廳', 12)}${r.is_me ? '（你的店）' : ''}</span><b>${yen(Number(r.revenue) || 0)}</b></div><div class="sub">店鋪 Lv.${Number(r.lv) || 1}・第 ${Number(r.day) || 1} 天${r.partner ? `・🤝 跟「${cleanName(r.partner, '朋友的店', 12)}」合作中` : ''}</div></div>`).join('');
   if (!BOARD.rows.some(r => r.is_me)) h += `<p class="muted">你今天還沒打烊過，營業完一天就會上榜。</p>`;
   return h;
 }
@@ -4142,7 +4147,7 @@ function closeDay() {
   const day = S.day;
   G.day = day + 1;
   saveProgress();
-  boardSubmit(revenue, day);
+  boardSubmit(revenue, day); window.FRIENDS?.sync();
   const code = encodeSave(G);
   const xq = T.xiaoqing;
   const hrs = []; for (let h = 8; h < 21; h++) hrs.push([h, T.hours[h] || 0]);
@@ -4284,5 +4289,6 @@ if (document.fonts) document.fonts.ready.then(() => prerender());
 window.__game = { get G() { return G; }, get S() { return S; }, closeDay, startCook, cookPress, cookRelease, setMusic, shopLv, actBake, actBowl, actPet, actOrder, actServe, actClear, buy, hire, takeOrder, adoptCat, actSit, doExpand, startCall };
 </script>
 <script src="tutorial.js"></script>
+<script src="friends.js"></script>
 </body>
 </html>
