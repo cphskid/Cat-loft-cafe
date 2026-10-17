@@ -217,7 +217,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
       <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。右上角的樓層鈕只換看哪一層。另一層有狀況時，左上角會出現提醒，點它就能切過去。</li>
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
-      <li>手機的「喵喵宣傳」可以發傳單、發 IG、辦試吃、登報紙，讓今天的客人變多、粉絲增加。「徽章」收集成就，「喵喵接點心」是小遊戲，每天第一次玩有零用錢。</li>
+      <li>手機的「喵喵宣傳」可以發傳單、發 IG、辦試吃、登報紙，讓今天的客人變多、粉絲增加。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地（手機「我的店」看進度）。</li>
@@ -719,7 +719,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], on: {} }, collab: null };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], on: {} }, collab: null };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
@@ -833,7 +833,7 @@ const DAILY = [
   { id: 'perfect', text: n => `做出 ${n} 次完美火候`,       n: 2,   prog: () => G.stats.perfect - S.base.perfect },
   { id: 'change',  text: n => `收銀台正確找錢 ${n} 次`,     n: 3,   prog: () => G.stats.change - S.base.change },
   { id: 'promo',   text: () => '做 1 次宣傳',               n: 1,   prog: () => G.stats.promo - S.base.promo },
-  { id: 'game',    text: () => '玩 1 次喵喵接點心',         n: 1,   prog: () => S.gamePaid ? 1 : 0 },
+  { id: 'game',    text: () => '玩 1 次小遊戲',             n: 1,   prog: () => S.gamePaid ? 1 : 0 },
   { id: 'loft',    text: n => `${n} 位客人上 2F 吸貓`,      n: 4,   prog: () => S.today.loftN },
   { id: 'review',  text: n => `收到 ${n} 則客人留言`,       n: 4,   prog: () => S.today.reviews },
   { id: 'earn',    text: n => `今天營收達到 ¥${n}`,         n: 600, prog: () => S.today.dessert + S.today.loft + S.today.beans + S.today.treat },
@@ -950,16 +950,44 @@ function checkBadges() {
     toast(`${b.icon} 獲得徽章「${b.name}」！經驗 +5`);
   }
 }
-// ---- phone mini-game: 喵喵接點心 (catch the treats, dodge the fish bones)
-const PG = { run: false, x: 150, items: [], score: 0, t: 0, spawn: 0, last: 0, ctx: null, raf: 0 };
+// ---- phone 小遊戲 app: four mini-games; the first play of each one every day pays pocket money, today's pick pays double
+const MINIGAMES = [
+  { id: 'catch', name: '喵喵接點心', icon: '🍰', best: 'best', per: 3, help: '左右拖曳（或用方向鍵）移動籃子，接住點心 +1，碰到魚骨頭 −3。30 秒。' },
+  { id: 'latte', name: '拉花挑戰', icon: '☕', best: 'bestLatte', per: 4, help: '按住畫面倒牛奶，放開時奶泡停在綠色範圍就成功 +2，停在正中間是完美拉花 +3。一共 8 杯，倒太滿會溢出來。' },
+  { id: 'memo', name: '貓咪翻牌', icon: '🃏', best: 'bestMemo', per: 2, help: '翻開兩張一樣的貓咪就配成一對 +5。60 秒內全部配完，剩下的秒數也會變成分數。' },
+  { id: 'peek', name: '躲貓貓', icon: '📦', best: 'bestPeek', per: 3, help: '貓咪從紙箱探頭就點牠 +1，睡著的貓咪別吵醒，點到 −2。30 秒。' },
+];
+const mgOf = id => MINIGAMES.find(m => m.id === id) || MINIGAMES[0];
+const mgToday = () => MINIGAMES[(S ? S.day : G.day) % MINIGAMES.length].id;
+const MG_FUR = [['#E9A564', '#F6D2A8'], ['#9A9690', '#D6D2CC'], ['#F6F0E6', '#FFFFFF'], ['#4E433B', '#7A6C61'], ['#D8BE9C', '#F3E6D2', 'points'], ['#F6F0E6', '#FFFFFF', 'calico']];
+// a little watercolor cat head; fur = [body, muzzle, pattern]
+function mgCat(x, y, r, fur, sleep) {
+  const [b, m, pat] = fur, dk = pat === 'points' ? '#7A5A44' : b;
+  poly([[x - r * .85, y - r * .35], [x - r * .62, y - r * 1.15], [x - r * .2, y - r * .75]], dk, INK, 1.2);
+  poly([[x + r * .2, y - r * .75], [x + r * .62, y - r * 1.15], [x + r * .85, y - r * .35]], dk, INK, 1.2);
+  ell(x, y, r, r * .86, b, INK, 1.4);
+  if (pat === 'calico') { ell(x - r * .45, y - r * .4, r * .38, r * .3, '#E9A564'); ell(x + r * .5, y - r * .3, r * .3, r * .26, '#4E433B'); ell(x, y, r, r * .86, null, INK, 1.4); }
+  ell(x, y + r * .32, r * .5, r * .32, pat === 'points' ? '#7A5A44' : m);
+  if (sleep) { line(x - r * .5, y - r * .08, x - r * .2, y - r * .08, INK, 1.6); line(x + r * .2, y - r * .08, x + r * .5, y - r * .08, INK, 1.6); }
+  else { ell(x - r * .35, y - r * .1, r * .1, r * .14, INK); ell(x + r * .35, y - r * .1, r * .1, r * .14, INK); }
+  poly([[x - r * .1, y + r * .16], [x + r * .1, y + r * .16], [x, y + r * .28]], '#D98A8A', null);
+  wash(x - r * .55, y + r * .2, r * .3, '#F2A0A0', .35); wash(x + r * .55, y + r * .2, r * .3, '#F2A0A0', .35);
+}
+function mgFx(x, y, t, col) { PG.fx.push({ x, y, t, col, a: .9 }); }
+const PG = { run: false, sel: null, x: 150, items: [], score: 0, t: 0, spawn: 0, last: 0, ctx: null, raf: 0, fx: [] };
 function pgStart() {
   const cvs = $('pgame'); if (!cvs) return;
-  Object.assign(PG, { run: true, x: 150, items: [], score: 0, t: 30, spawn: 0, last: performance.now(), ctx: cvs.getContext('2d') });
+  const game = PG.sel || mgToday();
+  Object.assign(PG, { run: true, game, x: 150, items: [], score: 0, t: 30, spawn: 0, last: performance.now(), ctx: cvs.getContext('2d'), fx: [], end: 0 });
+  if (game === 'latte') Object.assign(PG, { cup: 0, fill: 0, hold: false, rest: 0, art: null, zone: rand(.58, .82) });
+  if (game === 'memo') { const k = [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5].map(v => [v, Math.random()]).sort((a, b) => a[1] - b[1]); Object.assign(PG, { t: 60, cards: k.map(([v]) => ({ kind: v, open: false, done: false })), flip: [], wait: 0 }); }
+  if (game === 'peek') PG.holes = Array.from({ length: 9 }, () => ({ up: 0, life: 0, fur: null, sleep: false, hit: 0 }));
   $('pgStart').hidden = true; playMusic('minigame'); cancelAnimationFrame(PG.raf); PG.raf = requestAnimationFrame(pgLoop);
 }
 function pgLoop(now) {
   const cvs = $('pgame'); if (!cvs || !PG.run) return;
   const dt = Math.min(.05, (now - PG.last) / 1000); PG.last = now;
+  if (PG.game !== 'catch') { MG_STEP[PG.game](dt); if (PG.run) PG.raf = requestAnimationFrame(pgLoop); return; }
   PG.t -= dt; PG.spawn -= dt; if (KEYV.x) PG.x = clamp(PG.x + KEYV.x * 260 * dt, 24, 276);
   if (PG.spawn <= 0) { PG.spawn = rand(.35, .7) * (PG.t > 15 ? 1 : .75); const bone = Math.random() < .22; PG.items.push({ x: rand(20, 280), y: -20, vy: rand(110, 170) * (PG.t > 15 ? 1 : 1.3), kind: bone ? 'bone' : pick(DISHES.slice(0, 6)) }); }
   for (const it of PG.items) {
@@ -987,13 +1015,122 @@ function pgLoop(now) {
 }
 function pgEnd() {
   PG.run = false; playMusic(G.music); sfx('quest');
-  const best = PG.score > G.stats.best; if (best) G.stats.best = PG.score;
-  let reward = '';
-  if (!S.gamePaid && PG.score > 0) { const r = Math.min(90, PG.score * 3); G.cash += r; S.gamePaid = true; reward = `今天第一次玩，獎勵 ${yen(r)}！`; }
+  const M = mgOf(PG.game), best = PG.score > G.stats[M.best]; if (best) G.stats[M.best] = PG.score;
+  let reward = ''; S.mgPaid = S.mgPaid || {};
+  if (!S.mgPaid[M.id] && PG.score > 0) { const dbl = M.id === mgToday() ? 2 : 1, r = Math.min(60, PG.score * M.per) * dbl; G.cash += r; S.mgPaid[M.id] = true; reward = `今天第一次玩${M.name}，獎勵 ${yen(r)}${dbl > 1 ? '（今日推薦雙倍）' : ''}！`; }
+  if (PG.score > 0) S.gamePaid = true;
   const out = $('pgOut'); if (out) out.textContent = `結束！${PG.score} 分${best ? '（新紀錄）' : ''}。${reward}`;
   const bt = $('pgStart'); if (bt) { bt.hidden = false; bt.textContent = '再玩一次'; }
 }
-function pgPointer(e) { const cvs = $('pgame'); if (!cvs || !PG.run) return; const r = cvs.getBoundingClientRect(); PG.x = clamp((e.clientX - r.left) * 300 / r.width, 24, 276); }
+function pgPointer(e) {
+  const cvs = $('pgame'); if (!cvs || !PG.run) return; const r = cvs.getBoundingClientRect(), px = (e.clientX - r.left) * 300 / r.width, py = (e.clientY - r.top) * 360 / r.height;
+  if (PG.game === 'catch') { PG.x = clamp(px, 24, 276); return; }
+  if (PG.game === 'latte') { if (e.type === 'pointerdown' && !PG.rest) { PG.hold = true; sfx('pour'); } else if (e.type !== 'pointermove' && PG.hold) latteJudge(); return; }
+  if (e.type !== 'pointerdown') return;
+  if (PG.game === 'memo') {
+    const i = Math.floor((px - 11) / 72), j = Math.floor((py - 44) / 102), C = i >= 0 && i < 4 && j >= 0 && j < 3 && PG.cards[j * 4 + i];
+    if (!C || C.open || C.done || PG.wait > 0) return;
+    C.open = true; PG.flip.push(C); sfx('ui_click');
+    if (PG.flip.length < 2) return;
+    const [a, b] = PG.flip;
+    if (a.kind === b.kind) { a.done = b.done = true; PG.flip = []; PG.score += 5; sfx('meow_happy'); mgFx(11 + i * 72 + 31, 44 + j * 102 + 20, '+5', '#6E9B4E');
+      if (PG.cards.every(c => c.done)) { const bonus = Math.ceil(PG.t / 2); PG.score += bonus; mgFx(150, 190, `全部配對！時間獎勵 +${bonus}`, '#6E9B4E'); PG.t = 0; PG.end = 1.2; } }
+    else PG.wait = .8;
+  }
+  if (PG.game === 'peek') {
+    const i = Math.round((px - 60) / 90), j = Math.round((py - 108) / 92), H = i >= 0 && i < 3 && j >= 0 && j < 3 && PG.holes[j * 3 + i];
+    if (!H || H.up < .4 || H.hit) return;
+    H.hit = .35; const x = 60 + i * 90, y = 125 + j * 92 - 30;
+    if (H.sleep) { PG.score = Math.max(0, PG.score - 2); sfx('cat_grumpy'); mgFx(x, y, '−2', '#C65445'); } else { PG.score++; sfx('meow_happy'); mgFx(x, y, '+1', '#6E9B4E'); }
+  }
+}
+function latteJudge() {
+  PG.hold = false; if (!PG.fill) return;
+  const d = Math.abs(PG.fill - PG.zone), w = .11 - PG.cup * .007;
+  const res = PG.fill > 1 ? 'spill' : d < w * .35 ? 'perfect' : d < w ? 'good' : 'miss', pts = { perfect: 3, good: 2 }[res] || 0;
+  PG.score += pts; PG.art = res; PG.rest = 1; sfx(res === 'perfect' ? 'perfect' : pts ? 'coffee_pour' : 'miss');
+  mgFx(110, 82, { perfect: '完美拉花！+3', good: '漂亮！+2', miss: '形狀歪掉了', spill: '溢出來了！' }[res], pts ? '#6E9B4E' : '#C65445');
+}
+function mgBg(c) { c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#FFF6EA'; c.fillRect(0, 0, 300, 360); wash(70, 80, 120, '#F4D9B8', .35); wash(240, 300, 130, '#E6D3BC', .3); }
+function mgHud(right) {
+  text(`分數 ${PG.score}`, 12, 18, 15, INK, 'left', FONT, 700); text(right, 288, 18, 15, INK, 'right', FONT, 700);
+  for (const f of PG.fx) { g.globalAlpha = Math.max(0, f.a); text(f.t, f.x, f.y, 16, f.col, 'center', FONT, 700); g.globalAlpha = 1; }
+}
+function mgTick(dt) { for (const f of PG.fx) { f.y -= 28 * dt; f.a -= dt * .9; } PG.fx = PG.fx.filter(f => f.a > 0); }
+const MG_STEP = {
+  latte(dt) {
+    mgTick(dt);
+    if (PG.hold) { PG.fill += (.34 + PG.cup * .035) * dt; if (PG.fill > 1) latteJudge(); }
+    if (PG.rest && (PG.rest -= dt) <= 0) { PG.rest = 0; PG.cup++; PG.fill = 0; PG.art = null; PG.zone = rand(.55, .85); if (PG.cup >= 8) { pgEnd(); return; } }
+    const c = PG.ctx, saved = g; g = c; mgBg(c);
+    // gauge with the target band
+    const gx = 254, gy = 70, gh = 230;
+    rrect(gx, gy, 24, gh, 10, '#FFFDF8', INK, 1.3);
+    const w = .11 - PG.cup * .007; g.fillStyle = 'rgba(110,155,78,.35)'; g.fillRect(gx + 2, gy + gh * (1 - PG.zone - w), 20, gh * w * 2);
+    g.fillStyle = 'rgba(110,155,78,.6)'; g.fillRect(gx + 2, gy + gh * (1 - PG.zone - w * .35), 20, gh * w * .7);
+    g.fillStyle = 'rgba(240,226,206,.95)'; g.fillRect(gx + 3, gy + gh * (1 - Math.min(1, PG.fill)), 18, gh * Math.min(1, PG.fill));
+    // the cup, filling with milk foam
+    const cx = 128, cy = 225;
+    ell(cx + 6, cy + 74, 96, 16, '#E9DCCB', INK, 1.2);
+    poly([[cx - 82, cy - 46], [cx + 82, cy - 46], [cx + 62, cy + 62], [cx - 62, cy + 62]], '#FFFFFF', INK, 1.5);
+    g.beginPath(); g.ellipse(cx + 88, cy, 20, 26, 0, -Math.PI / 2, Math.PI / 2); g.strokeStyle = INK; g.lineWidth = 6; g.stroke(); g.strokeStyle = '#FFFFFF'; g.lineWidth = 3.5; g.stroke();
+    const mix = Math.min(1, PG.fill), sr = Math.round(120 + 110 * mix), sg = Math.round(78 + 120 * mix), sb = Math.round(50 + 130 * mix);
+    ell(cx, cy - 44, 80, 16, `rgb(${sr},${sg},${sb})`, INK, 1.3);
+    if (PG.art === 'perfect' || PG.art === 'good') {
+      const s = PG.art === 'perfect' ? 1 : .7;
+      ell(cx - 8 * s, cy - 47, 11 * s, 7 * s, '#FFF8EE'); ell(cx + 8 * s, cy - 47, 11 * s, 7 * s, '#FFF8EE'); poly([[cx - 18 * s, cy - 45], [cx + 18 * s, cy - 45], [cx, cy - 34]], '#FFF8EE', null);
+    }
+    if (PG.art === 'spill') { ell(cx + 70, cy + 76, 34, 7, 'rgba(214,190,160,.8)'); ell(cx - 60, cy + 78, 20, 5, 'rgba(214,190,160,.8)'); }
+    // milk pitcher
+    const tilt = PG.hold ? .55 : 0;
+    g.save(); g.translate(cx + 40, cy - 110); g.rotate(-tilt);
+    poly([[-22, -26], [18, -26], [24, 22], [-26, 22]], '#D9DEE2', INK, 1.4); poly([[-22, -26], [-38, -32], [-22, -16]], '#D9DEE2', INK, 1.2);
+    g.restore();
+    if (PG.hold) line(cx + 4, cy - 118, cx + 2, cy - 48, '#FFF4E4', 5);
+    text(`第 ${Math.min(8, PG.cup + 1)}/8 杯`, 128, 52, 15, '#8B776B', 'center', DFONT, 700);
+    if (!PG.hold && !PG.fill && !PG.rest) text('按住倒牛奶', 128, 330, 14, '#8B776B');
+    mgHud('拉花'); g = saved;
+  },
+  memo(dt) {
+    mgTick(dt); PG.t -= dt;
+    if (PG.wait > 0 && (PG.wait -= dt) <= 0) { for (const C of PG.flip) C.open = false; PG.flip = []; }
+    const c = PG.ctx, saved = g; g = c; mgBg(c);
+    PG.cards.forEach((C, n) => {
+      const x = 11 + (n % 4) * 72, y = 44 + Math.floor(n / 4) * 102;
+      if (C.open || C.done) { rrect(x, y, 62, 92, 10, C.done ? '#F3F8EC' : '#FFFDF8', INK, 1.3); mgCat(x + 31, y + 50, 20, MG_FUR[C.kind]); }
+      else { rrect(x, y, 62, 92, 10, '#E7B98C', INK, 1.3); rrect(x + 6, y + 6, 50, 80, 7, null, 'rgba(255,255,255,.6)', 1.2); text('🐾', x + 31, y + 46, 20); }
+    });
+    mgHud(`${Math.ceil(Math.max(0, PG.t))} 秒`); g = saved;
+    if (PG.end) { if ((PG.end -= dt) <= 0) { PG.end = 0; pgEnd(); } return; }
+    if (PG.t <= 0) pgEnd();
+  },
+  peek(dt) {
+    mgTick(dt); PG.t -= dt; PG.spawn -= dt;
+    const fast = PG.t < 15;
+    if (PG.spawn <= 0) {
+      PG.spawn = rand(.4, .7) * (fast ? .75 : 1);
+      const free = PG.holes.filter(h => h.life <= 0); if (free.length) Object.assign(pick(free), { life: rand(.8, 1.2) * (fast ? .8 : 1), up: 0, fur: pick(MG_FUR), sleep: Math.random() < .22, hit: 0 });
+    }
+    for (const H of PG.holes) {
+      if (H.hit && (H.hit -= dt) <= 0) { H.hit = 0; H.life = 0; }
+      if (H.life > 0) { H.life -= dt; H.up = Math.min(1, H.up + dt * 6); } else H.up = Math.max(0, H.up - dt * 6);
+    }
+    const c = PG.ctx, saved = g; g = c; mgBg(c);
+    PG.holes.forEach((H, n) => {
+      const x = 60 + (n % 3) * 90, y = 125 + Math.floor(n / 3) * 92;
+      rect(x - 34, y - 6, 68, 40, '#C99B6E', INK, 1.3);
+      if (H.up > 0 && H.fur) {
+        g.save(); g.beginPath(); g.rect(x - 40, y - 80, 80, 74); g.clip();
+        mgCat(x, y + 22 - H.up * 52, 22, H.fur, H.sleep); g.restore();
+        if (H.sleep && H.up > .6) text('z z', x + 26, y - 52, 12, '#8B776B', 'center', FONT, 700);
+        if (H.hit && !H.sleep) text('♥', x, y - 66, 16, '#D9737A');
+      }
+      poly([[x - 34, y - 6], [x - 46, y - 18], [x - 30, y - 18]], '#D9AE85', INK, 1.1); poly([[x + 34, y - 6], [x + 46, y - 18], [x + 30, y - 18]], '#D9AE85', INK, 1.1);
+    });
+    mgHud(`${Math.ceil(Math.max(0, PG.t))} 秒`); g = saved;
+    if (PG.t <= 0) pgEnd();
+  },
+};
 function gainExp(n) { G.exp += n; if (S) S.today.exp += n; }
 function gainEarned(n) { G.earned += n; const E = evNow(); if (E) G.ev[E.key] = evEarned(E) + n; if (!G.landReady && G.earned >= LAND_GOAL) { G.landReady = true; S.landUp = true; } }
 function makeCat(id, b) {
@@ -3295,7 +3432,7 @@ function renderPhone() {
   if (phoneApp === 'home') {
     const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
-                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
+                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '今天誰最會賺', '#C9A03A', '榜']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
@@ -3303,7 +3440,7 @@ function renderPhone() {
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作' };
+    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -3433,7 +3570,9 @@ function renderPhone() {
         BADGES.map(b => { const has = G.badges.includes(b.id);
           return `<div class="item" style="text-align:center;margin:0;padding:10px 6px;${has ? '' : 'opacity:.45'}"><div style="font-size:28px;${has ? '' : 'filter:grayscale(1)'}">${has ? b.icon : '🔒'}</div><div class="nm" style="font-size:13px">${b.name}</div><div class="sub" style="font-size:11px">${b.desc}</div></div>`; }).join('') + '</div>';
     } else if (phoneApp === 'game') {
-      h += `<p class="muted">左右拖曳（或用方向鍵）移動籃子，接住點心 +1，碰到魚骨頭 −3。30 秒。每天第一次玩有零用錢。最高紀錄 ${G.stats.best} 分。</p>
+      const M = mgOf(PG.sel || mgToday()), paid = S.mgPaid || {};
+      h += `<div class="row" style="margin:0 0 6px;gap:6px;flex-wrap:wrap">${MINIGAMES.map(m => `<button data-mg="${m.id}" ${m.id === M.id ? 'class="primary"' : ''}>${m.icon} ${m.name}${m.id === mgToday() ? ' ⭐' : ''}${paid[m.id] ? ' ✓' : ''}</button>`).join('')}</div>
+        <p class="muted">${M.help}每款小遊戲每天第一次玩都有零用錢，⭐ 是今日推薦，零用錢雙倍。最高紀錄 ${G.stats[M.best]} 分。</p>
         <canvas id="pgame" width="300" height="360" style="width:100%;max-width:300px;align-self:center;border-radius:14px;border:1px solid var(--line);touch-action:none"></canvas>
         <p id="pgOut" style="text-align:center;margin:6px 0"></p><div class="row" style="margin:0;justify-content:center"><button class="primary" id="pgStart">開始</button></div>`;
     } else if (phoneApp === 'cats') {
@@ -3564,9 +3703,10 @@ function renderPhone() {
     G.stats.rename++; toast(`以後就叫牠「${catNameOf(id)}」了`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-promo]').forEach(b => b.onclick = () => { doPromo(b.dataset.promo); renderPhone(); });
   if (q('#pgame')) {
-    const cvs = q('#pgame'); cvs.addEventListener('pointerdown', e => { cvs.setPointerCapture(e.pointerId); pgPointer(e); }); cvs.addEventListener('pointermove', pgPointer);
+    const cvs = q('#pgame'); cvs.addEventListener('pointerdown', e => { cvs.setPointerCapture(e.pointerId); pgPointer(e); }); ['pointermove', 'pointerup', 'pointercancel'].forEach(t => cvs.addEventListener(t, pgPointer));
     q('#pgStart').onclick = pgStart;
-    const c = cvs.getContext('2d'), saved = g; g = c; c.fillStyle = '#FFF6EA'; c.fillRect(0, 0, 300, 360); text('🐱 喵喵接點心', 150, 160, 22, INK, 'center', DFONT, 700); text('按「開始」', 150, 196, 14, '#8B776B'); g = saved;
+    sc.querySelectorAll('[data-mg]').forEach(b => b.onclick = () => { PG.run = false; PG.sel = b.dataset.mg; renderPhone(); });
+    const M = mgOf(PG.sel || mgToday()), c = cvs.getContext('2d'), saved = g; g = c; mgBg(c); text(`${M.icon} ${M.name}`, 150, 160, 22, INK, 'center', DFONT, 700); text('按「開始」', 150, 196, 14, '#8B776B'); g = saved;
   } else PG.run = false;
   q('#sfxBtn') && (q('#sfxBtn').onclick = () => { G.sfx = !sfxOn(); sfx('ui_click'); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-music]').forEach(b => b.onclick = () => { setMusic(b.dataset.music); toast(b.dataset.music === 'off' ? '音樂關掉了' : '現在播放：' + MUSIC[b.dataset.music].name); saveProgress(); renderPhone(); });
