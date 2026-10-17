@@ -3248,12 +3248,13 @@ function renderPhone() {
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
                   ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
+    if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '今天誰最會賺', '#C9A03A', '榜']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定' };
+    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -3440,6 +3441,8 @@ function renderPhone() {
       h += `<p class="muted" style="margin:0">搖桿或動作鍵擋住要點的人物時，可以縮小收到角落，或是整個藏起來。這個設定只存在這台裝置。</p>
         <div class="item"><div class="top"><span class="nm">方向搖桿</span></div><div class="sub">藏起來之後，直接點畫面上的東西，店長一樣會自己走過去。</div>${seg('joy', [['on', '正常'], ['mini', '縮小靠邊'], ['off', '隱藏']])}</div>
         <div class="item"><div class="top"><span class="nm">動作鍵</span></div><div class="sub">藏起來之後，直接點店長旁邊的東西一樣能互動（鍵盤 E 也可以）。</div>${seg('act', [['on', '正常'], ['mini', '縮小靠邊'], ['off', '隱藏']])}</div>`;
+    } else if (phoneApp === 'rank') {
+      h += boardHtml();
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
@@ -3751,6 +3754,35 @@ async function initCloud() {
   if (started) saveProgress();
   mountFeedback();
 }
+// ---- 🏆 今日排行榜 (supabase/catloft_board.sql) ----
+// Every close sends that day's revenue; the board keeps each player's best day for today's Taiwan date.
+const BOARD = { rows: null, err: false, at: 0, busy: false };
+function boardSubmit(revenue, day) {
+  if (!CLOUD.sb || CLOUD.db) return;
+  (sbSaving || Promise.resolve()).then(() => CLOUD.uid && CLOUD.sb.rpc('catloft_board_submit', { p_revenue: Math.round(revenue), p_day: day, p_lv: shopLv(), p_shop: G.shopName }))
+    .then(() => { BOARD.at = 0; }).catch(() => {});
+}
+async function boardLoad() {
+  if (BOARD.busy) return;
+  BOARD.busy = true;
+  try {
+    const { data, error } = await CLOUD.sb.rpc('catloft_board_today');
+    if (error) throw error;
+    BOARD.rows = data || []; BOARD.err = false;
+  } catch { BOARD.err = true; }
+  BOARD.busy = false; BOARD.at = Date.now();
+  if (!$('phoneOv').hidden && phoneApp === 'rank') renderPhone();
+}
+function boardHtml() {
+  if (Date.now() - BOARD.at > 30000) boardLoad();
+  let h = `<p class="muted" style="margin:0">今天所有玩家的店，比一比誰的一天營業額最高。每天打烊時會自動登記，同一天只算你最好的那一天，每天半夜 12 點重新開始。</p>`;
+  if (!BOARD.rows) return h + `<p class="muted">${BOARD.err ? '連不上排行榜，等一下再試試' : '排行榜載入中…'}</p>`;
+  if (!BOARD.rows.length) return h + `<p class="muted">今天還沒有店打烊，第一名就是你的！</p>`;
+  const medal = ['🥇', '🥈', '🥉'];
+  h += BOARD.rows.map(r => `<div class="item"${r.is_me ? ' style="border-color:#D9A23A;background:#FFF6E0"' : ''}><div class="top"><span class="nm">${medal[r.rank - 1] || Number(r.rank) + '.'} ${cleanName(r.shop_name, '貓咪咖啡廳', 12)}${r.is_me ? '（你的店）' : ''}</span><b>${yen(Number(r.revenue) || 0)}</b></div><div class="sub">店鋪 Lv.${Number(r.lv) || 1}・第 ${Number(r.day) || 1} 天</div></div>`).join('');
+  if (!BOARD.rows.some(r => r.is_me)) h += `<p class="muted">你今天還沒打烊過，營業完一天就會上榜。</p>`;
+  return h;
+}
 // ---- 💬 問題回報 (feedback.js; same inbox as 時光冒險樂園, see supabase/catloft_feedback.sql) ----
 const FB = { unread: 0 };
 async function ensurePlayer() { // reporting needs a player id; make the anonymous user now instead of on the first save
@@ -3888,6 +3920,7 @@ function closeDay() {
   const day = S.day;
   G.day = day + 1;
   saveProgress();
+  boardSubmit(revenue, day);
   const code = encodeSave(G);
   const xq = T.xiaoqing;
   const hrs = []; for (let h = 8; h < 21; h++) hrs.push([h, T.hours[h] || 0]);
