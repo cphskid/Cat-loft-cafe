@@ -409,16 +409,16 @@ const EVENTS = [
 // Accessories, all painted (assets/acc_*.webp) and worn on the sprites. slot: neck / hair = the manager, cat = any cat
 // (buy once, every cat can wear it). Items with `ev` are only sold during that event, after earning `need` in it.
 const CHARMS = {
-  pumpkin:  { ev: 'halloween', slot: 'neck', name: '萬聖節南瓜領巾', price: 200, need: 1000, img: 'acc_scarf', desc: '橘色蝙蝠點點領巾，打個結再掛一個小南瓜燈，繫在店長脖子上' },
-  hpumpkin: { ev: 'halloween', slot: 'hair', name: '南瓜蝙蝠髮夾', price: 300, need: 1000, img: 'acc_clip_pumpkin', desc: '笑咪咪的南瓜燈長了兩片小蝙蝠翅膀，夾在店長頭髮上' },
-  bat:      { ev: 'halloween', slot: 'cat', name: '蝙蝠鈴鐺項圈', price: 300, need: 3000, img: 'acc_bell', band: '#9C86C4', ph: 18, desc: '紫色項圈掛著長了蝙蝠翅膀的小金鈴' },
-  cpumpkin: { ev: 'halloween', slot: 'cat', name: '南瓜燈小領巾', price: 400, need: 2000, img: 'acc_cat_pumpkin', band: '#E8873A', ph: 26, desc: '橘色三角領巾，印著南瓜燈的笑臉' },
-  sakura:   { slot: 'hair', name: '櫻花髮夾', price: 600, lv: 1, img: 'acc_clip_sakura', desc: '粉紅色的小櫻花，夾在耳朵上方' },
-  catclip:  { slot: 'hair', name: '貓咪髮夾', price: 900, lv: 2, img: 'acc_clip_cat', desc: '奶油色的虎斑貓臉髮夾' },
-  bowclip:  { slot: 'hair', name: '紅色蝴蝶結髮夾', price: 1200, lv: 3, img: 'acc_clip_bow', desc: '大大的紅色緞帶蝴蝶結' },
-  bowtie:   { slot: 'cat', name: '紅色領結', price: 800, lv: 1, img: 'acc_cat_bowtie', band: '#B8404A', ph: 13, desc: '紅色緞面小領結，像個小紳士' },
-  plaid:    { slot: 'cat', name: '格紋小領巾', price: 1000, lv: 2, img: 'acc_cat_plaid', band: '#8A6A4E', ph: 24, desc: '咖啡色和米色的格紋三角領巾' },
-  daisy:    { slot: 'cat', name: '小雛菊花圈', price: 1200, lv: 3, img: 'acc_cat_daisy', band: '#7FA66A', ph: 15, desc: '綠色細繩串著三朵小雛菊' },
+  pumpkin:  { ev: 'halloween', slot: 'neck', name: '萬聖節南瓜領巾', price: 6000, need: 1000, img: 'acc_scarf', desc: '橘色蝙蝠點點領巾，打個結再掛一個小南瓜燈，繫在店長脖子上' },
+  hpumpkin: { ev: 'halloween', slot: 'hair', name: '南瓜蝙蝠髮夾', price: 8000, need: 1000, img: 'acc_clip_pumpkin', desc: '笑咪咪的南瓜燈長了兩片小蝙蝠翅膀，夾在店長頭髮上' },
+  bat:      { ev: 'halloween', slot: 'cat', name: '蝙蝠鈴鐺項圈', price: 10000, need: 3000, img: 'acc_bell', band: '#9C86C4', ph: 18, desc: '紫色項圈掛著長了蝙蝠翅膀的小金鈴' },
+  cpumpkin: { ev: 'halloween', slot: 'cat', name: '南瓜燈小領巾', price: 12000, need: 2000, img: 'acc_cat_pumpkin', band: '#E8873A', ph: 26, desc: '橘色三角領巾，印著南瓜燈的笑臉' },
+  sakura:   { slot: 'hair', name: '櫻花髮夾', price: 5000, lv: 1, img: 'acc_clip_sakura', desc: '粉紅色的小櫻花，夾在耳朵上方' },
+  catclip:  { slot: 'hair', name: '貓咪髮夾', price: 8000, lv: 2, img: 'acc_clip_cat', desc: '奶油色的虎斑貓臉髮夾' },
+  bowclip:  { slot: 'hair', name: '紅色蝴蝶結髮夾', price: 12000, lv: 3, img: 'acc_clip_bow', desc: '大大的紅色緞帶蝴蝶結' },
+  bowtie:   { slot: 'cat', name: '紅色領結', price: 6000, lv: 1, img: 'acc_cat_bowtie', band: '#B8404A', ph: 13, desc: '紅色緞面小領結，像個小紳士' },
+  plaid:    { slot: 'cat', name: '格紋小領巾', price: 9000, lv: 2, img: 'acc_cat_plaid', band: '#8A6A4E', ph: 24, desc: '咖啡色和米色的格紋三角領巾' },
+  daisy:    { slot: 'cat', name: '小雛菊花圈', price: 12000, lv: 3, img: 'acc_cat_daisy', band: '#7FA66A', ph: 15, desc: '綠色細繩串著三朵小雛菊' },
 };
 const CHARM_WHO = { neck: '店長', hair: '店長', cat: '貓咪' };
 const evNow = () => { const d = new Date(); const E = EVENTS.find(e => e.month === d.getMonth() + 1); return E && { ...E, key: E.id + d.getFullYear() }; };
@@ -626,16 +626,16 @@ const ROLES = {
 // ---- manager outfits (phone app 衣櫃)
 const OUTFITS = [
   { id: 'basic', name: '咖啡廳圍裙', desc: '開店第一天穿的白襯衫和米色圍裙', price: 0, lv: 1, spr: 'mgr' },
-  { id: 'mo1', name: '貓咪毛衣', desc: '胸口有貓臉的燕麥色毛衣配長裙', descM: '胸口有貓臉的燕麥色毛衣配深色長褲', price: 1200, lv: 1, spr: 'mo1' },
-  { id: 'mo7', name: '貓耳連帽衫', desc: '帽子上有貓耳朵的奶油色連帽衫配百褶裙', descM: '奶油色連帽衫和貓耳朵，配卡其褲', price: 1600, lv: 1, spr: 'mo7' },
-  { id: 'mo2', name: '草莓洋裝', nameM: '草莓襯衫', desc: '淡黃色草莓小碎花洋裝加白圍裙', descM: '淡黃色草莓小碎花短袖襯衫加白圍裙', price: 2000, lv: 2, spr: 'mo2' },
-  { id: 'mo8', name: '格紋背心裙', nameM: '格紋背心', desc: '咖啡色格紋背心裙配圓領白襯衫', descM: '咖啡色格紋針織背心、白襯衫和小領結', price: 2800, lv: 2, spr: 'mo8' },
-  { id: 'mo6', name: '草帽洋裝', nameM: '草帽亞麻衫', desc: '鼠尾草綠的亞麻洋裝、草帽和小籃子', descM: '鼠尾草綠的亞麻襯衫、草帽和小籃子', price: 3200, lv: 3, spr: 'mo6', hat: true },
-  { id: 'mo3', name: '夏日浴衣', desc: '水藍色牽牛花浴衣配粉紅腰帶', descM: '深藍色牽牛花浴衣配灰色腰帶', price: 3600, lv: 3, spr: 'mo3' },
-  { id: 'mo9', name: '咖啡師圍裙', desc: '黑襯衫配丹寧皮帶圍裙，胸前繡著咖啡豆', price: 4400, lv: 4, spr: 'mo9' },
-  { id: 'mo4', name: '甜點師白袍', desc: '雙排扣白袍和高高的廚師帽', price: 4800, lv: 4, spr: 'mo4', hat: true },
-  { id: 'mo5', name: '聖誕毛衣', desc: '紅色雪花貓咪毛衣和綠圍巾', price: 6000, lv: 5, spr: 'mo5', scarf: true },
-  { id: 'mo10', ev: 'halloween', name: '萬聖節小魔女', nameM: '萬聖節小巫師', desc: '尖尖的魔女帽、紫色蝙蝠洋裝、小斗篷和橘黑條紋襪', descM: '尖尖的巫師帽、紫色蝙蝠外套和小斗篷', price: 6000, lv: 1, spr: 'mo10', hat: true },
+  { id: 'mo1', name: '貓咪毛衣', desc: '胸口有貓臉的燕麥色毛衣配長裙', descM: '胸口有貓臉的燕麥色毛衣配深色長褲', price: 30000, lv: 1, spr: 'mo1' },
+  { id: 'mo7', name: '貓耳連帽衫', desc: '帽子上有貓耳朵的奶油色連帽衫配百褶裙', descM: '奶油色連帽衫和貓耳朵，配卡其褲', price: 32000, lv: 1, spr: 'mo7' },
+  { id: 'mo2', name: '草莓洋裝', nameM: '草莓襯衫', desc: '淡黃色草莓小碎花洋裝加白圍裙', descM: '淡黃色草莓小碎花短袖襯衫加白圍裙', price: 35000, lv: 2, spr: 'mo2' },
+  { id: 'mo8', name: '格紋背心裙', nameM: '格紋背心', desc: '咖啡色格紋背心裙配圓領白襯衫', descM: '咖啡色格紋針織背心、白襯衫和小領結', price: 40000, lv: 2, spr: 'mo8' },
+  { id: 'mo6', name: '草帽洋裝', nameM: '草帽亞麻衫', desc: '鼠尾草綠的亞麻洋裝、草帽和小籃子', descM: '鼠尾草綠的亞麻襯衫、草帽和小籃子', price: 45000, lv: 3, spr: 'mo6', hat: true },
+  { id: 'mo3', name: '夏日浴衣', desc: '水藍色牽牛花浴衣配粉紅腰帶', descM: '深藍色牽牛花浴衣配灰色腰帶', price: 50000, lv: 3, spr: 'mo3' },
+  { id: 'mo9', name: '咖啡師圍裙', desc: '黑襯衫配丹寧皮帶圍裙，胸前繡著咖啡豆', price: 55000, lv: 4, spr: 'mo9' },
+  { id: 'mo4', name: '甜點師白袍', desc: '雙排扣白袍和高高的廚師帽', price: 60000, lv: 4, spr: 'mo4', hat: true },
+  { id: 'mo5', name: '聖誕毛衣', desc: '紅色雪花貓咪毛衣和綠圍巾', price: 70000, lv: 5, spr: 'mo5', scarf: true },
+  { id: 'mo10', ev: 'halloween', name: '萬聖節小魔女', nameM: '萬聖節小巫師', desc: '尖尖的魔女帽、紫色蝙蝠洋裝、小斗篷和橘黑條紋襪', descM: '尖尖的巫師帽、紫色蝙蝠外套和小斗篷', price: 36000, lv: 1, spr: 'mo10', hat: true },
 ];
 const outfitOf = id => OUTFITS.find(o => o.id === id) || OUTFITS[0];
 // ---- 客人圖鑑: everyone who has visited, by rarity. Rarer guests come once the shop is bigger, tip and bring fans.
