@@ -386,6 +386,16 @@ const MUSIC = {
   minigame: { name: '喵喵接點心', hidden: true },
 };
 const LOFT_BASE = 50, BEANS_BASE = 60, TREAT_BASE = 20;
+// 聯名合作: pay a partner company once; for 7 days its merch sells as a menu add-on, it brings extra guests, and a good sales day earns a thank-you gift
+const COLLAB_DAYS = 7;
+const COLLABS = {
+  cloud: { co: '雲朵烘焙坊', item: '雲朵餅乾禮盒',   img: 'co_cloud', fee: 6000,  sell: 80,  rate: .2,  guests: 1.1,  goal: 4, gift: [100, 160] },
+  paw:   { co: '喵爪文具行', item: '貓掌原子筆',     img: 'co_paw',   fee: 12000, sell: 60,  rate: .28, guests: 1.15, goal: 6, gift: [120, 190] },
+  tea:   { co: '森林茶屋',   item: '森林花草茶包',   img: 'co_tea',   fee: 20000, sell: 120, rate: .22, guests: 1.2,  goal: 6, gift: [150, 230] },
+  mug:   { co: '月光陶器',   item: '月光貓咪馬克杯', img: 'co_mug',   fee: 32000, sell: 220, rate: .18, guests: 1.3,  goal: 5, gift: [180, 260] },
+  plush: { co: '星星玩具屋', item: '暖陽貓咪布偶',   img: 'co_plush', fee: 50000, sell: 350, rate: .16, guests: 1.45, goal: 5, gift: [220, 300] },
+};
+const collabNow = () => G.collab && COLLABS[G.collab.id] && G.day <= G.collab.until ? COLLABS[G.collab.id] : null;
 const baseOf = id => id === 'loft' ? LOFT_BASE : id === 'beans' ? BEANS_BASE : id === 'treat' ? TREAT_BASE : MENU[id].base;
 const SHOP = [
   { id: 'flour',   name: '麵粉', desc: '一袋 10 份，烤甜點用',   price: 40, amt: 10, unit: '份' },
@@ -682,7 +692,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [],
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], on: {} } };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], on: {} }, collab: null };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
@@ -998,7 +1008,7 @@ function startDay() {
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
     startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false, buff: {},
-    today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0, bond: {}, refunds: 0 },
+    today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, merch: 0, merchN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0, bond: {}, refunds: 0 },
     daily: pickDaily(), offers: dailyOffers(), rareToday: {}, base: { ...G.stats, pets: G.cats.reduce((a, c) => a + c.pets, 0) },
     cats: makeCats(),
     staff: G.staff.map(r => makeStaff(r, false)),
@@ -2220,6 +2230,9 @@ function decideOrder(c) {
     const z = zone(G.prices.beans, BEANS_BASE);
     if (z === 'green' || (z === 'yellow' && Math.random() < .8)) o.beans = true;
   }
+  // a partner company's merch is a menu add-on for guests who order something
+  const CO = collabNow();
+  if (CO && !c.special && (o.dish || o.loft) && Math.random() < CO.rate) o.merch = true;
   return o;
 }
 // returns true when the front customer was handled
@@ -2242,6 +2255,7 @@ function takeOrder(quiet, w) {
   if (o.loft) { paid += G.prices.loft; S.today.loft += G.prices.loft; S.today.loftN++; }
   if (o.treat && G.stock.treat > 0) { G.stock.treat--; paid += G.prices.treat; S.today.treat += G.prices.treat; S.today.treatN++; } else o.treat = false;
   if (o.beans && G.stock.beans > 0) { G.stock.beans--; paid += G.prices.beans; S.today.beans += G.prices.beans; S.today.beansN++; } else o.beans = false;
+  if (o.merch && collabNow()) { const p = collabNow().sell; paid += p; S.today.merch += p; S.today.merchN++; } else o.merch = false;
   G.cash += paid; gainEarned(paid); floatText(1, 560, 300, '+' + yen(paid), '#6E9B4E'); if (paid > 0 && !(w && isMgr(w))) sfx('register', 1);
   if (w && isMgr(w) && paid > 0) openReg(c, o, paid);
   if (o.say) sayFor(c, o.say);
@@ -2606,7 +2620,7 @@ function openReg(c, o, total) {
   if (total < 500 && up100 < 500) opts.push(500);
   if (total > 150 && total < 1000) opts.push(1000);
   const given = !opts.length || Math.random() < .12 ? total : pick(opts);
-  S.reg = { c, items: [o.dish, o.loft ? 'loft' : null, o.treat ? 'treat' : null, o.beans ? 'beans' : null].filter(Boolean), total, given, tray: [], msg: null, msgT: 0, wrong: false, done: 0, ok: false };
+  S.reg = { c, items: [o.dish, o.loft ? 'loft' : null, o.treat ? 'treat' : null, o.beans ? 'beans' : null, o.merch ? 'merch' : null].filter(Boolean), total, given, tray: [], msg: null, msgT: 0, wrong: false, done: 0, ok: false };
 }
 function regClick(p) {
   const r = S.reg; if (!r || r.done) return;
@@ -2651,8 +2665,9 @@ function drawReg() {
   text('客人點了', B.x + 40, B.y + 76, 13, '#8B776B', 'left');
   r.items.forEach((it, i) => {
     const y = r.items.length > 3 ? B.y + 92 + i * 19 : r.items.length > 2 ? B.y + 98 + i * 23 : B.y + 106 + i * 30;
-    if (it === 'loft') text('🐾', B.x + 54, y, 16); else if (it === 'beans') drawBeans(B.x + 54, y); else if (it === 'treat') drawTreat(B.x + 54, y); else drawDish(it, B.x + 54, y, 1);
-    text(it === 'loft' ? '2F 吸貓入場' : it === 'beans' ? '咖啡豆一包' : it === 'treat' ? '貓咪肉泥一條' : MENU[it].name, B.x + 76, y, 14, INK, 'left'); text(yen(G.prices[it]), B.x + 258, y, 14, INK, 'right', FONT, 700);
+    const CO = it === 'merch' && collabNow();
+    if (it === 'loft') text('🐾', B.x + 54, y, 16); else if (CO) text('🎁', B.x + 54, y, 16); else if (it === 'beans') drawBeans(B.x + 54, y); else if (it === 'treat') drawTreat(B.x + 54, y); else drawDish(it, B.x + 54, y, 1);
+    text(it === 'loft' ? '2F 吸貓入場' : CO ? CO.item : it === 'beans' ? '咖啡豆一包' : it === 'treat' ? '貓咪肉泥一條' : MENU[it].name, B.x + 76, y, 14, INK, 'left'); text(yen(CO ? CO.sell : G.prices[it]), B.x + 258, y, 14, INK, 'right', FONT, 700);
   });
   text('合計', B.x + 40, B.y + 172, 15, INK, 'left', FONT, 700); text(yen(r.total), B.x + 258, B.y + 172, 20, '#D9773E', 'right', DFONT, 700);
   // payment
@@ -2856,7 +2871,7 @@ function update(dt) {
     if (!hold || S.cid === 0) S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
-      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() * rand(.7, 1.3); }
+      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / (collabNow()?.guests || 1) * rand(.7, 1.3); }
       else S.spawnT = 5;
     }
     if (S.time >= 1230 && !S.lastCall) { S.lastCall = true; sfx('notify'); toast('20:30 最後點餐，之後不再接新客人囉'); }
@@ -3246,7 +3261,7 @@ function renderPhone() {
   if (phoneApp === 'home') {
     const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
-                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'],
+                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '喵喵接點心', '小遊戲', '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '今天誰最會賺', '#C9A03A', '榜']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
@@ -3254,7 +3269,7 @@ function renderPhone() {
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜' };
+    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '喵喵接點心', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -3309,6 +3324,18 @@ function renderPhone() {
           h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}${T.name}<small class="tg">${T.keep ? '永久' : '今天'}</small></span><b>${yen(T.price)}</b></div><div class="sub">${T.desc}</div>
             <div class="row" style="margin:0">${own ? `<button disabled>${T.keep ? '已經有了' : '今天已經用了'}</button>` : locked ? `<button disabled>店鋪 Lv.${T.lv} 解鎖</button>` : noStaff ? '<button disabled>還沒有員工</button>' : !T.keep && !day ? '<button disabled>打烊了，明天再買</button>' : btn(id, T.price)}</div></div>`;
         }
+      }
+    } else if (phoneApp === 'collab') {
+      const CO = collabNow(), left = CO ? G.collab.until - G.day + 1 : 0;
+      h += `<p class="muted">付一筆合作費，跟公司簽約 ${COLLAB_DAYS} 天：對方的周邊會放進菜單讓客人加購，公司也會幫忙宣傳，客人變多。一天賣得好，公司還會送謝禮。一次只能跟一家公司合作。</p>`;
+      if (CO) h += `<div class="item"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${CO.img}.webp" alt="" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">🤝 合作中：${CO.co}</span><b>剩 ${left} 天</b></div>
+        <div class="sub">今天賣出 ${S.today.merchN} 個${CO.item}（${yen(S.today.merch)}）・賣到 ${CO.goal} 個就有謝禮</div></div></div></div>`;
+      for (const [id, C] of Object.entries(COLLABS)) {
+        const on = CO === C;
+        const act = on ? '<button disabled>合作中</button>' : CO ? '<button disabled>合作結束後才能換公司</button>' : G.cash < C.fee ? `<button disabled>現金不夠（還差 ${yen(C.fee - G.cash)}）</button>` : `<button class="primary" data-collab="${id}">簽約合作</button>`;
+        h += `<div class="item"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt="" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${C.co}</span><b>${yen(C.fee)}</b></div>
+          <div class="sub">加購周邊「${C.item}」一個 ${yen(C.sell)}・客人多 ${Math.round((C.guests - 1) * 100)}%・一天賣到 ${C.goal} 個，公司送 ${yen(C.gift[0])}～${yen(C.gift[1])} 謝禮</div></div></div>
+          <div class="row" style="margin:0">${act}</div></div>`;
       }
     } else if (phoneApp === 'hire') {
       const blocked = G.debt > 0;
@@ -3465,6 +3492,10 @@ function renderPhone() {
     if (G.acc.own.includes(id) || !E || E.id !== C.ev || evEarned(E) < C.need || G.cash < C.price) return;
     G.cash -= C.price; S.today.spent += C.price; G.acc.own.push(id); if (C.who === 'mgr') G.acc.on[id] = 'mgr';
     sfx('delivery'); toast(C.who === 'mgr' ? `${G.mgrName}店長戴上了「${C.name}」！` : `買了「${C.name}」，挑一隻貓幫牠戴上吧`); saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-collab]').forEach(b => b.onclick = () => { const id = b.dataset.collab, C = COLLABS[id];
+    if (!C || collabNow() || G.cash < C.fee) return;
+    G.cash -= C.fee; S.today.spent += C.fee; G.collab = { id, until: G.day + COLLAB_DAYS - 1 };
+    sfx('delivery'); toast(`跟「${C.co}」簽約了！接下來 ${COLLAB_DAYS} 天，客人可以加購${C.item}`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-wearc]').forEach(b => b.onclick = () => { const id = b.dataset.wearc; if (!G.acc.own.includes(id)) return;
     if (b.dataset.on) G.acc.on[id] = b.dataset.on; else delete G.acc.on[id]; saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => { sfx('app_switch'); storeTab = b.dataset.stab; renderPhone(); });
@@ -3569,6 +3600,7 @@ function decodeSave(code) {
     ev: Object.fromEntries(Object.entries(o.ev && typeof o.ev === 'object' ? o.ev : {}).filter(([k]) => /^[a-z]+\d{4}$/.test(k)).map(([k, v]) => [k, Math.max(0, num(v, 0))])),
     acc: (() => { const own = Array.isArray(o.acc?.own) ? [...new Set(o.acc.own.filter(id => CHARMS[id]))] : [];
       return { own, on: Object.fromEntries(own.filter(id => typeof o.acc?.on?.[id] === 'string').map(id => [id, o.acc.on[id]])) }; })(),
+    collab: o.collab && COLLABS[o.collab.id] ? { id: o.collab.id, until: Math.max(0, Math.floor(num(o.collab.until, 0))) } : null,
     furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f] || (TOOLS[f] && TOOLS[f].keep)))] : [],
     keep: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(num(o.keep?.[d], 0)))])),
     bond: Object.fromEntries(Object.keys(o.bond && typeof o.bond === 'object' ? o.bond : {}).filter(id => CAT_DEFS[id]).map(id => [id, clamp(Math.floor(num(o.bond[id], 0)), 0, BOND_MAX)])),
@@ -3901,7 +3933,10 @@ function closeDay() {
   checkDaily();
   const dailyDone = S.daily.filter(q => q.done).length, unclaimed = S.daily.filter(q => q.done && !q.got);
   for (const q of unclaimed) { q.got = true; G.cash += q.cash; gainExp(q.exp); }
-  const revenue = T.dessert + T.loft + T.beans + T.treat;
+  const revenue = T.dessert + T.loft + T.beans + T.treat + T.merch;
+  // the partner company sends a thank-you gift when its merch sold well today
+  const CO = collabNow(); let gift = 0;
+  if (CO && T.merchN >= CO.goal) { gift = Math.round((CO.gift[0] + (CO.gift[1] - CO.gift[0]) * clamp((T.merchN - CO.goal) / CO.goal, 0, 1)) / 10) * 10; G.cash += gift; }
   let kept = 0;
   if (hasF('warmer')) for (const d of DISHES) { const k = Math.floor((S.display[d] || 0) / 2); if (k) { G.keep[d] = k; kept += k; } }
   const waste = dispTotal() - kept;
@@ -3946,6 +3981,8 @@ function closeDay() {
       ${T.treatN ? `<tr><td>貓咪肉泥（賣出 ${T.treatN} 條，${T.fed} 隻次貓咪吃到）</td><td>${yen(T.treat)}</td></tr>` : ''}
       ${T.tips ? `<tr><td>稀有顧客給的小費</td><td>${yen(T.tips)}</td></tr>` : ''}
       ${T.beansN ? `<tr><td>咖啡豆（賣出 ${T.beansN} 包）</td><td>${yen(T.beans)}</td></tr>` : ''}
+      ${CO ? `<tr><td>聯名周邊 ${CO.item}（賣出 ${T.merchN} 個）</td><td>${yen(T.merch)}</td></tr>
+      <tr><td>${CO.co}的謝禮${gift ? '（周邊賣得好！）' : `（一天賣到 ${CO.goal} 個才有）`}${collabNow() ? '' : '・合作今天結束'}</td><td>${gift ? '+' + yen(gift) : '—'}</td></tr>` : ''}
       <tr><td>採購支出${T.credit ? `（其中賒帳 ${yen(T.credit)}）` : ''}</td><td>−${yen(T.spent)}</td></tr>
       ${wages ? `<tr><td>員工薪資${owedWages ? `（${yen(owedWages)} 先欠著，記入負債）` : ''}</td><td>−${yen(wages)}</td></tr>` : ''}
       <tr class="tot"><td>今日淨利</td><td>${yen(revenue - T.spent - wages)}</td></tr>
