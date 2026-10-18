@@ -7,7 +7,7 @@
   const on = () => !!(CLOUD.sb && !CLOUD.db && CLOUD.uid);
   let busy = false;
   // only when nothing else is on screen, so the gift card doesn't cover a minigame or another popup
-  const free = () => started && S && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && $('phoneOv').hidden && $('chooseOv').hidden;
+  const free = () => started && S && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && !S.out && $('phoneOv').hidden && $('chooseOv').hidden;
 
   // put one gift's money into G (and the day-start snapshot, so the save code matches); returns the amount
   function give(gift, g) {

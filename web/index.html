@@ -2347,6 +2347,7 @@ function addTask(label, steps, opts = {}) {
 }
 function updMgr(dt) {
   const m = S.mgr;
+  if (S.out) return; // out of the shop (outing.js): the staff run things until the manager is back
   if (m.boost > 0) m.boost -= dt; if (m.coffeeCool > 0) m.coffeeCool -= dt;
   m.speed = m.boost > 0 ? 380 : 270;
   // walking through the staff-room door (by tapping, a task or the stick) always takes the view along
@@ -3537,7 +3538,7 @@ function drawWorld() {
   if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
   if (f === 1 && S.stray) items.push({ y: S.stray.y, d: drawStray });
   if (f === 4) G.garden.forEach((p, i) => items.push({ y: PLOTS[i].y, d: () => drawPlot(p, i) }));
-  if (S.mgr.floor === f) items.push({ y: S.mgr.y, d: drawMgr });
+  if (S.mgr.floor === f && !S.out) items.push({ y: S.mgr.y, d: drawMgr });
   S.staff.forEach(s => { if (s.floor === f) items.push({ y: s.y, d: () => drawStaff(s) }); });
   S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.y, d: () => drawCat(k) }); });
   S.customers.forEach(c => { if (c.floor === f) items.push({ y: c.y + (c.table ? 1 : 0), d: () => drawCustomer(c) }); });
@@ -3782,6 +3783,7 @@ function nearbyActions() {
     if (S.restroomDirt > 0) add(WC.door.x, WC.door.y, '打掃洗手間', actRestroom);
     if (S.phase === 'closing' && !S.close.sign) add(SIGN_SPOT.x, SIGN_SPOT.y, '把門牌翻成「打烊」', actFlipSign);
     if (S.stray && G.stray && G.stray.last !== G.day) add(S.stray.x - 40, S.stray.y + 10, '餵流浪貓肉泥', actStray);
+    if (window.OUTING) OUTING.door(add); // 出門走走 by the front door
   } else if (f === 2) {
     add(BOWL.staff.x, BOWL.staff.y, '補貓糧', actBowl);
     add(LITTER.staff.x, LITTER.staff.y, '清貓砂', actLitter);
@@ -3805,7 +3807,7 @@ function nearbyActions() {
   return list.filter(a => a.d < 100).sort((a, b) => a.d - b.d);
 }
 function doAction() {
-  if (!started || !S || S.phase === 'settle' || S.paused || S.uiPause || S.mini || S.cook || S.reg) return;
+  if (!started || !S || S.phase === 'settle' || S.paused || S.uiPause || S.mini || S.cook || S.reg || S.out) return;
   const a = nearbyActions()[0];
   if (a) a.fn(); else toast('附近沒有可以做的事，再走近一點');
 }
@@ -4395,7 +4397,7 @@ function decodeSave(code) {
       for (const [k, id] of Object.entries(a.cats || {})) if (own.includes(id) && CHARMS[id].slot === 'cat' && CAT_DEFS[k]) cats[k] = id;
       for (const [id, w] of Object.entries(a.on || {})) if (own.includes(id)) { if (w === 'mgr') mgr[CHARMS[id].slot] = id; else if (CAT_DEFS[w]) cats[w] = id; } // saves from before 2026-10-17
       return { own, mgr, cats }; })(),
-    collab: o.collab && COLLABS[o.collab.id] ? { id: o.collab.id, until: Math.max(0, Math.floor(num(o.collab.until, 0))) } : null,
+    collab: o.collab && COLLABS[o.collab.id] ? { id: o.collab.id, until: Math.max(0, Math.floor(num(o.collab.until, 0))), visit: !!o.collab.visit } : null,
 
     bond: Object.fromEntries(Object.keys(o.bond && typeof o.bond === 'object' ? o.bond : {}).filter(id => CAT_DEFS[id]).map(id => [id, clamp(Math.floor(num(o.bond[id], 0)), 0, BOND_MAX)])),
     cats: (() => { const seen = new Set(), day = Math.max(1, Math.floor(num(o.day, 1)));
@@ -4886,7 +4888,7 @@ function frame(now) {
     else if (started && !S.paused && !S.uiPause && S.phase !== 'settle') update(rdt * S.speed);
     else if (!started) S.t += rdt;
     draw(rdt); hudTick(rdt); ambTick();
-    if (started && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && $('phoneOv').hidden) {
+    if (started && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && !S.out && $('phoneOv').hidden) {
       if (shopLv() > S.lvShown) {
         const l = ++S.lvShown; sfx('levelup');
         showPopup(`<h2>🎉 ${G.shopName} 升到 Lv.${l}！</h2><ul class="unl">` +
@@ -4907,5 +4909,6 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 <script src="tutorial.js"></script>
 <script src="friends.js"></script>
 <script src="gifts.js"></script>
+<script src="outing.js"></script>
 </body>
 </html>
