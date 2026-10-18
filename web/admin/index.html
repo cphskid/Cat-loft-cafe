@@ -52,6 +52,8 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .fld{display:block;margin:10px 0 0;font-size:14px;color:var(--muted)}
 .fld input,.fld select{display:block;width:100%;margin-top:3px}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0 12px}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px}.checks label{display:flex;align-items:center;gap:5px}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--wood-d);color:#fff;border-radius:10px;padding:8px 14px;z-index:9}
 </style>
 </head>
@@ -67,12 +69,33 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 
   <div id="main" hidden>
     <div class="top"><h1>🐾 暖陽貓閣 管理者</h1><span class="sp"></span><button id="reload">重新整理</button><button id="logout">登出</button></div>
-    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="gifts">送過的錢</button></div>
+    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="gifts">送過的錢</button><button data-tab="me">🛠️ 調整我的店</button></div>
     <div class="card" id="tab-players">
       <div class="top" style="margin-bottom:8px"><input id="q" placeholder="搜尋帳號、店名、好友碼" style="flex:1;max-width:320px"><span class="muted" id="pCount"></span></div>
       <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
     </div>
     <div class="card" id="tab-fb" hidden><div id="fbList"></div></div>
+    <div class="card" id="tab-me" hidden>
+      <p style="margin:0 0 6px">帳號 <b id="meWho"></b> 現在：<span class="muted" id="meNow"></span></p>
+      <p class="muted" style="margin:0 0 6px">只填想改的，留空就不改。遊戲開著的話一分鐘內會改好，傢俱、桌子和擴建要隔天開店才會擺出來。</p>
+      <div class="grid">
+        <label class="fld">現金（¥）<input id="mCash" type="number" min="0"></label>
+        <label class="fld">欠款（¥）<input id="mDebt" type="number" min="0"></label>
+        <label class="fld">粉絲<input id="mFans" type="number" min="0"></label>
+        <label class="fld">天數<input id="mDay" type="number" min="1"></label>
+        <label class="fld">累計營收（¥，到 100,000 可以開分店）<input id="mEarned" type="number" min="0"></label>
+        <label class="fld">店鋪等級（1–7）<input id="mLv" type="number" min="1" max="7"></label>
+        <label class="fld">所有食材都設成幾份<input id="mStock" type="number" min="0"></label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="mOutfits"> 所有衣服</label>
+        <label><input type="checkbox" id="mCharms"> 所有飾品</label>
+        <label><input type="checkbox" id="mFurn"> 所有傢俱</label>
+        <label><input type="checkbox" id="mExpand"> 擴建全部完成</label>
+        <label><input type="checkbox" id="mTables"> 桌子加到最多</label>
+      </div>
+      <div class="row"><button class="primary" id="mGo">套用</button></div>
+    </div>
     <div class="card" id="tab-gifts" hidden><div class="tbl"><table><thead><tr><th>送出時間</th><th>給誰</th><th>金額</th><th>留言</th><th>收到了嗎</th></tr></thead><tbody id="gBody"></tbody></table></div></div>
   </div>
 </div>
@@ -102,7 +125,7 @@ const who = p => p ? (p.account || `（訪客）${p.shop_name || ''}`) : '？';
 let toastT; function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
 const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw error; return data; };
 
-let players = [], giftTo = null;
+let players = [], giftTo = null, selfId = null;
 
 $('loginForm').onsubmit = async e => {
   e.preventDefault();
@@ -116,7 +139,7 @@ $('logout').onclick = async () => { await sb.auth.signOut(); location.reload(); 
 $('reload').onclick = () => loadAll();
 document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b));
-  for (const t of ['players', 'fb', 'gifts']) $('tab-' + t).hidden = t !== b.dataset.tab;
+  for (const t of ['players', 'fb', 'gifts', 'me']) $('tab-' + t).hidden = t !== b.dataset.tab;
 });
 $('q').oninput = renderPlayers;
 
@@ -128,8 +151,8 @@ async function start() {
 }
 async function loadAll() {
   try {
-    const [p, f, g] = await Promise.all([rpc('catloft_admin_players'), rpc('catloft_admin_feedback'), rpc('catloft_admin_gifts')]);
-    players = p || []; renderPlayers(); renderFb(f || []); renderGifts(g || []);
+    const [p, f, g, me] = await Promise.all([rpc('catloft_admin_players'), rpc('catloft_admin_feedback'), rpc('catloft_admin_gifts'), rpc('catloft_admin_self')]);
+    players = p || []; selfId = me; renderPlayers(); renderFb(f || []); renderGifts(g || []); renderMe();
   } catch (e) { toast('讀取失敗：' + (e.message || e)); }
 }
 function renderPlayers() {
@@ -156,9 +179,31 @@ function renderFb(list) {
 }
 function renderGifts(list) {
   const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
-  $('gBody').innerHTML = list.map(g => `<tr><td>${when(g.created_at)}</td><td>${esc(who(byId[g.to_id]))}</td><td class="n">${yen(g.gift && g.gift.cash)}</td><td>${esc(g.note)}</td>
+  $('gBody').innerHTML = list.map(g => `<tr><td>${when(g.created_at)}</td><td>${esc(who(byId[g.to_id]))}</td><td class="n">${g.gift && g.gift.set ? '🛠️ 調整' : yen(g.gift && g.gift.cash)}</td><td>${esc(g.note)}</td>
     <td>${g.claimed_at ? '✅ ' + when(g.claimed_at) : '<span class="muted">還沒</span>'}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">還沒送過錢</td></tr>';
 }
+function renderMe() {
+  const p = players.find(x => x.user_id === selfId);
+  $('meWho').textContent = p ? who(p) : '（還沒有存檔）';
+  $('meNow').textContent = p ? `現金 ${yen(p.cash)}、欠款 ${yen(p.debt)}、粉絲 ${num(p.fans)}、第 ${num(p.day)} 天、累計營收 ${yen(p.earned)}` : '';
+}
+$('mGo').onclick = async () => {
+  const set = {}, nums = { cash: 'mCash', debt: 'mDebt', fans: 'mFans', day: 'mDay', earned: 'mEarned', lv: 'mLv', stock: 'mStock' };
+  for (const [k, id] of Object.entries(nums)) {
+    const v = $(id).value.trim(); if (v === '') continue;
+    const n = Math.floor(+v); if (!Number.isSafeInteger(n) || n < 0) return toast('數字不對：' + $(id).parentNode.firstChild.textContent);
+    set[k] = n;
+  }
+  for (const [k, id] of Object.entries({ outfits: 'mOutfits', charms: 'mCharms', furn: 'mFurn', expand: 'mExpand', tables: 'mTables' })) if ($(id).checked) set[k] = true;
+  if (!Object.keys(set).length) return toast('還沒填要改什麼');
+  $('mGo').disabled = true;
+  try {
+    await rpc('catloft_admin_edit', { p_set: set }); toast('送出了！遊戲裡一分鐘內會改好');
+    document.querySelectorAll('#tab-me input').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; });
+    loadAll();
+  } catch (e) { toast('改不了：' + (e.message || e)); }
+  $('mGo').disabled = false;
+};
 function openGift(p) {
   giftTo = p; $('giftWho').textContent = who(p);
   $('gCash').value = ''; $('gNote').value = '';
