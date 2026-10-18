@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>暖陽貓閣｜管理者</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+/* 管理者頁面：輸入管理者密碼登入，看所有玩家、問題回報，送錢給玩家（只能送錢，不限金額）。
+   密碼不在這個檔案裡：這裡只把輸入的密碼送去 Supabase 登入「管理者」這個帳號，
+   能不能讀資料是資料庫那邊判斷的（supabase/catloft_admin.sql 的 catloft_is_admin）。 */
+:root{
+  --wood:#8D6E63; --wood-d:#5D4037; --wood-l:#C9A27E;
+  --paper:#FDFBF7; --white:#FFFFFF; --ink:#4A3428; --muted:#8B776B; --line:#E6DACB;
+  --sun:#F6E7C8; --accent:#D9773E; --good:#6E9B4E; --bad:#C65445;
+  --display:"LXGW WenKai TC","Noto Sans TC","PingFang TC","Microsoft JhengHei",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:#F2EBE1;color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{width:min(1100px,100% - 32px);margin:0 auto;padding:20px 0 60px}
+h1,h2{font-family:var(--display);color:var(--wood-d);margin:0}
+h1{font-size:24px}
+button,input,select{font-family:inherit;font-size:14px}
+button{border:1px solid var(--wood-l);background:var(--white);color:var(--wood-d);border-radius:10px;padding:7px 13px;cursor:pointer}
+button.primary{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
+button:disabled{opacity:.5;cursor:default}
+input,select{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--white);color:var(--ink);min-width:0}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px}
+.muted{color:var(--muted)}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.top .sp{flex:1}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tabs button.on{background:var(--sun);border-color:var(--wood-l);font-weight:700}
+#login{max-width:360px;margin:12vh auto 0;text-align:center}
+#login input{width:100%;margin:12px 0}
+.tbl{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--paper)}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.fb{border-bottom:1px solid var(--line);padding:10px 0}
+.fb:last-child{border-bottom:0}
+.fb .msg{white-space:pre-wrap;margin:4px 0}
+.tag{display:inline-block;border-radius:8px;padding:0 7px;font-size:12px;background:var(--sun);color:var(--wood-d);margin-right:6px}
+.tag.bug{background:#F6D9D3;color:var(--bad)}.tag.idea{background:#DDEBD2;color:#4E7436}
+.ov{position:fixed;inset:0;background:rgba(46,34,27,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+.ov .card{width:min(440px,100%);max-height:90vh;overflow:auto}
+.fld{display:block;margin:10px 0 0;font-size:14px;color:var(--muted)}
+.fld input,.fld select{display:block;width:100%;margin-top:3px}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0 12px}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px}.checks label{display:flex;align-items:center;gap:5px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--wood-d);color:#fff;border-radius:10px;padding:8px 14px;z-index:9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="login">
+    <h1>🐾 管理者登入</h1>
+    <p class="muted">輸入管理者密碼</p>
+    <form id="loginForm"><input id="pw" type="password" autocomplete="current-password" placeholder="管理者密碼">
+    <button class="primary" style="width:100%">登入</button></form>
+    <p class="muted" style="margin-top:14px"><a href="../" style="color:inherit">回到遊戲</a></p>
+  </div>
+
+  <div id="main" hidden>
+    <div class="top"><h1>🐾 暖陽貓閣 管理者</h1><span class="sp"></span><button id="reload">重新整理</button><button id="logout">登出</button></div>
+    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="gifts">送過的錢</button><button data-tab="me">🛠️ 調整我的店</button></div>
+    <div class="card" id="tab-players">
+      <div class="top" style="margin-bottom:8px"><input id="q" placeholder="搜尋帳號、店名、好友碼" style="flex:1;max-width:320px"><span class="muted" id="pCount"></span></div>
+      <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
+    </div>
+    <div class="card" id="tab-fb" hidden><div id="fbList"></div></div>
+    <div class="card" id="tab-me" hidden>
+      <p style="margin:0 0 6px">帳號 <b id="meWho"></b> 現在：<span class="muted" id="meNow"></span></p>
+      <p class="muted" style="margin:0 0 6px">只填想改的，留空就不改。遊戲開著的話一分鐘內會改好，傢俱、桌子和擴建要隔天開店才會擺出來。</p>
+      <div class="grid">
+        <label class="fld">現金（¥）<input id="mCash" type="number" min="0"></label>
+        <label class="fld">欠款（¥）<input id="mDebt" type="number" min="0"></label>
+        <label class="fld">粉絲<input id="mFans" type="number" min="0"></label>
+        <label class="fld">天數<input id="mDay" type="number" min="1"></label>
+        <label class="fld">累計營收（¥，到 100,000 可以開分店）<input id="mEarned" type="number" min="0"></label>
+        <label class="fld">店鋪等級（1–7）<input id="mLv" type="number" min="1" max="7"></label>
+        <label class="fld">所有食材都設成幾份<input id="mStock" type="number" min="0"></label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="mOutfits"> 所有衣服</label>
+        <label><input type="checkbox" id="mCharms"> 所有飾品</label>
+        <label><input type="checkbox" id="mFurn"> 所有傢俱</label>
+        <label><input type="checkbox" id="mExpand"> 擴建全部完成</label>
+        <label><input type="checkbox" id="mTables"> 桌子加到最多</label>
+      </div>
+      <div class="row"><button class="primary" id="mGo">套用</button></div>
+    </div>
+    <div class="card" id="tab-gifts" hidden><div class="tbl"><table><thead><tr><th>送出時間</th><th>給誰</th><th>金額</th><th>留言</th><th>收到了嗎</th></tr></thead><tbody id="gBody"></tbody></table></div></div>
+  </div>
+</div>
+
+<div class="ov" id="giftOv" hidden><div class="card">
+  <h2>🎁 送錢給 <span id="giftWho"></span></h2>
+  <p class="muted" style="margin:4px 0 0">玩家下次開遊戲（或一分鐘內）會收到，金額不限。</p>
+  <label class="fld">金額（¥）<input id="gCash" type="number" min="1" step="1" inputmode="numeric" placeholder="例如 10000"></label>
+  <label class="fld">留言（最多 60 字，玩家會看到）<input id="gNote" maxlength="60" placeholder="例如：謝謝你回報問題！"></label>
+  <div class="row"><button id="gCancel">取消</button><button class="primary" id="gSend">送出</button></div>
+</div></div>
+<div id="toast" hidden></div>
+
+<script>
+const SB_URL = 'https://bxrppdsbhuhjluprohkf.supabase.co', SB_KEY = 'sb_publishable_a99TJ4CiEW14ToPcoyn4KQ_NdoqXg2A';
+// 管理者專用的帳號（不是遊戲帳號）；密碼只有 Chuck 知道，由 Supabase 檢查
+const ADMIN_EMAIL = 'catloft-admin@catloft.player';
+const KIND = { bug: '壞掉了', confusing: '看不懂', idea: '點子' };
+
+const $ = id => document.getElementById(id);
+const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey: 'catloft-admin-auth', persistSession: true, autoRefreshToken: true } });
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const yen = n => n == null ? '' : '¥' + Math.round(n).toLocaleString();
+const num = n => n == null ? '' : Math.round(n).toLocaleString();
+const when = t => t ? new Date(t).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+const who = p => p ? (p.account || `（訪客）${p.shop_name || ''}`) : '？';
+let toastT; function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw error; return data; };
+
+let players = [], giftTo = null, selfId = null;
+
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const b = e.submitter || $('loginForm').querySelector('button'); b.disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email: ADMIN_EMAIL, password: $('pw').value });
+  b.disabled = false; $('pw').value = '';
+  if (error) return toast('密碼不對');
+  start();
+};
+$('logout').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('reload').onclick = () => loadAll();
+document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b));
+  for (const t of ['players', 'fb', 'gifts', 'me']) $('tab-' + t).hidden = t !== b.dataset.tab;
+});
+$('q').oninput = renderPlayers;
+
+async function start() {
+  let ok = false; try { ok = await rpc('catloft_is_admin'); } catch {}
+  if (!ok) { await sb.auth.signOut(); $('login').hidden = false; $('main').hidden = true; return toast('這個帳號不是管理者'); }
+  $('login').hidden = true; $('main').hidden = false;
+  loadAll();
+}
+async function loadAll() {
+  try {
+    const [p, f, g, me] = await Promise.all([rpc('catloft_admin_players'), rpc('catloft_admin_feedback'), rpc('catloft_admin_gifts'), rpc('catloft_admin_self')]);
+    players = p || []; selfId = me; renderPlayers(); renderFb(f || []); renderGifts(g || []); renderMe();
+  } catch (e) { toast('讀取失敗：' + (e.message || e)); }
+}
+function renderPlayers() {
+  const q = $('q').value.trim().toLowerCase();
+  const list = players.filter(p => !q || [p.account, p.shop_name, p.mgr_name, p.friend_code].some(v => v && String(v).toLowerCase().includes(q)));
+  $('pCount').textContent = `共 ${players.length} 位玩家` + (q ? `，符合 ${list.length} 位` : '');
+  $('pBody').innerHTML = list.map(p => `<tr><td>${p.account ? esc(p.account) : '<span class="muted">訪客</span>'}</td><td>${esc(p.shop_name)}</td><td>${esc(p.mgr_name)}</td>
+    <td class="n">${num(p.day)}</td><td class="n">${num(p.lv)}</td><td class="n">${yen(p.cash)}</td><td class="n">${p.debt ? yen(p.debt) : ''}</td><td class="n">${num(p.fans)}</td>
+    <td class="n">${yen(p.earned)}</td><td class="n">${num(p.cats)}</td><td class="n">${num(p.shops)}</td><td>${esc(p.friend_code)}</td><td>${when(p.updated_at)}</td>
+    <td><button data-gift="${p.user_id}">🎁 送錢</button></td></tr>`).join('') || '<tr><td colspan="14" class="muted">沒有玩家</td></tr>';
+  $('pBody').querySelectorAll('[data-gift]').forEach(b => b.onclick = () => openGift(players.find(p => p.user_id === b.dataset.gift)));
+}
+function renderFb(list) {
+  const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
+  $('fbList').innerHTML = list.map(f => {
+    const c = f.context || {}, p = byId[f.user_id];
+    const info = [p ? '帳號 ' + who(p) : '', c.shop ? '店名 ' + c.shop : '', c.day ? '第 ' + c.day + ' 天' : '', f.screen ? '畫面 ' + f.screen : '', c.view ? '螢幕 ' + c.view : ''].filter(Boolean).map(esc).join('・');
+    return `<div class="fb"><span class="tag ${esc(f.kind)}">${esc(KIND[f.kind] || f.kind)}</span><b>${esc(f.who)}</b> <span class="muted">${when(f.created_at)}</span>
+      <div class="msg">${esc(f.message)}</div><div class="muted" style="font-size:13px">${info}</div>
+      ${Array.isArray(c.errors) && c.errors.length ? `<div style="font-size:13px;color:var(--bad)">錯誤：${esc(c.errors.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' / ').slice(0, 400))}</div>` : ''}
+      <details style="font-size:12px" class="muted"><summary>詳細資料</summary><pre style="white-space:pre-wrap;word-break:break-all">${esc(JSON.stringify(c, null, 1))}</pre></details>
+      ${f.reply ? `<div style="font-size:13px;margin-top:4px">回覆：${esc(f.reply)}</div>` : ''}</div>`;
+  }).join('') || '<p class="muted">還沒有問題回報</p>';
+}
+function renderGifts(list) {
+  const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
+  $('gBody').innerHTML = list.map(g => `<tr><td>${when(g.created_at)}</td><td>${esc(who(byId[g.to_id]))}</td><td class="n">${g.gift && g.gift.set ? '🛠️ 調整' : yen(g.gift && g.gift.cash)}</td><td>${esc(g.note)}</td>
+    <td>${g.claimed_at ? '✅ ' + when(g.claimed_at) : '<span class="muted">還沒</span>'}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">還沒送過錢</td></tr>';
+}
+function renderMe() {
+  const p = players.find(x => x.user_id === selfId);
+  $('meWho').textContent = p ? who(p) : '（還沒有存檔）';
+  $('meNow').textContent = p ? `現金 ${yen(p.cash)}、欠款 ${yen(p.debt)}、粉絲 ${num(p.fans)}、第 ${num(p.day)} 天、累計營收 ${yen(p.earned)}` : '';
+}
+$('mGo').onclick = async () => {
+  const set = {}, nums = { cash: 'mCash', debt: 'mDebt', fans: 'mFans', day: 'mDay', earned: 'mEarned', lv: 'mLv', stock: 'mStock' };
+  for (const [k, id] of Object.entries(nums)) {
+    const v = $(id).value.trim(); if (v === '') continue;
+    const n = Math.floor(+v); if (!Number.isSafeInteger(n) || n < 0) return toast('數字不對：' + $(id).parentNode.firstChild.textContent);
+    set[k] = n;
+  }
+  for (const [k, id] of Object.entries({ outfits: 'mOutfits', charms: 'mCharms', furn: 'mFurn', expand: 'mExpand', tables: 'mTables' })) if ($(id).checked) set[k] = true;
+  if (!Object.keys(set).length) return toast('還沒填要改什麼');
+  $('mGo').disabled = true;
+  try {
+    await rpc('catloft_admin_edit', { p_set: set }); toast('送出了！遊戲裡一分鐘內會改好');
+    document.querySelectorAll('#tab-me input').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; });
+    loadAll();
+  } catch (e) { toast('改不了：' + (e.message || e)); }
+  $('mGo').disabled = false;
+};
+function openGift(p) {
+  giftTo = p; $('giftWho').textContent = who(p);
+  $('gCash').value = ''; $('gNote').value = '';
+  $('giftOv').hidden = false; $('gCash').focus();
+}
+$('gCancel').onclick = () => { $('giftOv').hidden = true; };
+$('gSend').onclick = async () => {
+  const cash = Math.floor(+$('gCash').value || 0);
+  if (cash <= 0) return toast('請輸入要送的金額');
+  if (!Number.isSafeInteger(cash)) return toast('金額太大了，遊戲裡存不下');
+  const gift = { cash };
+  $('gSend').disabled = true;
+  try { await rpc('catloft_admin_gift', { p_to: giftTo.user_id, p_gift: gift, p_note: $('gNote').value }); $('giftOv').hidden = true; toast(`送了 ${yen(cash)} 給 ${who(giftTo)}！`); loadAll(); }
+  catch (e) { toast('送不出去：' + (e.message || e)); }
+  $('gSend').disabled = false;
+};
+
+(async () => { const { data: { session } } = await sb.auth.getSession(); if (session) start(); })();
+</script>
+</body>
+</html>
