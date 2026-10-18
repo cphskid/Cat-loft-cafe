@@ -175,7 +175,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   <div id="toasts"></div>
 
   <div class="hudtop">
-    <button class="hudbar" id="hudToggle" aria-expanded="false" aria-controls="hudMore" aria-label="店的狀態，點一下展開更多"><b id="clock">07:00</b><span class="ph" id="phase">晨間備料</span><b id="cash">¥100</b><span class="caret">▾</span></button>
+    <button class="hudbar" id="hudToggle" aria-expanded="false" aria-controls="hudMore" aria-label="店的狀態，點一下展開更多"><b id="clock">07:00</b><span class="ph" id="phase">晨間備料</span><b id="cash">¥500</b><span class="caret">▾</span></button>
     <div class="panel hudmore" id="hudMore" hidden>
       <div class="brand"><span class="logo" id="shopLogo">暖陽貓閣</span><span class="lv" id="lv">Lv.1</span><span class="lv" id="acct"></span></div>
       <div class="stats">
@@ -832,7 +832,7 @@ let started = false;
 
 function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
-  return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
+  return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
            exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [],
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [] };
