@@ -10,7 +10,9 @@
   "ambience": {
     "amb1": { "len": 20, "prompt": "Cozy small cafe room tone, soft indistinct murmur of a few customers chatting, occasional gentle cup and saucer clinks, calm, seamless loop" },
     "amb2": { "len": 20, "prompt": "Quiet cozy loft room with sleeping cats, very soft purring, faint wooden floor creaks, calm peaceful room tone, seamless loop" },
-    "amb3": { "len": 20, "prompt": "Quiet small staff break room, soft wall clock ticking, faint refrigerator hum, calm, seamless loop" }
+    "amb3": { "len": 20, "prompt": "Quiet small staff break room, soft wall clock ticking, faint refrigerator hum, calm, seamless loop" },
+    "amb4": { "len": 22, "prompt": "Peaceful rooftop vegetable garden on a sunny afternoon in a quiet small town, soft breeze through leaves, small birds chirping now and then, a distant wind chime, calm, no music, no voices, seamless loop" },
+    "rain": { "len": 22, "prompt": "Steady gentle rain falling on a garden and a wooden awning, soft drips from the roof edge, calm and cozy, no thunder, no music, no voices, seamless loop" }
   },
   "sfx": {
     "ui_click":     [0.5, "Soft cute wooden UI button click, short pop"],
