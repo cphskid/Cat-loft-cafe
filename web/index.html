@@ -217,7 +217,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
       <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。右上角的樓層鈕只換看哪一層。另一層有狀況時，左上角會出現提醒，點它就能切過去。</li>
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
-      <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
+      <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲；勾「分享給大家看」的照片，其他玩家可以在「大家的貼文」按讚、用固定的句子和貼圖留言。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
@@ -1016,8 +1016,12 @@ function doPromo(id) {
 }
 // ---- 喵IG: snap what's on screen, post it, likes and comments roll in while the shop runs. Fans only go up.
 // Post info lives in G.ig (synced with the save); the photos themselves only stay on this device (localStorage catloft-ig).
+// Posts can also be shared with other players (igpub.js, 「大家的貼文」); p.sid = the shared post's id, p.rl = players' likes already turned into fans.
 const IG_PER_DAY = 3, IG_KEEP = 24, IG_GROW = 120; // likes finish rolling in after 120 game minutes
-const IG_CAPS = ['今天的貓貓日常 🐾', '歡迎來店裡坐坐 ☕', '誰能抵抗這張臉 😻', '#貓咪咖啡廳 #今天也營業中', '偷拍一下大家 📸'];
+// captions are pick-only (kids play); shared posts store the index, so only ever append to this list
+const IG_CAPS = ['今天的貓貓日常 🐾', '歡迎來店裡坐坐 ☕', '誰能抵抗這張臉 😻', '#貓咪咖啡廳 #今天也營業中', '偷拍一下大家 📸',
+  '貓咪睡午覺中 💤', '今天客人好多！', '新傢俱登場 ✨', '店長的私房角落', '晚安，明天見 🌙', '一起來吸貓吧 🐾', '今天也辛苦了'];
+let IG_TAB = 'me', IG_CAPI = 0, IG_SHARE = true;
 const IG_USERS = ['貓奴小美', '阿哲愛咖啡', '巷口的阿姨', '週末去哪玩', '喵星人研究所', 'latte_lin', '肉球控', '甜點偵探', '小學生阿凱', '下班喝一杯', '橘貓後援會', 'yuyu_cat'];
 let IG_SNAP = null; // { img, f, likes, fans, com } waiting to be posted
 const igPhotos = () => { try { return JSON.parse(localStorage.getItem('catloft-ig') || '{}'); } catch { return {}; } };
@@ -1043,12 +1047,16 @@ function igSnap() {
   pool.push('店長好會拍', '這間店好溫馨', '收藏了，週末去！', '光線好舒服', `${G.shopName}是我最愛的店`);
   const com = []; const n = clamp(Math.round(likes / 15), 1, 6);
   while (com.length < n) { const t = pick(pool), u = pick(IG_USERS); if (!com.some(c => c[1] === t)) com.push([u, t]); else if (pool.length <= com.length) break; }
-  IG_SNAP = { img: c.toDataURL('image/jpeg', .72), f, likes, fans: clamp(Math.round(likes / 12), 1, 15), com, cats: names.length };
+  const pc = document.createElement('canvas'); pc.width = 300; pc.height = Math.round(300 * th / tw); pc.getContext('2d').drawImage(c, 0, 0, pc.width, pc.height);
+  let pub = pc.toDataURL('image/jpeg', .62); if (pub.length > 58000) pub = pc.toDataURL('image/jpeg', .4);
+  IG_CAPI = 0;
+  IG_SNAP = { img: c.toDataURL('image/jpeg', .72), pub, f, likes, fans: clamp(Math.round(likes / 12), 1, 15), com, cats: names.length };
   sfx('notify');
 }
-function igPost(cap) {
+function igPost(ci, share) {
   if (!IG_SNAP || igToday() >= IG_PER_DAY) return;
-  const p = { id: Date.now().toString(36), d: S.day, t: S.time, f: IG_SNAP.f, cap: cleanName(cap, IG_CAPS[0], 40), likes: IG_SNAP.likes, com: IG_SNAP.com };
+  const p = { id: Date.now().toString(36), d: S.day, t: S.time, f: IG_SNAP.f, cap: IG_CAPS[ci] || IG_CAPS[0], likes: IG_SNAP.likes, com: IG_SNAP.com };
+  if (share && window.IGPUB && IGPUB.on()) IGPUB.share(IG_CAPS[ci] ? ci : 0, IG_SNAP.pub, p);
   const ph = igPhotos(); ph[p.id] = IG_SNAP.img;
   G.ig.unshift(p); G.ig = G.ig.slice(0, IG_KEEP);
   for (const id of Object.keys(ph)) if (!G.ig.some(q => q.id === id)) delete ph[id];
@@ -1057,12 +1065,14 @@ function igPost(cap) {
   toast(`發文成功！粉絲 +${IG_SNAP.fans}，讚和留言會慢慢進來`); IG_SNAP = null; sfx('fan');
 }
 function igAppHtml() {
-  const left = IG_PER_DAY - igToday(), ph = igPhotos();
-  let h = '';
+  const left = IG_PER_DAY - igToday(), ph = igPhotos(), pub = window.IGPUB && IGPUB.on();
+  let h = pub ? `<div class="ig-tabs"><button data-igtab="me" class="${IG_TAB === 'me' ? 'on' : ''}">我的貼文</button><button data-igtab="all" class="${IG_TAB === 'all' ? 'on' : ''}">大家的貼文</button></div>` : '';
+  if (pub && IG_TAB === 'all') return h + IGPUB.feedHtml();
+  if (pub) IGPUB.mineHtml();
   if (IG_SNAP) {
-    h += `<div class="item"><img src="${IG_SNAP.img}" alt="剛拍的照片" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;display:block"><div class="sub" style="margin:6px 0">${IG_SNAP.cats ? `拍到 ${IG_SNAP.cats} 隻貓` : '這張沒有拍到貓，讚可能會少一點'}。選一句話，或自己打：</div>
-      <div class="row" style="margin:0;flex-wrap:wrap;gap:6px">${IG_CAPS.map((c, i) => `<button data-igcap="${i}">${c}</button>`).join('')}</div>
-      <input id="igCap" maxlength="40" placeholder="寫點什麼…" value="${IG_CAPS[0]}" style="width:100%;margin:8px 0;padding:8px;border-radius:8px;border:1px solid var(--line);font:inherit;box-sizing:border-box">
+    h += `<div class="item"><img src="${IG_SNAP.img}" alt="剛拍的照片" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;display:block"><div class="sub" style="margin:6px 0">${IG_SNAP.cats ? `拍到 ${IG_SNAP.cats} 隻貓` : '這張沒有拍到貓，讚可能會少一點'}。選一句話當標題：</div>
+      <div class="row" style="margin:0;flex-wrap:wrap;gap:6px">${IG_CAPS.map((c, i) => `<button data-igcap="${i}"${i === IG_CAPI ? ' class="primary"' : ''}>${c}</button>`).join('')}</div>
+      ${pub ? `<label style="display:flex;align-items:center;gap:6px;margin:8px 0"><input type="checkbox" id="igShare"${IG_SHARE ? ' checked' : ''}>分享給其他玩家看（大家可以按讚、留言）</label>` : '<div style="height:8px"></div>'}
       <div class="row" style="margin:0"><button id="igRetake">重拍</button><button class="primary" id="igPost">發文</button></div></div>`;
   } else {
     h += `<p class="muted" style="margin:0">先走到想拍的地方，再打開手機拍照。照片拍的是現在畫面上的樣子，拍到越多貓、越親人的貓，讚越多。一天可以發 ${IG_PER_DAY} 篇，今天還剩 ${left} 篇。</p>
@@ -1075,7 +1085,7 @@ function igAppHtml() {
     const pr = igProg(p), likes = Math.round(p.likes * pr), nc = Math.ceil(p.com.length * pr);
     h += `<div class="item"><div class="top"><span class="nm">@${G.shopName}</span><span class="sub">第 ${p.d} 天 ${String(Math.floor(p.t / 60)).padStart(2, '0')}:${String(Math.floor(p.t % 60)).padStart(2, '0')}</span></div>
       ${ph[p.id] ? `<img src="${ph[p.id]}" alt="" style="width:100%;max-height:240px;object-fit:cover;border-radius:10px;display:block;margin:4px 0">` : '<div class="sub" style="padding:18px;text-align:center;background:var(--line);border-radius:10px;margin:4px 0">（照片存在另一台裝置）</div>'}
-      <div><b style="color:#E0566E">♥ ${likes}</b>${pr < 1 ? ' <span class="sub">讚還在增加中…</span>' : ''}</div><div>${p.cap}</div>
+      <div><b style="color:#E0566E">♥ ${likes}</b>${pr < 1 ? ' <span class="sub">讚還在增加中…</span>' : ''}</div><div>${p.cap}</div>${pub ? IGPUB.mineLine(p) : ''}
       ${p.com.slice(0, nc).map(c => `<div class="sub"><b>${c[0]}</b> ${c[1]}</div>`).join('')}</div>`;
   }
   return h;
@@ -4274,8 +4284,11 @@ function renderPhone() {
   sc.querySelectorAll('[data-goshop]').forEach(b => b.onclick = () => { goShop(+b.dataset.goshop); if (!$('phoneOv').hidden) renderPhone(); });
   q('#igShoot') && (q('#igShoot').onclick = () => { igSnap(); renderPhone(); });
   q('#igRetake') && (q('#igRetake').onclick = () => { IG_SNAP = null; renderPhone(); });
-  q('#igPost') && (q('#igPost').onclick = () => { igPost(q('#igCap').value); renderPhone(); });
-  sc.querySelectorAll('[data-igcap]').forEach(b => b.onclick = () => { q('#igCap').value = IG_CAPS[b.dataset.igcap]; });
+  q('#igPost') && (q('#igPost').onclick = () => { igPost(IG_CAPI, !!(q('#igShare') && q('#igShare').checked)); renderPhone(); });
+  q('#igShare') && (q('#igShare').onchange = e => { IG_SHARE = e.target.checked; });
+  sc.querySelectorAll('[data-igcap]').forEach(b => b.onclick = () => { IG_CAPI = +b.dataset.igcap; renderPhone(); });
+  sc.querySelectorAll('[data-igtab]').forEach(b => b.onclick = () => { IG_TAB = b.dataset.igtab; renderPhone(); });
+  if (phoneApp === 'ig' && IG_TAB === 'all' && window.IGPUB) IGPUB.bind(sc);
   if (q('#pgame')) {
     const cvs = q('#pgame'); cvs.addEventListener('pointerdown', e => { cvs.setPointerCapture(e.pointerId); pgPointer(e); }); ['pointermove', 'pointerup', 'pointercancel'].forEach(t => cvs.addEventListener(t, pgPointer));
     q('#pgStart').onclick = pgStart;
@@ -4410,7 +4423,7 @@ function decodeSave(code) {
     badges: Array.isArray(o.badges) ? [...new Set(o.badges.filter(id => BADGES.some(b => b.id === id)))] : [],
     reviews: Array.isArray(o.reviews) ? o.reviews.filter(r => r && typeof r.t === 'string').slice(0, 80).map(r => ({ d: Math.max(1, Math.floor(num(r.d, 1))), s: clamp(Math.floor(num(r.s, 3)), 1, 5), w: cleanName(r.w, '客人', 8), t: cleanName(r.t, '', 60) })) : [],
     revTotal: Math.max(0, Math.floor(num(o.revTotal, 0))),
-    ig: Array.isArray(o.ig) ? o.ig.filter(p => p && typeof p.id === 'string').slice(0, IG_KEEP).map(p => ({ id: p.id.replace(/[^a-z0-9]/g, '').slice(0, 12), d: Math.max(1, Math.floor(num(p.d, 1))), t: clamp(num(p.t, 0), 0, 1440), f: clamp(Math.floor(num(p.f, 1)), 1, 3), cap: cleanName(p.cap, '', 40), likes: Math.max(0, Math.floor(num(p.likes, 0))), com: (Array.isArray(p.com) ? p.com : []).slice(0, 6).map(c => [cleanName(c?.[0], '路人', 12), cleanName(c?.[1], '', 40)]) })) : [],
+    ig: Array.isArray(o.ig) ? o.ig.filter(p => p && typeof p.id === 'string').slice(0, IG_KEEP).map(p => ({ id: p.id.replace(/[^a-z0-9]/g, '').slice(0, 12), d: Math.max(1, Math.floor(num(p.d, 1))), t: clamp(num(p.t, 0), 0, 1440), f: clamp(Math.floor(num(p.f, 1)), 1, 3), cap: cleanName(p.cap, '', 40), likes: Math.max(0, Math.floor(num(p.likes, 0))), ...(num(p.sid, 0) > 0 ? { sid: Math.floor(p.sid), rl: Math.max(0, Math.floor(num(p.rl, 0))) } : {}), com: (Array.isArray(p.com) ? p.com : []).slice(0, 6).map(c => [cleanName(c?.[0], '路人', 12), cleanName(c?.[1], '', 40)]) })) : [],
     stats: Object.fromEntries(Object.keys(base.stats).map(k => [k, Math.max(0, Math.floor(num(o.stats?.[k], 0)))])),
     seen: Array.isArray(o.seen) ? [...new Set(o.seen.filter(id => CAT_DEFS[id]))] : [],
     outfit: OUTFITS.some(x => x.id === o.outfit) ? o.outfit : 'basic',
@@ -4908,6 +4921,7 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 </script>
 <script src="tutorial.js"></script>
 <script src="friends.js"></script>
+<script src="igpub.js"></script>
 <script src="gifts.js"></script>
 <script src="outing.js"></script>
 </body>
