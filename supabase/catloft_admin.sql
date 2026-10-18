@@ -117,3 +117,26 @@ revoke all on function public.catloft_is_admin(), public.catloft_save_json(text)
   public.catloft_admin_gift(uuid, jsonb, text), public.catloft_admin_gifts(), public.catloft_my_gifts(), public.catloft_claim_gifts(bigint[]) from public, anon;
 grant execute on function public.catloft_is_admin(), public.catloft_admin_players(), public.catloft_admin_feedback(),
   public.catloft_admin_gift(uuid, jsonb, text), public.catloft_admin_gifts(), public.catloft_my_gifts(), public.catloft_claim_gifts(bigint[]) to authenticated;
+
+-- 2026-10-18 Chuck：「最高管理者要調自己的什麼都可以」。管理者自己的遊戲帳號 = chuck（6054179f-…）。
+-- 調整也走禮物這條路（gift = {set:{...}}），遊戲開著的時候也會馬上收到，不會被遊戲裡舊的存檔蓋回去。
+create or replace function public.catloft_admin_self() returns uuid
+language sql immutable set search_path to 'public', 'pg_temp'
+as $$ select '6054179f-46b7-449c-a902-7701225c4a98'::uuid $$;
+
+create or replace function public.catloft_admin_edit(p_set jsonb)
+returns bigint
+language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $$
+declare v_id bigint;
+begin
+  if not public.catloft_is_admin() then raise exception 'not admin'; end if;
+  if jsonb_typeof(p_set) <> 'object' or p_set = '{}'::jsonb then raise exception '沒有要改的東西'; end if;
+  insert into public.catloft_gifts (to_id, gift, note)
+  values (public.catloft_admin_self(), jsonb_build_object('set', p_set), '管理者調整')
+  returning id into v_id;
+  return v_id;
+end $$;
+
+revoke all on function public.catloft_admin_self(), public.catloft_admin_edit(jsonb) from public, anon;
+grant execute on function public.catloft_admin_self(), public.catloft_admin_edit(jsonb) to authenticated;
