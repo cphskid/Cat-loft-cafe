@@ -2154,12 +2154,19 @@ function drawCustomer(c) {
   const lift = sit && c.cushion?.lift && Math.hypot(c.x - c.cushion.x, c.y - c.cushion.y - 4) < 4 ? c.cushion.lift : 0;
   if (lift) { c.y -= lift; try { drawCustomer(c); } finally { c.y += lift; } return; }
   drawPerson(c, { spr: art(c.look + '_0') ? c.look : 'c4', shirt: c.shirt, pants: c.pants, hair: c.hair, sit, long: c.long });
-  const hy = c.y - ((sit ? 14 : 36) + 50) * PS;
+  const hy = headY(c, sit);
   if (c.name) text(c.name, c.x, c.y + 12, 11, '#6B4A35', 'center', FONT, 700);
   if (c.say) { bubble(c.x, hy - 18, c.say.text); return; }
   if (c.state === 'queue') { patBar(c, hy - 6); if (c.order) bubbleOrder(c, hy - 26); }
   if (c.state === 'waitFood') { bubbleOrder(c, hy - 26, true); patBar(c, hy - 6); }
   if (c.state === 'petting' && c.sawCat) { const t = (S.t * 1.2 + c.id) % 1; g.globalAlpha = 1 - t; heart(c.x + 10, hy - t * 20, 6); g.globalAlpha = 1; }
+}
+// where a customer's order bubble is drawn: shared by drawCustomer and the tap test, so tapping the dish serves it
+function headY(c, sit) { return c.y - ((sit ? 14 : 36) + 50) * PS; }
+function hitOrder(c, x, y) {
+  const sit = c.state === 'waitFood', lift = sit && c.cushion?.lift && Math.hypot(c.x - c.cushion.x, c.y - c.cushion.y - 4) < 4 ? c.cushion.lift : 0;
+  const by = headY(c, sit) - lift - 26;
+  return Math.abs(x - c.x) < 34 && y > by - 26 && y < by + 22;
 }
 function bubbleOrder(c, y, alert) {
   rrect(c.x - 18, y - 16, 36, 28, 10, '#FFFFFF', INK, 1.2);
@@ -3611,6 +3618,12 @@ function hitTest(x, y) {
   const f = S.view, hk = heldCat(), m = S.mgr;
   // the held cat is drawn in the manager's arms, so tapping her (or the cat) puts it down
   if (hk && m.floor === f && f !== 3 && Math.abs(x - m.x) < 40 && y < m.y + 8 && y > m.y - 130) return { act: () => putDown(hk) };
+  // the order bubble comes first: it overlaps the counter and the tables behind it
+  for (const c of S.customers) {
+    if (c.floor !== f || c.hidden || !c.order) continue; // a speech bubble sits in the same spot, so it counts too
+    if (c.state === 'waitFood' && hitOrder(c, x, y)) return { act: () => actServe(c) };
+    if (c.state === 'queue' && hitOrder(c, x, y)) return { act: actOrder };
+  }
   for (const c of S.customers) {
     if (c.floor !== f || c.hidden) continue;
     if (c.state === 'waitFood' && hitPerson(c, x, y, true)) return { act: () => actServe(c) };
@@ -3762,7 +3775,7 @@ function nearbyActions() {
     add(OVEN_SPOT.x, OVEN_SPOT.y, '廚房（甜點・正餐）', chooseBake);
     if (S.queue.length) { add(MGR_COUNTER.x, MGR_COUNTER.y, '幫客人點餐', actOrder); add(QUEUE[0].x, QUEUE[0].y, '幫客人點餐', actOrder); }
     for (const t of S.tables) {
-      if (t.cust && t.cust.state === 'waitFood') add(t.x, t.y, '送餐', () => actServe(t.cust));
+      if (t.cust && t.cust.state === 'waitFood' && !t.cust.assigned) { add(t.x, t.y, '送餐', () => actServe(t.cust)); list[list.length - 1].d *= .4; } // serving reaches ~2.5x as far and beats chatting or petting nearby
       else if (t.dirty) add(t.x, t.y, '收桌子', () => actClear(t));
     }
     if (S.restroomDirt > 0) add(WC.door.x, WC.door.y, '打掃洗手間', actRestroom);
