@@ -217,7 +217,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
       <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。右上角的樓層鈕只換看哪一層。另一層有狀況時，左上角會出現提醒，點它就能切過去。</li>
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
-      <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲；勾「分享給大家看」的照片，其他玩家可以在「大家的貼文」按讚、用固定的句子和貼圖留言。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
+      <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲；勾「分享給大家看」的照片，其他玩家可以在「大家的貼文」按讚、留言（可以選句子、貼圖或自己打字，髒話會自動變成＊）。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
@@ -1021,7 +1021,19 @@ const IG_PER_DAY = 3, IG_KEEP = 24, IG_GROW = 120; // likes finish rolling in af
 // captions are pick-only (kids play); shared posts store the index, so only ever append to this list
 const IG_CAPS = ['今天的貓貓日常 🐾', '歡迎來店裡坐坐 ☕', '誰能抵抗這張臉 😻', '#貓咪咖啡廳 #今天也營業中', '偷拍一下大家 📸',
   '貓咪睡午覺中 💤', '今天客人好多！', '新傢俱登場 ✨', '店長的私房角落', '晚安，明天見 🌙', '一起來吸貓吧 🐾', '今天也辛苦了'];
-let IG_TAB = 'me', IG_CAPI = 0, IG_SHARE = true;
+let IG_TAB = 'me', IG_CAPI = 0, IG_SHARE = true, IG_TXT = '';
+// typed captions and comments: swears, links and long numbers become ＊ (Chuck: adults play too, but no swearing).
+// Same list as v_bad in supabase/catloft_ig_text.sql, which is what counts for shared posts; change both together.
+const IG_BAD = ['幹你娘', '幹妳娘', '操你媽', '操你', '你娘', '你媽的', '他媽的', '他媽', '她媽', '媽的', '靠北', '靠杯', '靠夭', '靠腰', '機掰', '雞掰', '機八', '雞八', '機巴', '雞巴',
+  '屌', '白癡', '白痴', '智障', '低能', '腦殘', '弱智', '去死', '死全家', '廢物', '王八蛋', '王八', '混蛋', '賤', '婊', '妓女', '三小', '啥小', '洨', '尻', '淫', '色情', '狗屎', '屁眼', '北七', '肏',
+  'fuck', 'fck', 'shit', 'bitch', 'asshole', 'bastard', 'dick', 'pussy', 'cunt', 'wtf', 'stfu', 'nigger', 'nigga', 'slut', 'whore'];
+function igFilter(t) {
+  let v = String(t || '').replace(/[<>&"'`\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 30);
+  v = v.replace(/(https?:\/\/|www\.)\S*/gi, '＊＊').replace(/[0-9０-９][0-9０-９ \-]{4,}[0-9０-９]/g, '＊＊');
+  for (const w of IG_BAD) v = v.replace(new RegExp(w, 'gi'), '＊'.repeat(w.length));
+  v = v.replace(/幹/g, (m, i, all) => (i > 0 && '能才樹骨主苦'.includes(all[i - 1])) || (i + 1 < all.length && '嘛麼活部勁練線事掉什'.includes(all[i + 1])) ? m : '＊');
+  return v.trim();
+}
 const IG_USERS = ['貓奴小美', '阿哲愛咖啡', '巷口的阿姨', '週末去哪玩', '喵星人研究所', 'latte_lin', '肉球控', '甜點偵探', '小學生阿凱', '下班喝一杯', '橘貓後援會', 'yuyu_cat'];
 let IG_SNAP = null; // { img, f, likes, fans, com } waiting to be posted
 const igPhotos = () => { try { return JSON.parse(localStorage.getItem('catloft-ig') || '{}'); } catch { return {}; } };
@@ -1053,10 +1065,12 @@ function igSnap() {
   IG_SNAP = { img: c.toDataURL('image/jpeg', .72), pub, f, likes, fans: clamp(Math.round(likes / 12), 1, 15), com, cats: names.length };
   sfx('notify');
 }
-function igPost(ci, share) {
+function igPost(ci, share, txt) {
   if (!IG_SNAP || igToday() >= IG_PER_DAY) return;
-  const p = { id: Date.now().toString(36), d: S.day, t: S.time, f: IG_SNAP.f, cap: IG_CAPS[ci] || IG_CAPS[0], likes: IG_SNAP.likes, com: IG_SNAP.com };
-  if (share && window.IGPUB && IGPUB.on()) IGPUB.share(IG_CAPS[ci] ? ci : 0, IG_SNAP.pub, p);
+  txt = igFilter(txt);
+  const p = { id: Date.now().toString(36), d: S.day, t: S.time, f: IG_SNAP.f, cap: txt || IG_CAPS[ci] || IG_CAPS[0], likes: IG_SNAP.likes, com: IG_SNAP.com };
+  if (share && window.IGPUB && IGPUB.on()) IGPUB.share(IG_CAPS[ci] ? ci : 0, IG_SNAP.pub, p, txt);
+  IG_TXT = '';
   const ph = igPhotos(); ph[p.id] = IG_SNAP.img;
   G.ig.unshift(p); G.ig = G.ig.slice(0, IG_KEEP);
   for (const id of Object.keys(ph)) if (!G.ig.some(q => q.id === id)) delete ph[id];
@@ -1070,8 +1084,9 @@ function igAppHtml() {
   if (pub && IG_TAB === 'all') return h + IGPUB.feedHtml();
   if (pub) IGPUB.mineHtml();
   if (IG_SNAP) {
-    h += `<div class="item"><img src="${IG_SNAP.img}" alt="剛拍的照片" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;display:block"><div class="sub" style="margin:6px 0">${IG_SNAP.cats ? `拍到 ${IG_SNAP.cats} 隻貓` : '這張沒有拍到貓，讚可能會少一點'}。選一句話當標題：</div>
-      <div class="row" style="margin:0;flex-wrap:wrap;gap:6px">${IG_CAPS.map((c, i) => `<button data-igcap="${i}"${i === IG_CAPI ? ' class="primary"' : ''}>${c}</button>`).join('')}</div>
+    h += `<div class="item"><img src="${IG_SNAP.img}" alt="剛拍的照片" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;display:block"><div class="sub" style="margin:6px 0">${IG_SNAP.cats ? `拍到 ${IG_SNAP.cats} 隻貓` : '這張沒有拍到貓，讚可能會少一點'}。選一句話當標題，或自己打：</div>
+      <div class="row" style="margin:0;flex-wrap:wrap;gap:6px">${IG_CAPS.map((c, i) => `<button data-igcap="${i}"${i === IG_CAPI && !IG_TXT ? ' class="primary"' : ''}>${c}</button>`).join('')}</div>
+      <input id="igTxt" maxlength="30" placeholder="自己打標題（不好的字會變成＊）" value="${igFilter(IG_TXT)}" style="width:100%;margin:8px 0 0;padding:8px;border-radius:8px;border:1px solid var(--line);font:inherit;box-sizing:border-box">
       ${pub ? `<label style="display:flex;align-items:center;gap:6px;margin:8px 0"><input type="checkbox" id="igShare"${IG_SHARE ? ' checked' : ''}>分享給其他玩家看（大家可以按讚、留言）</label>` : '<div style="height:8px"></div>'}
       <div class="row" style="margin:0"><button id="igRetake">重拍</button><button class="primary" id="igPost">發文</button></div></div>`;
   } else {
@@ -4284,9 +4299,10 @@ function renderPhone() {
   sc.querySelectorAll('[data-goshop]').forEach(b => b.onclick = () => { goShop(+b.dataset.goshop); if (!$('phoneOv').hidden) renderPhone(); });
   q('#igShoot') && (q('#igShoot').onclick = () => { igSnap(); renderPhone(); });
   q('#igRetake') && (q('#igRetake').onclick = () => { IG_SNAP = null; renderPhone(); });
-  q('#igPost') && (q('#igPost').onclick = () => { igPost(IG_CAPI, !!(q('#igShare') && q('#igShare').checked)); renderPhone(); });
+  q('#igPost') && (q('#igPost').onclick = () => { igPost(IG_CAPI, !!(q('#igShare') && q('#igShare').checked), q('#igTxt').value); renderPhone(); });
+  q('#igTxt') && (q('#igTxt').oninput = e => { IG_TXT = e.target.value; });
   q('#igShare') && (q('#igShare').onchange = e => { IG_SHARE = e.target.checked; });
-  sc.querySelectorAll('[data-igcap]').forEach(b => b.onclick = () => { IG_CAPI = +b.dataset.igcap; renderPhone(); });
+  sc.querySelectorAll('[data-igcap]').forEach(b => b.onclick = () => { IG_CAPI = +b.dataset.igcap; IG_TXT = ''; renderPhone(); });
   sc.querySelectorAll('[data-igtab]').forEach(b => b.onclick = () => { IG_TAB = b.dataset.igtab; renderPhone(); });
   if (phoneApp === 'ig' && IG_TAB === 'all' && window.IGPUB) IGPUB.bind(sc);
   if (q('#pgame')) {
