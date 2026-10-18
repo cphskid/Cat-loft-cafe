@@ -217,7 +217,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>2F：點<b>貓碗</b>補飼料、點<b>貓砂盆</b>清理、點<b>貓咪</b>摸摸或叫醒牠。</li>
       <li>店長、員工、客人和貓都會沿著樓梯走上走下。用搖桿走到樓梯口往上推（2F 往下推）就會上下樓，也可以點<b>樓梯</b>。右上角的樓層鈕只換看哪一層。另一層有狀況時，左上角會出現提醒，點它就能切過去。</li>
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
-      <li>手機的「喵喵宣傳」可以發傳單、發 IG、辦試吃、登報紙，讓今天的客人變多、粉絲增加。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
+      <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地（手機「我的店」看進度）。</li>
@@ -416,10 +416,21 @@ const TOOLS = {
 const EVENTS = [
   { id: 'halloween', month: 10, name: '萬聖節', icon: '🎃', desc: '十月是萬聖節！活動期間的營收累積到目標，就能買限定飾品戴在身上。' },
 ];
+// Accessories, all painted (assets/acc_*.webp) and worn on the sprites. slot: neck / hair = the manager, cat = any cat
+// (buy once, every cat can wear it). Items with `ev` are only sold during that event, after earning `need` in it.
 const CHARMS = {
-  pumpkin: { ev: 'halloween', who: 'mgr', name: '萬聖節南瓜領巾', price: 200, need: 1000, img: 'acc_scarf', desc: '橘色蝙蝠點點領巾，打個結再掛一個小南瓜燈，繫在店長脖子上' },
-  bat:     { ev: 'halloween', who: 'cat', name: '蝙蝠鈴鐺項圈', price: 300, need: 3000, img: 'acc_bell', desc: '紫色項圈掛著長了蝙蝠翅膀的小金鈴，挑一隻貓幫牠戴' },
+  pumpkin:  { ev: 'halloween', slot: 'neck', name: '萬聖節南瓜領巾', price: 6000, need: 1000, img: 'acc_scarf', desc: '橘色蝙蝠點點領巾，打個結再掛一個小南瓜燈，繫在店長脖子上' },
+  hpumpkin: { ev: 'halloween', slot: 'hair', name: '南瓜蝙蝠髮夾', price: 8000, need: 1000, img: 'acc_clip_pumpkin', desc: '笑咪咪的南瓜燈長了兩片小蝙蝠翅膀，夾在店長頭髮上' },
+  bat:      { ev: 'halloween', slot: 'cat', name: '蝙蝠鈴鐺項圈', price: 10000, need: 3000, img: 'acc_bell', band: '#9C86C4', ph: 18, desc: '紫色項圈掛著長了蝙蝠翅膀的小金鈴' },
+  cpumpkin: { ev: 'halloween', slot: 'cat', name: '南瓜燈小領巾', price: 12000, need: 2000, img: 'acc_cat_pumpkin', band: '#E8873A', ph: 26, desc: '橘色三角領巾，印著南瓜燈的笑臉' },
+  sakura:   { slot: 'hair', name: '櫻花髮夾', price: 5000, lv: 1, img: 'acc_clip_sakura', desc: '粉紅色的小櫻花，夾在耳朵上方' },
+  catclip:  { slot: 'hair', name: '貓咪髮夾', price: 8000, lv: 2, img: 'acc_clip_cat', desc: '奶油色的虎斑貓臉髮夾' },
+  bowclip:  { slot: 'hair', name: '紅色蝴蝶結髮夾', price: 12000, lv: 3, img: 'acc_clip_bow', desc: '大大的紅色緞帶蝴蝶結' },
+  bowtie:   { slot: 'cat', name: '紅色領結', price: 6000, lv: 1, img: 'acc_cat_bowtie', band: '#B8404A', ph: 13, desc: '紅色緞面小領結，像個小紳士' },
+  plaid:    { slot: 'cat', name: '格紋小領巾', price: 9000, lv: 2, img: 'acc_cat_plaid', band: '#8A6A4E', ph: 24, desc: '咖啡色和米色的格紋三角領巾' },
+  daisy:    { slot: 'cat', name: '小雛菊花圈', price: 12000, lv: 3, img: 'acc_cat_daisy', band: '#7FA66A', ph: 15, desc: '綠色細繩串著三朵小雛菊' },
 };
+const CHARM_WHO = { neck: '店長', hair: '店長', cat: '貓咪' };
 const evNow = () => { const d = new Date(); const E = EVENTS.find(e => e.month === d.getMonth() + 1); return E && { ...E, key: E.id + d.getFullYear() }; };
 const evEarned = E => (E && G.ev[E.key]) || 0;
 const LV2_FANS = 60;
@@ -652,13 +663,18 @@ const staffDrag = () => 1 + (S.staff || []).filter(s => !s.away).reduce((a, s) =
 // ---- manager outfits (phone app 衣櫃)
 const OUTFITS = [
   { id: 'basic', name: '咖啡廳圍裙', desc: '開店第一天穿的白襯衫和米色圍裙', price: 0, lv: 1, spr: 'mgr' },
-  { id: 'mo1', name: '貓咪毛衣', desc: '胸口有貓臉的燕麥色毛衣配長裙', descM: '胸口有貓臉的燕麥色毛衣配深色長褲', price: 300, lv: 1, spr: 'mo1' },
-  { id: 'mo2', name: '草莓洋裝', nameM: '草莓襯衫', desc: '淡黃色草莓小碎花洋裝加白圍裙', descM: '淡黃色草莓小碎花短袖襯衫加白圍裙', price: 500, lv: 2, spr: 'mo2' },
-  { id: 'mo6', name: '草帽洋裝', nameM: '草帽亞麻衫', desc: '鼠尾草綠的亞麻洋裝、草帽和小籃子', descM: '鼠尾草綠的亞麻襯衫、草帽和小籃子', price: 800, lv: 3, spr: 'mo6' },
-  { id: 'mo3', name: '夏日浴衣', desc: '水藍色牽牛花浴衣配粉紅腰帶', descM: '深藍色牽牛花浴衣配灰色腰帶', price: 900, lv: 3, spr: 'mo3' },
-  { id: 'mo4', name: '甜點師白袍', desc: '雙排扣白袍和高高的廚師帽', price: 1200, lv: 4, spr: 'mo4' },
-  { id: 'mo5', name: '聖誕毛衣', desc: '紅色雪花貓咪毛衣和綠圍巾', price: 1500, lv: 5, spr: 'mo5' },
+  { id: 'mo1', name: '貓咪毛衣', desc: '胸口有貓臉的燕麥色毛衣配長裙', descM: '胸口有貓臉的燕麥色毛衣配深色長褲', price: 30000, lv: 1, spr: 'mo1' },
+  { id: 'mo7', name: '貓耳連帽衫', desc: '帽子上有貓耳朵的奶油色連帽衫配百褶裙', descM: '奶油色連帽衫和貓耳朵，配卡其褲', price: 32000, lv: 1, spr: 'mo7' },
+  { id: 'mo2', name: '草莓洋裝', nameM: '草莓襯衫', desc: '淡黃色草莓小碎花洋裝加白圍裙', descM: '淡黃色草莓小碎花短袖襯衫加白圍裙', price: 35000, lv: 2, spr: 'mo2' },
+  { id: 'mo8', name: '格紋背心裙', nameM: '格紋背心', desc: '咖啡色格紋背心裙配圓領白襯衫', descM: '咖啡色格紋針織背心、白襯衫和小領結', price: 40000, lv: 2, spr: 'mo8' },
+  { id: 'mo6', name: '草帽洋裝', nameM: '草帽亞麻衫', desc: '鼠尾草綠的亞麻洋裝、草帽和小籃子', descM: '鼠尾草綠的亞麻襯衫、草帽和小籃子', price: 45000, lv: 3, spr: 'mo6', hat: true },
+  { id: 'mo3', name: '夏日浴衣', desc: '水藍色牽牛花浴衣配粉紅腰帶', descM: '深藍色牽牛花浴衣配灰色腰帶', price: 50000, lv: 3, spr: 'mo3' },
+  { id: 'mo9', name: '咖啡師圍裙', desc: '黑襯衫配丹寧皮帶圍裙，胸前繡著咖啡豆', price: 55000, lv: 4, spr: 'mo9' },
+  { id: 'mo4', name: '甜點師白袍', desc: '雙排扣白袍和高高的廚師帽', price: 60000, lv: 4, spr: 'mo4', hat: true },
+  { id: 'mo5', name: '聖誕毛衣', desc: '紅色雪花貓咪毛衣和綠圍巾', price: 70000, lv: 5, spr: 'mo5', scarf: true },
+  { id: 'mo10', ev: 'halloween', name: '萬聖節小魔女', nameM: '萬聖節小巫師', desc: '尖尖的魔女帽、紫色蝙蝠洋裝、小斗篷和橘黑條紋襪', descM: '尖尖的巫師帽、紫色蝙蝠外套和小斗篷', price: 36000, lv: 1, spr: 'mo10', hat: true },
 ];
+const outfitOf = id => OUTFITS.find(o => o.id === id) || OUTFITS[0];
 // ---- 客人圖鑑: everyone who has visited, by rarity. Rarer guests come once the shop is bigger, tip and bring fans.
 const GUEST_DEX = [
   { id: 'c1', r: 0, name: '背包大學生', desc: '下課就來寫報告，一坐就是一下午' },
@@ -719,7 +735,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 100, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], on: {} }, collab: null };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [] };
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv());
@@ -855,7 +871,6 @@ function claimDaily(i) {
 // ---- promotion (phone app 喵喵宣傳): each one once per day, boosts how often customers come today
 const PROMOS = [
   { id: 'flyer',  name: '在巷口發傳單',  icon: '📄', cost: 40,  lv: 1, mul: 1.25, fans: 1, desc: '今天上門的客人多 25%' },
-  { id: 'ig',     name: '喵喵 IG 貼文',  icon: '📸', cost: 0,   lv: 1, mul: 1.1,  fans: 0, desc: '幫醒著的貓拍照上傳，貓越親人越多人按讚（加粉絲）' },
   { id: 'sample', name: '門口試吃活動',  icon: '🍪', cost: 0,   lv: 2, mul: 1.2,  fans: 2, desc: '拿展示櫃 3 份點心請路人試吃，今天客人多 20%' },
   { id: 'paper',  name: '社區報紙廣告',  icon: '📰', cost: 150, lv: 3, mul: 1.5,  fans: 4, desc: '今天上門的客人多 50%' },
 ];
@@ -864,12 +879,6 @@ function doPromo(id) {
   if (S.phase === 'settle') return;
   if (P.cost && G.cash < P.cost) { toast('錢不夠，先賺一點再宣傳吧'); return; }
   let fans = P.fans, note = '';
-  if (id === 'ig') {
-    const awake = S.cats.filter(k => k.state !== 'sleep');
-    if (!awake.length) { toast('貓咪都在睡覺，拍不到可愛的照片'); return; }
-    const k = awake.sort((a, b) => bondOf(b) - bondOf(a))[0];
-    fans = 2 + Math.min(15, Math.floor(bondOf(k) / 10)) + Math.min(8, awake.length); note = `（拍了${k.name}，${fans * 7} 個讚）`;
-  }
   if (id === 'sample') {
     const n = dispTotal(); if (n < 3) { toast('展示櫃至少要有 3 份點心才能辦試吃'); return; }
     let left = 3; for (const d of DISHES) while (left && S.display[d] > 0) { S.display[d]--; left--; }
@@ -877,6 +886,72 @@ function doPromo(id) {
   G.cash -= P.cost; if (P.cost) S.today.spent += P.cost;
   S.promos[id] = true; sfx('notify'); S.promoMul *= P.mul; G.fans += fans; S.today.fans += fans; G.stats.promo++;
   toast(`${P.name}完成！${note}粉絲 +${fans}`);
+}
+// ---- 喵IG: snap what's on screen, post it, likes and comments roll in while the shop runs. Fans only go up.
+// Post info lives in G.ig (synced with the save); the photos themselves only stay on this device (localStorage catloft-ig).
+const IG_PER_DAY = 3, IG_KEEP = 24, IG_GROW = 120; // likes finish rolling in after 120 game minutes
+const IG_CAPS = ['今天的貓貓日常 🐾', '歡迎來店裡坐坐 ☕', '誰能抵抗這張臉 😻', '#貓咪咖啡廳 #今天也營業中', '偷拍一下大家 📸'];
+const IG_USERS = ['貓奴小美', '阿哲愛咖啡', '巷口的阿姨', '週末去哪玩', '喵星人研究所', 'latte_lin', '肉球控', '甜點偵探', '小學生阿凱', '下班喝一杯', '橘貓後援會', 'yuyu_cat'];
+let IG_SNAP = null; // { img, f, likes, fans, com } waiting to be posted
+const igPhotos = () => { try { return JSON.parse(localStorage.getItem('catloft-ig') || '{}'); } catch { return {}; } };
+const igToday = () => G.ig.filter(p => p.d === S.day).length;
+function igProg(p) { return p.d < S.day ? 1 : clamp((S.time - p.t) / IG_GROW, 0, 1); }
+function igSnap() {
+  const vx0 = Math.max(0, -V.tx / V.s), vy0 = Math.max(0, -V.ty / V.s);
+  const vx1 = Math.min(W, (cv.width / DPR - V.tx) / V.s), vy1 = Math.min(H, (cv.height / DPR - V.ty) / V.s);
+  const sx = DPR * (V.s * vx0 + V.tx), sy = DPR * (V.s * vy0 + V.ty), sw = DPR * V.s * (vx1 - vx0), sh = DPR * V.s * (vy1 - vy0);
+  const tw = 360, th = Math.round(tw * sh / sw), c = document.createElement('canvas'); c.width = tw; c.height = th;
+  c.getContext('2d').drawImage(cv, sx, sy, sw, sh, 0, 0, tw, th);
+  const f = S.view, inShot = o => o.floor === f && !o.hidden && o.x > vx0 - 20 && o.x < vx1 + 20;
+  const cats = S.cats.filter(k => inShot(k) && k.state !== 'sleep'), sleepy = S.cats.filter(k => inShot(k) && k.state === 'sleep');
+  const guests = S.customers.filter(inShot);
+  const likes = Math.round(4 + cats.reduce((a, k) => a + 9 + bondOf(k) / 4, 0) + sleepy.length * 6 + Math.min(10, guests.length) * 3 + Math.min(80, G.fans * .15) + rand(0, 8));
+  const names = [...cats, ...sleepy].map(k => k.name), pool = [];
+  for (const n of names) pool.push(`${n}也太可愛了吧😻`, `想摸${n}！`, `${n}今天也好有精神`, `${n}是我的本命`);
+  for (const k of sleepy) pool.push(`${k.name}睡得好香 💤`);
+  if (guests.length >= 3) pool.push('看起來好熱鬧！', '下次要去排隊了', '人好多喔，生意好好');
+  if (f === 3) pool.push('員工休息室好溫馨', '店長辛苦了～');
+  if (f === 2) pool.push('二樓好像貓咪天堂', '好想整天待在貓閣');
+  if (S.time >= 1260) pool.push('晚安貓貓們 🌙');
+  pool.push('店長好會拍', '這間店好溫馨', '收藏了，週末去！', '光線好舒服', `${G.shopName}是我最愛的店`);
+  const com = []; const n = clamp(Math.round(likes / 15), 1, 6);
+  while (com.length < n) { const t = pick(pool), u = pick(IG_USERS); if (!com.some(c => c[1] === t)) com.push([u, t]); else if (pool.length <= com.length) break; }
+  IG_SNAP = { img: c.toDataURL('image/jpeg', .72), f, likes, fans: clamp(Math.round(likes / 12), 1, 15), com, cats: names.length };
+  sfx('notify');
+}
+function igPost(cap) {
+  if (!IG_SNAP || igToday() >= IG_PER_DAY) return;
+  const p = { id: Date.now().toString(36), d: S.day, t: S.time, f: IG_SNAP.f, cap: cleanName(cap, IG_CAPS[0], 40), likes: IG_SNAP.likes, com: IG_SNAP.com };
+  const ph = igPhotos(); ph[p.id] = IG_SNAP.img;
+  G.ig.unshift(p); G.ig = G.ig.slice(0, IG_KEEP);
+  for (const id of Object.keys(ph)) if (!G.ig.some(q => q.id === id)) delete ph[id];
+  try { localStorage.setItem('catloft-ig', JSON.stringify(ph)); } catch {}
+  G.fans += IG_SNAP.fans; S.today.fans += IG_SNAP.fans; S.promoMul *= 1.03; G.stats.promo++;
+  toast(`發文成功！粉絲 +${IG_SNAP.fans}，讚和留言會慢慢進來`); IG_SNAP = null; sfx('fan');
+}
+function igAppHtml() {
+  const left = IG_PER_DAY - igToday(), ph = igPhotos();
+  let h = '';
+  if (IG_SNAP) {
+    h += `<div class="item"><img src="${IG_SNAP.img}" alt="剛拍的照片" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;display:block"><div class="sub" style="margin:6px 0">${IG_SNAP.cats ? `拍到 ${IG_SNAP.cats} 隻貓` : '這張沒有拍到貓，讚可能會少一點'}。選一句話，或自己打：</div>
+      <div class="row" style="margin:0;flex-wrap:wrap;gap:6px">${IG_CAPS.map((c, i) => `<button data-igcap="${i}">${c}</button>`).join('')}</div>
+      <input id="igCap" maxlength="40" placeholder="寫點什麼…" value="${IG_CAPS[0]}" style="width:100%;margin:8px 0;padding:8px;border-radius:8px;border:1px solid var(--line);font:inherit;box-sizing:border-box">
+      <div class="row" style="margin:0"><button id="igRetake">重拍</button><button class="primary" id="igPost">發文</button></div></div>`;
+  } else {
+    h += `<p class="muted" style="margin:0">先走到想拍的地方，再打開手機拍照。照片拍的是現在畫面上的樣子，拍到越多貓、越親人的貓，讚越多。一天可以發 ${IG_PER_DAY} 篇，今天還剩 ${left} 篇。</p>
+      <div class="row" style="margin:0"><button class="primary" id="igShoot" ${left > 0 ? '' : 'disabled'}>${left > 0 ? '📷 拍一張' : '今天發夠了，明天再來'}</button></div>`;
+  }
+  if (!G.ig.length) return h + '<p class="muted">還沒有貼文。</p>';
+  const total = G.ig.reduce((a, p) => a + Math.round(p.likes * igProg(p)), 0);
+  h += `<div class="sub">${G.ig.length} 篇貼文・共 ${total} 個讚・粉絲 ${G.fans}</div>`;
+  for (const p of G.ig) {
+    const pr = igProg(p), likes = Math.round(p.likes * pr), nc = Math.ceil(p.com.length * pr);
+    h += `<div class="item"><div class="top"><span class="nm">@${G.shopName}</span><span class="sub">第 ${p.d} 天 ${String(Math.floor(p.t / 60)).padStart(2, '0')}:${String(Math.floor(p.t % 60)).padStart(2, '0')}</span></div>
+      ${ph[p.id] ? `<img src="${ph[p.id]}" alt="" style="width:100%;max-height:240px;object-fit:cover;border-radius:10px;display:block;margin:4px 0">` : '<div class="sub" style="padding:18px;text-align:center;background:var(--line);border-radius:10px;margin:4px 0">（照片存在另一台裝置）</div>'}
+      <div><b style="color:#E0566E">♥ ${likes}</b>${pr < 1 ? ' <span class="sub">讚還在增加中…</span>' : ''}</div><div>${p.cap}</div>
+      ${p.com.slice(0, nc).map(c => `<div class="sub"><b>${c[0]}</b> ${c[1]}</div>`).join('')}</div>`;
+  }
+  return h;
 }
 // ---- badges
 const BADGES = [
@@ -942,7 +1017,7 @@ const BADGES = [
   { id: 'change50', icon: '🧮', name: '心算高手',  desc: '正確找錢 50 次',              ok: () => G.stats.change >= 50 },
   { id: 'gamer60', icon: '🕹️', name: '接點心大師', desc: '小遊戲拿到 60 分',            ok: () => G.stats.best >= 60 },
   { id: 'dress3',  icon: '👗', name: '愛打扮的店長', desc: '衣櫃裡有 3 套衣服',         ok: () => G.wardrobe.length >= 3 },
-  { id: 'dressall', icon: '🎀', name: '時尚店長',  desc: '收集全部衣服',               ok: () => G.wardrobe.length >= OUTFITS.length },
+  { id: 'dressall', icon: '🎀', name: '時尚店長',  desc: '收集全部衣服',               ok: () => OUTFITS.every(o => o.ev || G.wardrobe.includes(o.id)) },
 ];
 function checkBadges() {
   for (const b of BADGES) if (!G.badges.includes(b.id) && b.ok()) {
@@ -1307,7 +1382,7 @@ window.addEventListener('online', retryMissingArt);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
-const LAZY_ART = /^((c(9|1\d|20)|mo\dm?)_\d|acc_\w+)$/;
+const LAZY_ART = /^((c(9|1\d|20)|mo\d+m?)_\d|acc_\w+)$/;
 const artOk = n => { const im = ART[n]; return !!(im && im.complete && im.naturalWidth); };
 // Wait (at most ARTWAIT ms) until every core sprite, plus the given extra ones, has arrived; onTick(done, total) shows progress.
 const ARTWAIT = 10000;
@@ -1755,14 +1830,20 @@ function drawCharm(id, x, y, sc) {
 // Painted accessories sit on the painted sprites. Manager: the neck is a fixed height above the feet in every outfit
 // (natural px: stand/walk 245, sit 177) and a little in front of / behind the sprite's centre.
 const MGR_NECK = [[4, 245], [6, 245], [-16, 177]];
-function drawMgrWorn(id, m) {
-  const C = CHARMS[id], sp = mgrSpr(), sit = m.sitting, pose = sit ? 2 : m.moving && Math.floor(S.t * 5) % 2 ? 1 : 0;
-  const im = art(`${sp}_${pose}`) || art(`${sp}_0`), acc = C.img && art(C.img), f = m.face || 1;
-  if (!im || !acc) { drawCharm(id, m.x - 13 * f, m.y - (sit ? 52 : 70), 1); return; }
-  if (G.outfit === 'mo5') return; // the Christmas sweater already has a scarf
-  const k = PH / 300, bob = m.moving ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0, [nx, ny] = MGR_NECK[pose];
-  const w = 30 * k, h = acc.naturalHeight * w / acc.naturalWidth;
-  g.save(); g.translate(m.x + f * nx * k, m.y - bob - ny * k); if (f < 0) g.scale(-1, 1); g.drawImage(acc, -w / 2, -h * .06, w, h); g.restore();
+// the hair clip sits above the ear on the back of the head (hidden under hats)
+const MGR_HAIR = { f: [[-14, 280], [-14, 280], [-22, 212]], m: [[-12, 282], [-12, 282], [-20, 214]] };
+function drawMgrWorn(slot, id, m) {
+  const C = CHARMS[id], O = outfitOf(G.outfit), sp = mgrSpr(), sit = m.sitting, pose = sit ? 2 : m.moving && Math.floor(S.t * 5) % 2 ? 1 : 0;
+  const im = art(`${sp}_${pose}`) || art(`${sp}_0`), acc = C && C.img && art(C.img), f = m.face || 1;
+  if (!C) return;
+  if (!im || !acc) { if (slot === 'neck') drawCharm(id, m.x - 13 * f, m.y - (sit ? 52 : 70), 1); return; }
+  if (slot === 'neck' && O.scarf || slot === 'hair' && O.hat) return; // the Christmas sweater has its own scarf; hats cover clips
+  const k = PH / 300, bob = m.moving ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0;
+  const [nx, ny] = slot === 'hair' ? MGR_HAIR[G.mgrSex === 'm' ? 'm' : 'f'][pose] : MGR_NECK[pose];
+  const w = (slot === 'hair' ? 14 : 30) * k, h = acc.naturalHeight * w / acc.naturalWidth;
+  g.save(); g.translate(m.x + f * nx * k, m.y - bob - ny * k); if (f < 0) g.scale(-1, 1);
+  if (slot === 'hair') { g.rotate(-.35); g.drawImage(acc, -w / 2, -h / 2, w, h); } else g.drawImage(acc, -w / 2, -h * .06, w, h);
+  g.restore();
 }
 // Cats: nape → throat of the collar in % of each painted pose (walk, sit, pounce; asleep or belly-up hides it)
 const CAT_NECK = {
@@ -1780,14 +1861,14 @@ function drawCatWorn(id, k, ci, pose, x, y, f) {
   const P = (px, py) => [(px / 100 - .5) * w, -h + py / 100 * h], [ax, ay] = P(a[0], a[1]), [bx, by] = P(a[2], a[3]);
   const dx = bx - ax, dy = by - ay, cx = (ax + bx) / 2 - dy * .2, cy = (ay + by) / 2 + dx * .2; // bow towards the chest
   g.save(); g.translate(x, y); if (f < 0) g.scale(-1, 1); g.lineCap = 'round';
-  for (const [c, lw] of [[INK, 7 * s + 1.4], ['#9C86C4', 7 * s]]) { g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo(cx, cy, bx, by); g.strokeStyle = c; g.lineWidth = lw; g.stroke(); }
-  const bh = 22 * s, bw = acc.naturalWidth * bh / acc.naturalHeight, sw = Math.sin(S.t * 4 + x * .05) * .12;
+  for (const [c, lw] of [[INK, 7 * s + 1.4], [C.band, 7 * s]]) { g.beginPath(); g.moveTo(ax, ay); g.quadraticCurveTo(cx, cy, bx, by); g.strokeStyle = c; g.lineWidth = lw; g.stroke(); }
+  const bh = C.ph * s, bw = acc.naturalWidth * bh / acc.naturalHeight, sw = Math.sin(S.t * 4 + x * .05) * .12;
   g.translate(bx, by - bh * .1); g.rotate(sw); g.drawImage(acc, -bw / 2, 0, bw, bh); g.restore();
 }
 function drawMgr() {
   const m = S.mgr;
   drawPerson(m, { spr: mgrSpr(), shirt: '#FFFFFF', pants: '#3F3936', hair: '#3A2A22', apron: '#D9C3A0', long: G.mgrSex !== 'm', sit: m.sitting });
-  for (const [id, w] of Object.entries(G.acc.on)) if (w === 'mgr') drawMgrWorn(id, m);
+  for (const slot of ['neck', 'hair']) if (G.acc.mgr[slot]) drawMgrWorn(slot, G.acc.mgr[slot], m);
   const hk = S.cats.find(k => k.anim && k.anim.kind === 'hug');
   if (hk) { // the manager carries the cat in their arms
     const ox = hk.x, oy = hk.y, cx = m.x + m.face * 4, cy = m.y - 62;
@@ -1902,7 +1983,7 @@ function drawCat(k) {
   const pose = k.state === 'sleep' ? 2 : (k.jumpFrom || k.state === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
   const ci = catImg(k.def, pose);
   if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK * k.size.s, f < 0, ci.naturalWidth * CATK * k.size.sx);
-  if (ci && pose !== 2) for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCatWorn(id, k, ci, pose, x, y + 1, f);
+  if (ci && pose !== 2 && CHARMS[G.acc.cats[k.id]]) drawCatWorn(G.acc.cats[k.id], k, ci, pose, x, y + 1, f);
   if (k.state === 'sleep') {
     if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
@@ -1936,7 +2017,7 @@ function drawCat(k) {
     if (k.points) ell(hx + 3 * f, hy + 2, 6, 5, k.dark);
     ell(hx + 4 * f, hy - 1, 1.4, 2, k.tux ? '#F2E6A0' : k.points ? '#7FB3D9' : INK);
     }
-    for (const [id, w] of Object.entries(G.acc.on)) if (w === k.id) drawCharm(id, hx - 6 * f, hy + 4, .7); // old canvas cat only
+    if (G.acc.cats[k.id] === 'bat') drawCharm('bat', hx - 6 * f, hy + 4, .7); // old canvas cat only
     if (k.state === 'eat') text('喀', hx + 14 * f, hy - 16, 11, '#8B776B');
     if (k.say) bubble(hx, hy - 34, k.say.text);
     else if (k.wantPet) {
@@ -3417,9 +3498,22 @@ function closeChoose() { $('chooseOv').hidden = true; if (S) S.uiPause = false; 
 
 // ---- phone ----
 function outfitItem(o) {
-  const own = G.wardrobe.includes(o.id), wear = G.outfit === o.id, locked = o.lv > shopLv();
+  const own = G.wardrobe.includes(o.id), wear = G.outfit === o.id, E = evNow(), locked = o.ev ? !(E && E.id === o.ev) : o.lv > shopLv();
+  if (o.ev && !own && locked) return '';
   return `<div class="item${locked && !own ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${o.spr + mgrSfx()}_0.webp" alt="" style="height:96px;width:40px;flex:none;object-fit:contain" onerror="this.remove()"><div style="flex:1"><div class="top"><span class="nm">${wear ? '✓ ' : locked && !own ? '🔒 ' : ''}${outfitName(o)}</span><b>${own ? (wear ? '穿著中' : '已擁有') : yen(o.price)}</b></div><div class="sub">${(G.mgrSex === 'm' && o.descM) || o.desc}</div>
           <div class="row" style="margin:0">${wear ? '<button disabled>正在穿</button>' : own ? `<button class="primary" data-wear="${o.id}">換上</button>` : locked ? `<button disabled>店鋪 Lv.${o.lv} 解鎖</button>` : G.cash < o.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-outfit="${o.id}">購買並換上</button>`}</div></div></div></div>`;
+}
+// one accessory card: buy (shop) or wear (衣櫃)
+function charmItem(id, wear) {
+  const C = CHARMS[id], E = evNow(), own = G.acc.own.includes(id), live = C.ev && E && E.id === C.ev;
+  if (!own && C.ev && !live) return '';
+  const ok = C.ev ? evEarned(E) >= C.need : C.lv <= shopLv(), on = C.slot === 'cat' ? Object.values(G.acc.cats).includes(id) : G.acc.mgr[C.slot] === id;
+  let act;
+  if (!own) act = !ok ? (C.ev ? `<button disabled>活動營收 ${yen(C.need)} 解鎖（還差 ${yen(C.need - evEarned(E))}）</button>` : `<button disabled>店鋪 Lv.${C.lv} 解鎖</button>`) : G.cash < C.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-charm="${id}">購買${C.slot === 'cat' ? '' : '並戴上'}</button>`;
+  else if (C.slot !== 'cat') act = on ? `<button data-mwear="${C.slot}" data-id="">拿下來</button>` : `<button class="primary" data-mwear="${C.slot}" data-id="${id}">幫店長戴上</button>`;
+  else act = wear ? S.cats.map(k => { const w = G.acc.cats[k.id] === id; return `<button class="${w ? 'primary' : ''}" data-cwear="${k.id}" data-id="${w ? '' : id}">${w ? '✓ ' : ''}${k.name}</button>`; }).join('') : '<button disabled>到「衣櫃」幫貓咪戴</button>';
+  return `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${CHARM_WHO[C.slot]}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
+    <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
 }
 let phoneApp = 'home', storeTab = 'stock', ivRole = null, ivSeen = {};
 function openPhone(app) { sfx('phone_open'); phoneApp = app; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
@@ -3432,7 +3526,7 @@ function renderPhone() {
   if (phoneApp === 'home') {
     const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'],
-                  ['promo', '喵喵宣傳', '傳單・IG', '#E08A5A', '宣'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
+                  ['promo', '喵喵宣傳', '傳單・試吃', '#E08A5A', '宣'], ['ig', '喵IG', G.ig.length ? `${G.ig.length} 篇貼文` : '拍照・按讚', '#D9567A', '📷'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '今天誰最會賺', '#C9A03A', '榜']);
     if (CLOUD.sb && !CLOUD.db && window.FRIENDS) apps.splice(apps.length - 2, 0, ['friend', '好友', FRIENDS.sub(), '#D98AA0', '友']);
@@ -3441,7 +3535,7 @@ function renderPhone() {
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友' };
+    const titles = { menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, MENU[d].base]).concat([['loft', '2F 吸貓入場費', LOFT_BASE], ['beans', '咖啡豆（一包）', BEANS_BASE], ['treat', '貓咪肉泥（一條）', TREAT_BASE]]);
@@ -3473,21 +3567,15 @@ function renderPhone() {
             <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, F.price)}</div></div>`;
         }
       } else if (storeTab === 'wear') {
-        h += `<p class="muted">買了馬上換上，之後在「衣櫃」可以隨時換穿。</p>`;
-        for (const o of OUTFITS) if (o.price) h += outfitItem(o);
+        h += `<p class="muted">店長的衣服買了馬上換上；髮夾和貓咪衣飾之後在「衣櫃」可以隨時換。</p><p class="kh">店長衣服</p>`;
+        for (const o of OUTFITS) if (o.price && !o.ev) h += outfitItem(o);
+        h += '<p class="kh">店長髮夾</p>'; for (const id in CHARMS) if (!CHARMS[id].ev && CHARMS[id].slot === 'hair') h += charmItem(id, false);
+        h += '<p class="kh">貓咪衣飾</p><p class="muted">買一次，每隻貓都可以戴。</p>'; for (const id in CHARMS) if (!CHARMS[id].ev && CHARMS[id].slot === 'cat') h += charmItem(id, false);
       } else if (storeTab === 'event') {
         h += E ? `<div class="item"><div class="top"><span class="nm">${E.icon} ${E.name}活動</span><b>${yen(evEarned(E))}</b></div><div class="sub">${E.desc}<br>這個月的活動營收：${yen(evEarned(E))}</div></div>`
                : `<p class="muted">現在沒有活動。每個月會有不同的節日活動，下次是 ${EVENTS.map(e => `${e.month} 月${e.name}`).join('、')}。買過的飾品隨時可以戴。</p>`;
-        for (const [id, C] of Object.entries(CHARMS)) {
-          const own = G.acc.own.includes(id), live = E && E.id === C.ev; if (!own && !live) continue;
-          const on = G.acc.on[id], ok = live && evEarned(E) >= C.need;
-          let act;
-          if (!own) act = !ok ? `<button disabled>活動營收 ${yen(C.need)} 解鎖（還差 ${yen(C.need - evEarned(E))}）</button>` : G.cash < C.price ? '<button disabled>現金不夠</button>' : `<button class="primary" data-charm="${id}">購買</button>`;
-          else if (C.who === 'mgr') act = on ? `<button data-wearc="${id}" data-on="">拿下來</button>` : `<button class="primary" data-wearc="${id}" data-on="mgr">幫店長戴上</button>`;
-          else act = S.cats.map(k => `<button class="${on === k.id ? 'primary' : ''}" data-wearc="${id}" data-on="${on === k.id ? '' : k.id}">${on === k.id ? '✓ ' : ''}${k.name}</button>`).join('');
-          h += `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${C.who === 'mgr' ? '店長' : '貓咪'}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
-            <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
-        }
+        for (const o of OUTFITS) if (o.ev) h += outfitItem(o);
+        for (const id in CHARMS) if (CHARMS[id].ev) h += charmItem(id, true);
       } else {
         const day = S.phase !== 'settle';
         h += `<p class="muted">幫店裡加點小幫手。標「今天」的道具只有今天有效，明天要再買。</p>`;
@@ -3566,6 +3654,8 @@ function renderPhone() {
         h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${P.icon} ${P.name}</span><b>${P.cost ? yen(P.cost) : '免費'}</b></div><div class="sub">${P.desc}</div>
           <div class="row" style="margin:0">${locked ? `<button disabled>店鋪 Lv.${P.lv} 解鎖</button>` : done ? '<button disabled>今天做過了</button>' : `<button class="primary" data-promo="${P.id}" ${S.phase === 'settle' ? 'disabled' : ''}>開始宣傳</button>`}</div></div>`;
       }
+    } else if (phoneApp === 'ig') {
+      h += igAppHtml();
     } else if (phoneApp === 'badge') {
       h += `<p class="muted">已收集 ${G.badges.length}/${BADGES.length} 個徽章，每拿到一個經驗 +5。</p><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">` +
         BADGES.map(b => { const has = G.badges.includes(b.id);
@@ -3625,8 +3715,14 @@ function renderPhone() {
         h += '</div>';
       }
     } else if (phoneApp === 'closet') {
-      h += `<p class="muted">幫${G.mgrName}店長換衣服。買過的衣服可以隨時換穿。</p>`;
+      h += `<p class="muted">幫${G.mgrName}店長和貓咪換裝。買過的衣服和飾品可以隨時換。</p><p class="kh">店長衣服</p>`;
       for (const o of OUTFITS) h += outfitItem(o);
+      const mine = sl => G.acc.own.filter(id => CHARMS[id].slot === sl);
+      if (mine('neck').length || mine('hair').length) { h += '<p class="kh">店長飾品</p>'; for (const id of [...mine('neck'), ...mine('hair')]) h += charmItem(id, true); }
+      h += '<p class="kh">貓咪換裝</p>';
+      if (!mine('cat').length) h += '<p class="muted">還沒有貓咪衣飾，可以到「商店」→「衣服」買。</p>';
+      else h += S.cats.map(k => { const w = G.acc.cats[k.id];
+        return `<div class="item"><div class="top"><span class="nm">${k.name}</span><b>${w ? CHARMS[w].name : '沒戴'}</b></div><div class="row" style="margin:0;flex-wrap:wrap">${['', ...mine('cat')].map(id => `<button class="${(w || '') === id ? 'primary' : ''}" data-cwear="${k.id}" data-id="${id}">${id ? `<img src="assets/${CHARMS[id].img}.webp" alt="" style="height:18px;vertical-align:middle;margin-right:4px">${CHARMS[id].name}` : '不戴'}</button>`).join('')}</div></div>`; }).join('');
     } else if (phoneApp === 'phone') {
       if (CALL) {
         const C = CALL.C;
@@ -3675,15 +3771,17 @@ function renderPhone() {
   });
   sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
   sc.querySelectorAll('[data-charm]').forEach(b => b.onclick = () => { const id = b.dataset.charm, C = CHARMS[id], E = evNow();
-    if (G.acc.own.includes(id) || !E || E.id !== C.ev || evEarned(E) < C.need || G.cash < C.price) return;
-    G.cash -= C.price; S.today.spent += C.price; G.acc.own.push(id); if (C.who === 'mgr') G.acc.on[id] = 'mgr';
-    sfx('delivery'); toast(C.who === 'mgr' ? `${G.mgrName}店長戴上了「${C.name}」！` : `買了「${C.name}」，挑一隻貓幫牠戴上吧`); saveProgress(); renderPhone(); });
+    if (G.acc.own.includes(id) || G.cash < C.price || (C.ev ? !E || E.id !== C.ev || evEarned(E) < C.need : C.lv > shopLv())) return;
+    G.cash -= C.price; S.today.spent += C.price; G.acc.own.push(id); if (C.slot !== 'cat') G.acc.mgr[C.slot] = id;
+    sfx('delivery'); toast(C.slot !== 'cat' ? `${G.mgrName}店長戴上了「${C.name}」！` : `買了「${C.name}」，挑一隻貓幫牠戴上吧`); saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-mwear]').forEach(b => b.onclick = () => { const id = b.dataset.id; if (id && !G.acc.own.includes(id)) return;
+    if (id) G.acc.mgr[b.dataset.mwear] = id; else delete G.acc.mgr[b.dataset.mwear]; saveProgress(); renderPhone(); });
+  sc.querySelectorAll('[data-cwear]').forEach(b => b.onclick = () => { const id = b.dataset.id; if (id && !G.acc.own.includes(id)) return;
+    if (id) G.acc.cats[b.dataset.cwear] = id; else delete G.acc.cats[b.dataset.cwear]; saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-collab]').forEach(b => b.onclick = () => { const id = b.dataset.collab, C = COLLABS[id];
     if (!C || collabNow() || G.cash < C.fee) return;
     G.cash -= C.fee; S.today.spent += C.fee; G.collab = { id, until: G.day + COLLAB_DAYS - 1 };
     sfx('delivery'); toast(`跟「${C.co}」簽約了！接下來 ${COLLAB_DAYS} 天，客人可以加購${C.item}`); saveProgress(); renderPhone(); });
-  sc.querySelectorAll('[data-wearc]').forEach(b => b.onclick = () => { const id = b.dataset.wearc; if (!G.acc.own.includes(id)) return;
-    if (b.dataset.on) G.acc.on[id] = b.dataset.on; else delete G.acc.on[id]; saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => { sfx('app_switch'); storeTab = b.dataset.stab; renderPhone(); });
   q('#expandBtn') && (q('#expandBtn').onclick = () => { doExpand(); renderPhone(); });
   sc.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(b.dataset.call));
@@ -3691,7 +3789,7 @@ function renderPhone() {
   sc.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { claimDaily(+b.dataset.claim); renderPhone(); });
   sc.querySelectorAll('[data-adopt]').forEach(b => b.onclick = () => { adoptCat(b.dataset.adopt); renderPhone(); });
   sc.querySelectorAll('[data-wear]').forEach(b => b.onclick = () => { G.outfit = b.dataset.wear; art(OUTFITS.find(o => o.id === G.outfit).spr + mgrSfx() + '_0'); say(S.mgr, '換好衣服了！'); saveProgress(); renderPhone(); });
-  sc.querySelectorAll('[data-outfit]').forEach(b => b.onclick = () => { const o = OUTFITS.find(o => o.id === b.dataset.outfit); if (!o || G.wardrobe.includes(o.id) || o.lv > shopLv() || G.cash < o.price) return;
+  sc.querySelectorAll('[data-outfit]').forEach(b => b.onclick = () => { const o = OUTFITS.find(o => o.id === b.dataset.outfit), E = evNow(); if (!o || G.wardrobe.includes(o.id) || (o.ev ? !E || E.id !== o.ev : o.lv > shopLv()) || G.cash < o.price) return;
     G.cash -= o.price; S.today.spent += o.price; G.wardrobe.push(o.id); G.outfit = o.id; for (let i = 0; i < 3; i++) art(`${o.spr}${mgrSfx()}_${i}`); toast(`買了「${outfitName(o)}」，${G.mgrName}店長換上新衣服了！`); say(S.mgr, '好看嗎？'); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-ctab]').forEach(b => b.onclick = () => { S.catTab = b.dataset.ctab; renderPhone(); });
   sc.querySelectorAll('[data-cpage]').forEach(b => b.onclick = () => { S.catPage = +b.dataset.cpage; renderPhone(); });
@@ -3706,6 +3804,10 @@ function renderPhone() {
     const k = S.cats.find(k => k.id === id); if (k) k.name = catNameOf(id);
     G.stats.rename++; toast(`以後就叫牠「${catNameOf(id)}」了`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-promo]').forEach(b => b.onclick = () => { doPromo(b.dataset.promo); renderPhone(); });
+  q('#igShoot') && (q('#igShoot').onclick = () => { igSnap(); renderPhone(); });
+  q('#igRetake') && (q('#igRetake').onclick = () => { IG_SNAP = null; renderPhone(); });
+  q('#igPost') && (q('#igPost').onclick = () => { igPost(q('#igCap').value); renderPhone(); });
+  sc.querySelectorAll('[data-igcap]').forEach(b => b.onclick = () => { q('#igCap').value = IG_CAPS[b.dataset.igcap]; });
   if (q('#pgame')) {
     const cvs = q('#pgame'); cvs.addEventListener('pointerdown', e => { cvs.setPointerCapture(e.pointerId); pgPointer(e); }); ['pointermove', 'pointerup', 'pointercancel'].forEach(t => cvs.addEventListener(t, pgPointer));
     q('#pgStart').onclick = pgStart;
@@ -3789,8 +3891,11 @@ function decodeSave(code) {
     hired: Object.fromEntries(Object.keys(ROLES).filter(r => o.hired?.[r] && IV_A[o.hired[r].tier]).map(r => [r, { name: cleanName(o.hired[r].name, ROLES[r].name, 6), tier: o.hired[r].tier }])),
     exp: Math.max(0, Math.floor(num(o.exp, 0))), earned: Math.max(0, num(o.earned, 0)),
     ev: Object.fromEntries(Object.entries(o.ev && typeof o.ev === 'object' ? o.ev : {}).filter(([k]) => /^[a-z]+\d{4}$/.test(k)).map(([k, v]) => [k, Math.max(0, num(v, 0))])),
-    acc: (() => { const own = Array.isArray(o.acc?.own) ? [...new Set(o.acc.own.filter(id => CHARMS[id]))] : [];
-      return { own, on: Object.fromEntries(own.filter(id => typeof o.acc?.on?.[id] === 'string').map(id => [id, o.acc.on[id]])) }; })(),
+    acc: (() => { const a = o.acc || {}, own = Array.isArray(a.own) ? [...new Set(a.own.filter(id => CHARMS[id]))] : [], mgr = {}, cats = {};
+      for (const [sl, id] of Object.entries(a.mgr || {})) if (own.includes(id) && CHARMS[id].slot === sl) mgr[sl] = id;
+      for (const [k, id] of Object.entries(a.cats || {})) if (own.includes(id) && CHARMS[id].slot === 'cat' && CAT_DEFS[k]) cats[k] = id;
+      for (const [id, w] of Object.entries(a.on || {})) if (own.includes(id)) { if (w === 'mgr') mgr[CHARMS[id].slot] = id; else if (CAT_DEFS[w]) cats[w] = id; } // saves from before 2026-10-17
+      return { own, mgr, cats }; })(),
     collab: o.collab && COLLABS[o.collab.id] ? { id: o.collab.id, until: Math.max(0, Math.floor(num(o.collab.until, 0))) } : null,
     furn: Array.isArray(o.furn) ? [...new Set(o.furn.filter(f => FURN[f] || (TOOLS[f] && TOOLS[f].keep)))] : [],
     keep: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(num(o.keep?.[d], 0)))])),
@@ -3806,6 +3911,7 @@ function decodeSave(code) {
     badges: Array.isArray(o.badges) ? [...new Set(o.badges.filter(id => BADGES.some(b => b.id === id)))] : [],
     reviews: Array.isArray(o.reviews) ? o.reviews.filter(r => r && typeof r.t === 'string').slice(0, 80).map(r => ({ d: Math.max(1, Math.floor(num(r.d, 1))), s: clamp(Math.floor(num(r.s, 3)), 1, 5), w: cleanName(r.w, '客人', 8), t: cleanName(r.t, '', 60) })) : [],
     revTotal: Math.max(0, Math.floor(num(o.revTotal, 0))),
+    ig: Array.isArray(o.ig) ? o.ig.filter(p => p && typeof p.id === 'string').slice(0, IG_KEEP).map(p => ({ id: p.id.replace(/[^a-z0-9]/g, '').slice(0, 12), d: Math.max(1, Math.floor(num(p.d, 1))), t: clamp(num(p.t, 0), 0, 1440), f: clamp(Math.floor(num(p.f, 1)), 1, 3), cap: cleanName(p.cap, '', 40), likes: Math.max(0, Math.floor(num(p.likes, 0))), com: (Array.isArray(p.com) ? p.com : []).slice(0, 6).map(c => [cleanName(c?.[0], '路人', 12), cleanName(c?.[1], '', 40)]) })) : [],
     stats: Object.fromEntries(Object.keys(base.stats).map(k => [k, Math.max(0, Math.floor(num(o.stats?.[k], 0)))])),
     duty: Array.isArray(o.duty) ? [...new Set(o.duty.filter(id => CAT_DEFS[id]))] : null,
     seen: Array.isArray(o.seen) ? [...new Set(o.seen.filter(id => CAT_DEFS[id]))] : [],
