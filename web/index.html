@@ -4411,13 +4411,26 @@ function decodeSave(code) {
   return out;
 }
 function cleanName(v, d, n) { return String(typeof v === 'string' ? v : '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n) || d; }
-function storeLocal() { try { localStorage.setItem('catloft-save', encodeSave(G)); } catch {} }
+// catloft-save-uid = which cloud account the device's save belongs to ('' = unknown, from before 2026-10-18)
+function storeLocal() { try { localStorage.setItem('catloft-save', encodeSave(G)); localStorage.setItem('catloft-save-uid', CLOUD.uid || CLOUD.lost?.uid || ''); } catch {} }
+// the device's save, when it isn't another account's
+function localMine() {
+  let code = null, owner = ''; try { code = localStorage.getItem('catloft-save'); owner = localStorage.getItem('catloft-save-uid') || ''; } catch {}
+  if (!code || (owner && owner !== CLOUD.uid)) return null;
+  try { return decodeSave(code); } catch { return null; }
+}
+const ahead = (a, b) => a.day !== b.day ? a.day > b.day : (a.earned || 0) > (b.earned || 0);
+// the named account this device was last logged in to, so a lost login is noticed instead of starting a new anonymous account
+function lastAcct() { try { return JSON.parse(localStorage.getItem('catloft-acct') || 'null'); } catch { return null; } }
+function rememberAcct() { try { if (CLOUD.uid && CLOUD.name) localStorage.setItem('catloft-acct', JSON.stringify({ uid: CLOUD.uid, name: CLOUD.name })); } catch {} }
 // ---- account save ----
 // Inside claude.ai the viewer's account keeps one private save (data/users/<id>/save).
 // On the live site the save goes to Supabase (table catloft_saves, one row per auth user, RLS = own row only).
 // Every player starts as an anonymous Supabase user; giving the account a name + password lets them log in on another device.
 const SB_URL = 'https://bxrppdsbhuhjluprohkf.supabase.co', SB_KEY = 'sb_publishable_a99TJ4CiEW14ToPcoyn4KQ_NdoqXg2A';
-const CLOUD = { db: null, sb: null, uid: null, name: '', ready: false };
+// known = updated_at (ms) of the cloud row as this page last read or wrote it (undefined = not read yet, null = no row);
+// lost = {uid, name} of a named account whose login disappeared; conflict = a newer row from another device
+const CLOUD = { db: null, sb: null, uid: null, name: '', ready: false, known: undefined, lost: null, conflict: null };
 let sbSaving = null, sbAgain = false;
 function saveProgress() {
   storeLocal();
@@ -4430,23 +4443,44 @@ function saveProgress() {
 function sbSave() {
   if (sbSaving) { sbAgain = true; return sbSaving; }
   sbSaving = (async () => {
-    try {
-      if (!CLOUD.uid) {
-        const { data, error } = await CLOUD.sb.auth.signInAnonymously();
-        if (error) throw error;
-        CLOUD.uid = data.user.id;
-      }
-      const { error } = await CLOUD.sb.from('catloft_saves').upsert({ user_id: CLOUD.uid, code: encodeSave(G), day: G.day, shop_name: G.shopName, updated_at: new Date().toISOString() });
-      if (error) throw error;
-    } catch { toast('雲端存檔失敗，進度先存在這台裝置'); }
+    try { await sbUpload(); } catch { toast('雲端存檔失敗，進度先存在這台裝置'); }
     sbSaving = null;
     if (sbAgain) { sbAgain = false; return sbSave(); }
   })();
   return sbSaving;
 }
+async function sbUpload() {
+  await CLOUD.checked; // a game opened before the login check finished must not make an anonymous account or skip the newer-save check
+  if (CLOUD.conflict) return; // another device is ahead; this page only saves locally from now on
+  if (!CLOUD.uid) {
+    if (CLOUD.lost) return; // keep it on this device until they log back in to their account
+    const { data, error } = await CLOUD.sb.auth.signInAnonymously();
+    if (error) throw error;
+    CLOUD.uid = data.user.id; CLOUD.known = null;
+  }
+  // a row this page hasn't seen that is further along was saved by another device (or an old tab is still open here): never overwrite it
+  const { data: row, error: rerr } = await CLOUD.sb.from('catloft_saves').select('day,updated_at').eq('user_id', CLOUD.uid).maybeSingle();
+  if (rerr) throw rerr;
+  if (row && +new Date(row.updated_at) !== CLOUD.known && (row.day || 0) > G.day) { CLOUD.conflict = row; showConflict(row); return; }
+  const at = new Date().toISOString();
+  const { error } = await CLOUD.sb.from('catloft_saves').upsert({ user_id: CLOUD.uid, code: encodeSave(G), day: G.day, shop_name: G.shopName, updated_at: at });
+  if (error) throw error;
+  CLOUD.known = +new Date(at);
+}
+function showConflict(row) {
+  if (!started) return;
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>☁️ 別的地方玩得比較前面</h2><p>帳號${CLOUD.name ? `「${CLOUD.name}」` : ''}在別的裝置或別的分頁已經玩到第 ${row.day} 天，這裡才第 ${G.day} 天。</p>
+    <p>為了不把比較新的進度蓋掉，這裡的進度先只存在這台裝置，不會存到雲端。</p>
+    <div class="row"><button id="cfStay">先留在這裡</button><button class="primary" id="cfLoad">載入第 ${row.day} 天的進度</button></div>`;
+  $('chooseOv').hidden = false; S.uiPause = true;
+  $('cfStay').onclick = closeChoose;
+  $('cfLoad').onclick = () => location.reload();
+}
 // account names can be any text (Chinese too); Supabase wants an email, so the name is hex-encoded into one
 function acctEmail(name) { return 'u' + [...new TextEncoder().encode(name.trim().toLowerCase())].map(b => b.toString(16).padStart(2, '0')).join('') + '@catloft.player'; }
 function acctAppHtml() {
+  if (CLOUD.lost && !CLOUD.uid) return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span><b>${CLOUD.lost.name}（已登出）</b></div><div class="sub">這台裝置原本登入的帳號「${CLOUD.lost.name}」已經登出了，進度現在只存在這台裝置。回到標題畫面按「用帳號登入」再登入一次，就會接著存回帳號裡。</div></div>`;
   if (CLOUD.name) return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span><b>${CLOUD.name}</b></div><div class="sub">進度會自動存到雲端。換手機時在標題畫面按「用帳號登入」就能接著玩。</div><div class="row" style="margin:6px 0 0"><button id="acctOut">登出</button></div></div>`;
   return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span></div>
     <div class="sub">進度已經自動存到雲端了，但只認得這台裝置。設定帳號名稱和密碼，換手機或清掉瀏覽器也能用帳號登入接著玩。</div>
@@ -4463,13 +4497,13 @@ async function makeAccount(name, pass) {
     if (!CLOUD.uid) return;
     const { error } = await CLOUD.sb.auth.updateUser({ email: acctEmail(name), password: pass, data: { name } });
     if (error) return toast(/already|registered|exists/i.test(error.message) ? '這個帳號名稱有人用了，換一個吧' : '建立帳號失敗：' + error.message);
-    CLOUD.name = name; showAcct(); toast(`帳號「${name}」建好了！記得密碼喔`); renderPhone();
+    CLOUD.name = name; rememberAcct(); showAcct(); toast(`帳號「${name}」建好了！記得密碼喔`); renderPhone();
   } catch (e) { toast('建立帳號失敗，請稍後再試'); }
 }
 async function logOut() {
   if (started) await sbSave(); // on the title screen G is only the demo game, never upload it
   await CLOUD.sb.auth.signOut();
-  try { localStorage.removeItem('catloft-save'); } catch {}
+  try { for (const k of ['catloft-save', 'catloft-save-uid', 'catloft-acct']) localStorage.removeItem(k); } catch {}
   location.reload();
 }
 function openLogin() {
@@ -4490,7 +4524,7 @@ function openLogin() {
     const { data, error } = await CLOUD.sb.auth.signUp({ email: acctEmail(name), password: pass, options: { data: { name } } });
     $('signupGo').disabled = false;
     if (error || !data.session) return toast(error && /already|registered|exists/i.test(error.message) ? '這個帳號名稱有人用了，換一個吧' : '建立帳號失敗，請稍後再試');
-    CLOUD.uid = data.user.id; CLOUD.name = name; showAcct();
+    CLOUD.uid = data.user.id; CLOUD.name = name; CLOUD.lost = null; CLOUD.known = null; rememberAcct(); showAcct();
     $('contBtn').hidden = true; $('newBtn').textContent = '開始新遊戲'; confirmNew = false;
     toast(`帳號「${name}」建好了！記得密碼喔`); openSetup();
   };
@@ -4501,33 +4535,68 @@ function openLogin() {
     const { data, error } = await CLOUD.sb.auth.signInWithPassword({ email: acctEmail(name), password: pass });
     $('loginGo').disabled = false;
     if (error) return toast('帳號名稱或密碼不對');
-    CLOUD.uid = data.user.id; CLOUD.name = cleanName(data.user.user_metadata?.name, cleanName(name, '玩家', 10), 10); showAcct();
-    const { data: row } = await CLOUD.sb.from('catloft_saves').select('code').eq('user_id', CLOUD.uid).maybeSingle();
+    CLOUD.uid = data.user.id; CLOUD.name = cleanName(data.user.user_metadata?.name, cleanName(name, '玩家', 10), 10); CLOUD.lost = null; rememberAcct(); showAcct();
+    const { data: row, error: rerr } = await CLOUD.sb.from('catloft_saves').select('code,day,updated_at').eq('user_id', CLOUD.uid).maybeSingle();
     $('chooseOv').hidden = true;
+    // a failed read is not "no save": leave known unset so nothing gets written over the account until it is read
+    if (rerr) return toast('登入了，但讀不到雲端存檔，請重新整理頁面再試一次');
+    CLOUD.known = row ? +new Date(row.updated_at) : null;
     let g = null; try { g = row && decodeSave(row.code); } catch {}
+    const loc = localMine();
+    if (loc && (!g || ahead(loc, g))) return pickSave(g, loc);
     if (g) { begin(g); toast(`歡迎回來，${CLOUD.name}！第 ${g.day} 天`); }
     else toast(`已登入「${CLOUD.name}」，這個帳號還沒有存檔，開始新遊戲吧`);
   };
 }
+// this device has a save further along than the account's: let the player choose instead of loading the older one
+function pickSave(g, loc) {
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>要接著玩哪一份？</h2><p class="muted">這台裝置上的進度比帳號「${CLOUD.name}」雲端上的${g ? '還前面' : '多（帳號裡還沒有存檔）'}。選好之後會存回帳號裡。</p>
+    <div class="row" style="flex-direction:column;align-items:stretch">
+      <button class="primary" id="pickLoc">這台裝置：「${loc.shopName}」第 ${loc.day} 天</button>
+      ${g ? `<button id="pickCloud">帳號雲端：「${g.shopName}」第 ${g.day} 天</button>` : ''}</div>`;
+  $('chooseOv').hidden = false;
+  $('pickLoc').onclick = () => { $('chooseOv').hidden = true; begin(loc); toast(`歡迎回來，${CLOUD.name}！第 ${loc.day} 天`); };
+  if (g) $('pickCloud').onclick = () => { $('chooseOv').hidden = true; begin(g); toast(`歡迎回來，${CLOUD.name}！第 ${g.day} 天`); };
+}
 async function initSupabase() {
   if (!window.supabase) return;
   const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey: 'catloft-auth', persistSession: true, autoRefreshToken: true } });
+  let done; CLOUD.checked = new Promise(r => { done = r; });
   CLOUD.sb = sb; $('loginBtn').hidden = false;
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) return; // the anonymous user is made on the first save, so visitors who never play make no account
-  CLOUD.uid = session.user.id; CLOUD.name = session.user.is_anonymous ? '' : cleanName(session.user.user_metadata?.name, '玩家', 10);
-  const { data: row } = await sb.from('catloft_saves').select('code,day').eq('user_id', CLOUD.uid).maybeSingle();
-  if (row && !started) {
-    const localDay = localCode ? (() => { try { return decodeSave(localCode).day; } catch { return 0; } })() : 0;
-    if ((row.day || 0) >= localDay) offerContinue(row.code, CLOUD.name ? '帳號 ' + CLOUD.name : '雲端存檔');
-  }
+  try { await checkSession(sb); } finally { done(); }
 }
+async function checkSession(sb) {
+  const { data: { session } } = await sb.auth.getSession();
+  const la = lastAcct();
+  // the anonymous user is made on the first save, so visitors who never play make no account.
+  // But if this device was logged in to a named account and that login is gone (expired, or swapped for an anonymous one),
+  // saving would quietly move the progress into a new anonymous account and the named account would look like it went back in time.
+  if (!session || (session.user.is_anonymous && la?.name && la.uid !== session.user.id)) {
+    if (la?.name) { CLOUD.lost = la; if (started) toast(`帳號「${la.name}」已經登出，進度先存在這台裝置，回標題畫面再登入一次`); }
+    return;
+  }
+  CLOUD.uid = session.user.id; CLOUD.name = session.user.is_anonymous ? '' : cleanName(session.user.user_metadata?.name, '玩家', 10); rememberAcct();
+  const { data: row, error } = await sb.from('catloft_saves').select('code,day,updated_at').eq('user_id', CLOUD.uid).maybeSingle();
+  if (error) return; // known stays unset, so the first save checks the row before writing
+  // if a game was already opened from this device's save and the cloud is further along, leave known unset so that save is stopped
+  if (!started || !row || (row.day || 0) <= G.day) CLOUD.known = row ? +new Date(row.updated_at) : null;
+  if (started) return;
+  let owner = ''; try { owner = localStorage.getItem('catloft-save-uid') || ''; } catch {}
+  const loc = localMine();
+  if (row && (!loc || !ahead(loc, decodeSafe(row.code)))) offerContinue(row.code, CLOUD.name ? '帳號 ' + CLOUD.name : '雲端存檔');
+  else if (!row && localCode && owner && owner !== CLOUD.uid) { $('contBtn').hidden = true; $('newBtn').textContent = '開始新遊戲'; } // another account's save: don't continue it into this one
+}
+function decodeSafe(code) { try { return decodeSave(code); } catch { return { day: 0 }; } }
 function showAcct() {
   const line = $('acctLine'), chip = $('acct');
   if (CLOUD.db) {
     const who = CLOUD.name || '你的帳號';
     line.textContent = `已用 ${who} 登入，進度會自動存在帳號裡，換裝置也能接著玩。`;
     chip.textContent = `・${who}・自動存檔`;
+  } else if (CLOUD.sb && CLOUD.lost && !CLOUD.uid) {
+    line.textContent = `這台裝置原本登入的帳號「${CLOUD.lost.name}」已經登出了。請按「用帳號登入」再登入一次，進度才會存回帳號裡；在那之前只存在這台裝置。`;
+    chip.textContent = `・${CLOUD.lost.name} 未登入・存在這台裝置`;
   } else if (CLOUD.sb && CLOUD.name) {
     line.textContent = `已用帳號「${CLOUD.name}」登入，進度會自動存到雲端，換裝置也能接著玩。`;
     chip.textContent = `・${CLOUD.name}・雲端存檔`;
@@ -4602,6 +4671,7 @@ function boardHtml() {
 const FB = { unread: 0 };
 async function ensurePlayer() { // reporting needs a player id; make the anonymous user now instead of on the first save
   if (CLOUD.uid || !CLOUD.sb) return;
+  if (CLOUD.lost) throw new Error('請先登入帳號「' + CLOUD.lost.name + '」'); // an anonymous user here would take over this device's saves
   const { data, error } = await CLOUD.sb.auth.signInAnonymously();
   if (error) throw error;
   CLOUD.uid = data.user.id;

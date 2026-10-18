@@ -48,7 +48,7 @@
     return { mgr: G.mgrName, sex: G.mgrSex === 'm' ? 'm' : 'f', spr: mgrSpr(), cats: onDuty().slice(0, 6).map(id => ({ id, nm: catNameOf(id) })) };
   }
   async function sync() {
-    if (!on()) return;
+    if (!on() || !started) return; // on the title screen G is only the demo shop, never show it to friends
     try { await ensurePlayer(); F.code = await rpc('catloft_me', { p_shop: G.shopName, p_lv: shopLv(), p_day: G.day, p_look: look() }) || F.code; } catch {}
   }
   async function load(quiet) {
