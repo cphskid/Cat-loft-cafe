@@ -141,3 +141,29 @@ end $$;
 
 revoke all on function public.catloft_admin_self(), public.catloft_admin_edit(jsonb) from public, anon;
 grant execute on function public.catloft_admin_self(), public.catloft_admin_edit(jsonb) to authenticated;
+
+-- 2026-10-22 Chuck：「問題回報在管理者那邊也要能做出回應，使用者那邊可以看到回應，參考時光冒險樂園」。
+-- 跟樂園老師後台一樣：回覆寫進 feedback.reply / replied_at，處理狀態寫進 status / triaged_at（同一組狀態代碼）。
+-- 玩家那邊 web/feedback.js 本來就用樂園的 my_feedback 讀，手機「問題回報 → 我的回報」會出現 💌 回覆和「新消息」。
+-- 只能改貓閣的回報（context.game = 'catloft'），不會動到樂園學生的。
+create or replace function public.catloft_admin_answer(p_id bigint, p_status text, p_reply text)
+returns void
+language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $$
+declare v_reply text := nullif(btrim(coalesce(p_reply, '')), '');
+begin
+  if not public.catloft_is_admin() then raise exception 'not admin'; end if;
+  if p_status not in ('new', 'bug', 'request', 'unclear', 'fixed', 'dup', 'wontfix') then raise exception '狀態不對'; end if;
+  if char_length(v_reply) > 300 then raise exception '回覆寫太長了，300 字以內'; end if;
+  update public.feedback
+     set status = p_status,
+         triaged_at = case when status is distinct from p_status then now() else triaged_at end,
+         reply = v_reply,
+         replied_at = case when v_reply is null then null
+                           when reply is distinct from v_reply then now() else replied_at end
+   where id = p_id and context ->> 'game' = 'catloft';
+  if not found then raise exception '找不到這則回報'; end if;
+end $$;
+
+revoke all on function public.catloft_admin_answer(bigint, text, text) from public, anon;
+grant execute on function public.catloft_admin_answer(bigint, text, text) to authenticated;

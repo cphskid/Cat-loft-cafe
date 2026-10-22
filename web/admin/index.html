@@ -45,6 +45,8 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .fb{border-bottom:1px solid var(--line);padding:10px 0}
 .fb:last-child{border-bottom:0}
 .fb .msg{white-space:pre-wrap;margin:4px 0}
+.ans{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;margin-top:8px}
+.ans textarea{flex:1 1 260px;min-height:38px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:14px;resize:vertical}
 .tag{display:inline-block;border-radius:8px;padding:0 7px;font-size:12px;background:var(--sun);color:var(--wood-d);margin-right:6px}
 .tag.bug{background:#F6D9D3;color:var(--bad)}.tag.idea{background:#DDEBD2;color:#4E7436}
 .ov{position:fixed;inset:0;background:rgba(46,34,27,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
@@ -115,6 +117,8 @@ const SB_URL = 'https://bxrppdsbhuhjluprohkf.supabase.co', SB_KEY = 'sb_publisha
 // 遊戲帳號名稱轉成 Supabase 的 email，跟 ../index.html 的 acctEmail 一樣；誰是管理者由資料庫的 catloft_is_admin 判斷
 const acctEmail = name => 'u' + [...new TextEncoder().encode(name.trim().toLowerCase())].map(b => b.toString(16).padStart(2, '0')).join('') + '@catloft.player';
 const KIND = { bug: '壞掉了', confusing: '看不懂', idea: '點子' };
+// 處理狀態，跟樂園老師後台同一組代碼；括號裡是玩家在「我的回報」看到的字（../feedback.js 的 MY_STATUS）
+const STATUS = { new: '新回報（已收到）', bug: '確認是問題（處理中）', unclear: '討論中（處理中）', request: '好點子', fixed: '修好了', dup: '重複回報（已處理）', wontfix: '先不改（看過了）' };
 
 const $ = id => document.getElementById(id);
 const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey: 'catloft-admin-auth', persistSession: true, autoRefreshToken: true } });
@@ -177,8 +181,16 @@ function renderFb(list) {
       <div class="msg">${esc(f.message)}</div><div class="muted" style="font-size:13px">${info}</div>
       ${Array.isArray(c.errors) && c.errors.length ? `<div style="font-size:13px;color:var(--bad)">錯誤：${esc(c.errors.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' / ').slice(0, 400))}</div>` : ''}
       <details style="font-size:12px" class="muted"><summary>詳細資料</summary><pre style="white-space:pre-wrap;word-break:break-all">${esc(JSON.stringify(c, null, 1))}</pre></details>
-      ${f.reply ? `<div style="font-size:13px;margin-top:4px">回覆：${esc(f.reply)}</div>` : ''}</div>`;
+      <div class="ans"><select data-st="${f.id}">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}"${(f.status || 'new') === k ? ' selected' : ''}>${v}</option>`).join('')}</select>
+      <textarea data-re="${f.id}" maxlength="300" rows="2" placeholder="回覆玩家（會出現在他手機的「我的回報」）">${esc(f.reply || '')}</textarea>
+      <button class="primary" data-ans="${f.id}">送出回覆</button>${f.replied_at ? `<span class="muted" style="font-size:12px">上次回覆 ${when(f.replied_at)}</span>` : ''}</div></div>`;
   }).join('') || '<p class="muted">還沒有問題回報</p>';
+  $('fbList').querySelectorAll('[data-ans]').forEach(b => b.onclick = async () => {
+    const id = +b.dataset.ans, q = s => $('fbList').querySelector(`[data-${s}="${id}"]`);
+    b.disabled = true;
+    try { await rpc('catloft_admin_answer', { p_id: id, p_status: q('st').value, p_reply: q('re').value }); toast('送出了，玩家打開「我的回報」就看得到'); loadAll(); }
+    catch (e) { toast('送不出去：' + (e.message || e)); b.disabled = false; }
+  });
 }
 function renderGifts(list) {
   const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
