@@ -1,9 +1,8 @@
--- 暖陽貓閣「管理者」（Chuck 2026-10-18：管理者只有他一個，不用帳號，輸入管理者密碼就能登入）。
--- 管理者頁面 web/admin/ 用這裡的函式看所有玩家、所有貓閣的問題回報，還能送錢給玩家（Chuck：只能送錢，不限金額）。
--- 這個 repo 是公開的，所以密碼不放在網頁或 repo 裡：管理者是一個專用的 Supabase auth user
--- （email catloft-admin@catloft.player，2026-10-18 建立），密碼由 Supabase 登入檢查；
--- 網頁只送「這個 email + 輸入的密碼」去登入，是不是管理者在這裡比對登入的 auth user id。
--- 遊戲帳號的 email 都是 u<hex>@catloft.player，不會撞到這個 email。
+-- 暖陽貓閣「管理者」。
+-- 2026-10-22 Chuck：「把最高管理者帳號設定成她跟我」= 遊戲帳號 chency0311（女兒）和 chuck（Chuck）。
+-- 管理者頁面 web/admin/ 用遊戲帳號名稱 + 密碼登入（跟遊戲裡「用帳號登入」一樣，名稱轉成 u<hex>@catloft.player），
+-- 是不是管理者在這裡比對登入的 auth user id。網頁和 repo 裡都沒有密碼，密碼由 Supabase 登入檢查。
+-- （2026-10-18 到 10-22 用的是只輸入密碼的專用帳號 catloft-admin@catloft.player，auth user 43ac8a2b-…，現在已經不是管理者。）
 --   catloft_is_admin        我是不是管理者
 --   catloft_admin_players   所有玩家（從存檔讀出現金、粉絲、累計營收…）
 --   catloft_admin_feedback  所有貓閣的問題回報（feedback 表裡 context.game = 'catloft' 的）
@@ -12,7 +11,9 @@
 
 create or replace function public.catloft_is_admin() returns boolean
 language sql stable security definer set search_path to 'public', 'pg_temp'
-as $$ select coalesce(auth.uid() = '43ac8a2b-fee8-4c7b-8529-4db15f9fc5a8'::uuid, false) $$;
+as $$ select coalesce(auth.uid() in ('82dee961-2afc-4e75-98ac-a10c3eecbac6'::uuid,   -- chency0311
+                                      '6054179f-46b7-449c-a902-7701225c4a98'::uuid),  -- chuck
+                     false) $$;
 
 -- 存檔碼 CAT-<base64 的 JSON>-<checksum>；壞掉的存檔回 null，不讓一筆壞資料拖垮整個列表
 create or replace function public.catloft_save_json(p_code text) returns jsonb
@@ -118,11 +119,11 @@ revoke all on function public.catloft_is_admin(), public.catloft_save_json(text)
 grant execute on function public.catloft_is_admin(), public.catloft_admin_players(), public.catloft_admin_feedback(),
   public.catloft_admin_gift(uuid, jsonb, text), public.catloft_admin_gifts(), public.catloft_my_gifts(), public.catloft_claim_gifts(bigint[]) to authenticated;
 
--- 2026-10-18 Chuck：「最高管理者要調自己的什麼都可以」。管理者自己的遊戲帳號 = chuck（6054179f-…）。
+-- 2026-10-18 Chuck：「最高管理者要調自己的什麼都可以」。「自己」= 登入管理者頁面的那個遊戲帳號（chency0311 或 chuck）。
 -- 調整也走禮物這條路（gift = {set:{...}}），遊戲開著的時候也會馬上收到，不會被遊戲裡舊的存檔蓋回去。
 create or replace function public.catloft_admin_self() returns uuid
-language sql immutable set search_path to 'public', 'pg_temp'
-as $$ select '6054179f-46b7-449c-a902-7701225c4a98'::uuid $$;
+language sql stable security definer set search_path to 'public', 'pg_temp'
+as $$ select case when public.catloft_is_admin() then auth.uid() end $$;
 
 create or replace function public.catloft_admin_edit(p_set jsonb)
 returns bigint
