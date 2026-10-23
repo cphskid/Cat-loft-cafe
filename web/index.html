@@ -192,6 +192,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   <div class="rbtns">
     <button class="rb" id="phoneBtn" aria-label="店長手機">手機<span class="badge sm" id="phoneBadge" hidden>!</span></button>
     <button class="rb" id="floorBtn"><span id="floorLbl">去 2F</span><span class="badge sm" id="floorBadge" hidden>!</span></button>
+    <button class="rb" id="floorBtn2" hidden><span id="floorLbl2">去 3F</span><span class="badge sm" id="floorBadge2" hidden>!</span></button>
     <button class="rb" id="pauseBtn">暫停</button>
     <button class="rb" id="speedBtn" aria-label="遊戲速度">1×</button>
   </div>
@@ -382,7 +383,7 @@ let CUSHION_EXTRA = [{ x: 520, y: 546 }, { x: 578, y: 594 }];
 let BAR_SEATS = [{ x: 892, y: 506 }, { x: 946, y: 506 }];
 let BEANBAG_SEATS = [{ x: 196, y: 590 }, { x: 262, y: 598 }];
 let HAMMOCK_SEATS = [{ x: 880, y: 526 }, { x: 932, y: 526 }];
-const SHOWCASE = { x: 160, y: 556 }, WALLWALK = { x: 82, y: 304 }; let MURAL = { x: 918, y: 442 };
+let SHOWCASE = { x: 160, y: 556 }, WARMER = { x: 401, y: 366 }; const WALLWALK = { x: 82, y: 304 }; let MURAL = { x: 918, y: 442 };
 const furnCushions = () => [...(hasF('cushion') ? CUSHION_EXTRA : []), ...(hasF('beanbag') ? BEANBAG_SEATS.map(p => ({ ...p, kind: 'beanbag', lift: 12 })) : []), ...(hasF('hammock') ? HAMMOCK_SEATS.map(p => ({ ...p, kind: 'hammock', lift: 30 })) : [])];
 const furnSeats = id => id === 'bar' ? BAR_SEATS.map(p => ({ ...p, bar: true, cust: null, dirty: false, busy: false })) : [];
 const LAND_GOAL = 100000;
@@ -482,6 +483,7 @@ const SOFA_SEATS = [{ x: 440, y: 520 }, { x: 505, y: 520 }, { x: 570, y: 520 }, 
 const COFFEE = { x: 850, y: 512 };
 // the floor button cycles through this shop's floors (1F, 2F, and the rooftop in the second shop)
 const nextFloor = () => { const fl = floorsHere(), i = fl.indexOf(S.view); return i < 0 ? 2 : fl[(i + 1) % fl.length]; };
+const floorChoices = () => { const fl = floorsHere(); return fl.includes(S.view) ? fl.filter(f => f !== S.view) : [nextFloor()]; };
 const otherFloor = () => floorsHere().filter(f => f !== S.view).find(f => floorAlerts(f).length) || nextFloor();
 let BEDS = {
   orange: { f: 2, x: 206, y: 230, ground: { x: 236, y: 522 } },
@@ -636,7 +638,7 @@ const cost = n => Math.round(n * costMul());
 // staff-room door) so the same walking routes work, and adds room on the right: every table sits right of the counter,
 // the back of 1F opens onto the courtyard (x > OUT_X), and stairs at the right end of 2F lead up to the rooftop garden (floor 4).
 const LAYOUTS = {
-  1: { FW: { 1: 960, 2: 960, 3: 960 }, PROP, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, MAX_TABLES, EXPANSIONS, TABLE_CAPS, CUSHION_POS, BEDS, EXTRA_BEDS,
+  1: { FW: { 1: 960, 2: 960, 3: 960 }, PROP, SHOWCASE, WARMER, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, MAX_TABLES, EXPANSIONS, TABLE_CAPS, CUSHION_POS, BEDS, EXTRA_BEDS,
        OUT_X: 99999, catCap: (lv, ex) => 3 + lv + ex, WINDOWS: { 1: [[904, 40, 56, 430]], 2: [[660, 80, 210, 330]] }, RUG: { x: 770, rx: 200 } },
   2: { FW: { 1: 1440, 2: 1440, 3: 960, 4: 1440 },
        PROP: { plant: { x: 1062, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 1210, y: 480 }, plantAlt: { x: 1062, y: 480 } },
@@ -645,6 +647,8 @@ const LAYOUTS = {
        BEANBAG_SEATS: [{ x: 735, y: 518 }, { x: 955, y: 518 }],
        HAMMOCK_SEATS: [{ x: 1150, y: 516 }, { x: 1232, y: 520 }],
        MURAL: { x: 1000, y: 442 },
+       // the bigger room: the dessert showcase stands against the wall between the restroom and the window, the warmer sits on the counter
+       SHOWCASE: { x: 886, y: 484 }, WARMER: { x: 543, y: 418 },
        // two indoor and two courtyard tables to start with; outdoor ones close when it rains
        TABLE_POS: [{ x: 720, y: 526 }, { x: 860, y: 526 }, { x: 1272, y: 526 }, { x: 1400, y: 526 }, { x: 720, y: 596 }, { x: 860, y: 596 }, { x: 1272, y: 596 }, { x: 1400, y: 596 }, { x: 1000, y: 526 }, { x: 1000, y: 596 }],
        MAX_TABLES: 10, TABLE_CAPS: [6, 8, 10],
@@ -677,8 +681,8 @@ let LAYOUT = LAYOUTS[1], OUT_X = 99999;
 // switch every floor-plan constant over to shop `id`
 function applyLayout(id) {
   const L = LAYOUT = LAYOUTS[id] || LAYOUTS[1];
-  ({ PROP, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, MAX_TABLES, EXPANSIONS, TABLE_CAPS, CUSHION_POS, BEDS, EXTRA_BEDS, OUT_X } = L);
-  if (id === 2) for (const n of ['s2bg1', 's2bg2', 's2bg4', ...GUESTS2.map(c => c + '_0'), ...Object.keys(ROLES).map(r => 's2' + r + '_0')]) art(n);
+  ({ PROP, SHOWCASE, WARMER, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, MAX_TABLES, EXPANSIONS, TABLE_CAPS, CUSHION_POS, BEDS, EXTRA_BEDS, OUT_X } = L);
+  if (id === 2) for (const n of ['s2bg1', 's2bg2', 's2bg4', ...GUESTS2.map(c => c + '_0'), ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's2' + r + '_0')]) art(n);
   prerender();
 }
 const fw = f => LAYOUT.FW[f] || 960; // width of floor f in the current shop
@@ -719,10 +723,13 @@ const ROLES = {
   cashier: { name: '阿哲', title: '櫃檯人員',   wage: 90,  desc: '站在吧檯幫排隊的客人點餐、收錢',           apron: '#A7B5D6', hair: '#3E2C23', shirt: '#F4F0E8', home: { f: 1, ...CASHIER_SPOT } },
   feeder:  { name: '小芸', title: '餵食人員',   wage: 80,  desc: '顧好 2F 的貓碗和貓砂盆（要有貓糧、貓砂）', apron: '#E3AE97', hair: '#4C3A30', shirt: '#FFFFFF', home: { f: 2, x: 372, y: 528 }, long: true },
   sitter:  { name: '阿凱', title: '逗貓人員',   wage: 80,  desc: '叫醒睡飽的貓，帶貓去陪 2F 的客人',         apron: '#D8C27A', hair: '#A0703F', shirt: '#F4F0E8', home: { f: 2, x: 760, y: 520 } },
+  // 貓咪庭院 only: the room is big enough for a second server (a player asked for one, 2026-10-23); she wears the first shop's uniform
+  server2: { name: '小柔', title: '庭院送餐人員', wage: 100, desc: '庭院比較大，跟另一位上收餐人員一起送餐、收桌子、打掃洗手間', apron: '#9FB8AD', hair: '#6B4A3A', shirt: '#FFFFFF', home: { f: 1, x: 1060, y: 560 }, long: true, only: 2 },
 };
+const rolesHere = () => Object.keys(ROLES).filter(r => !ROLES[r].only || ROLES[r].only === G.at);
 // 貓咪庭院 hires its own crew: same jobs, different people (sprites s2cook ...)
-const ROLES2 = { cook: '阿翔', server: '小葵', cashier: '阿德', feeder: '小綠', sitter: '阿樂' };
-const staffDef = (role, at = G ? G.at : 1) => at === 2 ? { ...ROLES[role], name: ROLES2[role], spr: 's2' + role, desc: role === 'feeder' ? '顧好 2F 的貓碗和貓砂盆，也會上頂樓菜園種菜、澆水、收成' : ROLES[role].desc } : { ...ROLES[role], spr: role };
+const ROLES2 = { cook: '阿翔', server: '小葵', cashier: '阿德', feeder: '小綠', sitter: '阿樂', server2: '小柔' };
+const staffDef = (role, at = G ? G.at : 1) => at === 2 ? { ...ROLES[role], name: ROLES2[role], spr: role === 'server2' ? 'server' : 's2' + role, desc: role === 'feeder' ? '顧好 2F 的貓碗和貓砂盆，也會上頂樓菜園種菜、澆水、收成' : ROLES[role].desc } : { ...ROLES[role], spr: role };
 const roleName = role => (G && G.hired && G.hired[role] ? G.hired[role].name : staffDef(role).name);
 // ---- job interviews: the manager picks who to hire; a poor pick works slowly and fewer guests come in (fans never drop)
 const HIRE_FEE = [9000, 12000];
@@ -816,7 +823,7 @@ const SHIFTS = {
 const SHIFT_SPLIT = 840; // 14:00, the morning shift goes home and the evening shift comes in
 const BREAK_HOURS = [10, 11, 12, 13, 15, 16, 17, 18, 19];
 // two people share each default break, so the break room is never empty for long
-const DEFAULT_SCHED = { cook: { shift: 'all', brk: 15 }, server: { shift: 'all', brk: 13 }, cashier: { shift: 'all', brk: 16 }, feeder: { shift: 'all', brk: 13 }, sitter: { shift: 'all', brk: 15 } };
+const DEFAULT_SCHED = { cook: { shift: 'all', brk: 15 }, server: { shift: 'all', brk: 13 }, cashier: { shift: 'all', brk: 16 }, feeder: { shift: 'all', brk: 13 }, sitter: { shift: 'all', brk: 15 }, server2: { shift: 'all', brk: 14 } };
 const schedOf = role => ({ ...DEFAULT_SCHED[role], ...(G.sched[role] || {}) });
 const breakFits = (shift, h) => shift === 'all' || (shift === 'am' && h * 60 < SHIFT_SPLIT) || (shift === 'pm' && h * 60 >= SHIFT_SPLIT);
 const todayShift = role => (S && S.staff.find(s => s.role === role) || schedOf(role)).shift;
@@ -1982,9 +1989,10 @@ function drawFurn1() {
     if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; }
   }
   if (hasF('warmer')) { // warm glass box on top of the oven cabinet
-    if (!propArt('warmer', 401, 366, 54)) { rrect(376, 330, 50, 36, 5, 'rgba(255,226,180,.85)', INK, 1.3); line(376, 348, 426, 348, INK, .8); }
-    for (const d of DISHES.slice(0, 3)) if ((S.display[d] || 0) > 0) { drawDish(d, 388 + DISHES.indexOf(d) * 13, 342, .45); }
-    text('保溫', 401, 360, 9, '#B07E52', 'center', FONT, 700);
+    const { x, y } = WARMER;
+    if (!propArt('warmer', x, y, 54)) { rrect(x - 25, y - 36, 50, 36, 5, 'rgba(255,226,180,.85)', INK, 1.3); line(x - 25, y - 18, x + 25, y - 18, INK, .8); }
+    for (const d of DISHES.slice(0, 3)) if ((S.display[d] || 0) > 0) { drawDish(d, x - 13 + DISHES.indexOf(d) * 13, y - 24, .45); }
+    text('保溫', x, y - 6, 9, '#B07E52', 'center', FONT, 700);
   }
   if (hasF('sign')) { // light box on the wall by the entrance
     g.globalAlpha = .35 + Math.sin(S.t * 2) * .1; ell(34, 352, 46, 34, '#FFE7A8'); g.globalAlpha = 1;
@@ -2585,7 +2593,7 @@ function findJob(s) {
       if (S.display[d] >= (unlockedDishes().length > 2 ? 3 : 4)) return null;
       return bakeTask(d);
     }
-    case 'server': {
+    case 'server': case 'server2': {
       const c = S.customers.find(c => c.state === 'waitFood' && !c.assigned && S.display[c.order.dish] > 0);
       if (c) return serveTask(c, SERVER_PICK);
       const t = S.tables.find(t => t.dirty && !t.busy);
@@ -3393,6 +3401,7 @@ const STAFF_CHATS = {
     [['s', '店長，我想幫貓咪辦一場運動會！'], ['m', '比賽項目是什麼？'], ['s', '比誰睡得最久'], ['m', '那橘子一定冠軍']],
   ],
 };
+STAFF_CHATS.server2 = STAFF_CHATS.server.map(c => c.map(([w, t]) => [w, t.replace('小美', '小柔')]));
 // tapping a staff member walks the manager over first, then they talk
 function walkChat(s) { const side = S.mgr.floor === s.floor && S.mgr.x > s.x ? 60 : -60; addTask(`跟${s.name}聊天`, [{ pos: () => ({ f: s.floor, x: s.x + side, y: s.y + 4 }), dur: 0, fn: () => { if (!s.hidden && !s.resting) actChatStaff(s); } }]); }
 function actChatStaff(s) {
@@ -3909,9 +3918,13 @@ function hudTick(dt) {
 }
 function updateButtons() {
   if (!S) return;
-  const other = nextFloor(), fb = $('floorBtn');
-  $('floorLbl').textContent = `去 ${fname(other)}`; fb.setAttribute('aria-label', other === 2 ? '前往 2F 貓咪閣樓' : other === 4 ? '前往 3F 頂樓菜園' : '回到 1F 店面');
-  const a = floorAlerts(other); $('floorBadge').hidden = !a.length; fb.title = a.join('、');
+  // one button per other floor: the courtyard shop has three, so 1F, 2F and 3F each reach both of the others directly
+  const to = floorChoices();
+  ['', '2'].forEach((n, i) => {
+    const f = to[i], fb = $('floorBtn' + n); fb.hidden = f == null; if (f == null) return;
+    fb.dataset.f = f; $('floorLbl' + n).textContent = `去 ${fname(f)}`; fb.setAttribute('aria-label', f === 2 ? '前往 2F 貓咪閣樓' : f === 4 ? '前往 3F 頂樓菜園' : '回到 1F 店面');
+    const a = floorAlerts(f); $('floorBadge' + n).hidden = !a.length; fb.title = a.join('、');
+  });
   const of = otherFloor(), oa = floorAlerts(of), fa = $('floorAlert');
   fa.hidden = !started || S.phase === 'settle' || !oa.length; if (oa.length) { fa.dataset.f = of; $('floorAlertTxt').textContent = `${fname(of)}：${oa[0]}`; }
   $('openBtn').hidden = S.phase !== 'prep';
@@ -3923,13 +3936,15 @@ function updateButtons() {
 // the day-1 guide lives in tutorial.js
 function renderTutorial() { $('tipsTab').hidden = true; if (window.TUT) TUT.render(); }
 $('openBtn').onclick = () => { if (S.phase !== 'prep') return; S.phase = 'open'; S.time = 480; S.lastHour = 8; sfx('open_shop'); toast('08:00 開門營業！'); updateButtons(); };
-$('floorBtn').onclick = () => {
-  const m = S.mgr, to = nextFloor();
+function goFloor(to) {
+  const m = S.mgr;
   S.view = to; updateButtons();
-  // an idle manager walks to the floor you switch to
-  if (!started || S.phase === 'settle' || m.task || S.tasks.length || m.climb) return;
-  if (m.floor !== to) walkToFloor(to);
-};
+  // an idle manager walks to the floor you switch to; one already on the stairs turns toward the new floor
+  if (!started || S.phase === 'settle' || m.task || S.tasks.length) return;
+  if (m.floor !== to || m.climb) walkToFloor(to);
+}
+$('floorBtn').onclick = () => goFloor(+$('floorBtn').dataset.f || nextFloor());
+$('floorBtn2').onclick = () => goFloor(+$('floorBtn2').dataset.f);
 $('speedBtn').onclick = () => { S.speed = S.speed === 1 ? 2 : 1; updateButtons(); };
 $('pauseBtn').onclick = togglePause;
 function togglePause() { if (S.phase === 'settle') return; S.paused = !S.paused; updateButtons(); }
@@ -4086,7 +4101,7 @@ function renderPhone() {
             ${seen ? IV_Q.map((qq, j) => `<div class="sub"><b>店長：</b>${qq}<br><b>${a.name}：</b>「${a.ans[j]}」</div>`).join('') : ''}
             <div class="row" style="margin:0">${seen ? `<button class="primary" data-hire="${ivRole}:${a.i}" ${blocked || S.phase === 'settle' || G.cash < a.fee ? 'disabled' : ''}>${G.cash < a.fee ? '錢不夠' : '錄用'}</button>` : `<button class="primary" data-iv="${k}">面試</button>`}</div></div>`;
         }
-      } else for (const [id, R] of Object.entries(ROLES)) {
+      } else for (const id of rolesHere()) { const R = ROLES[id];
         const has = G.staff.includes(id), hi = has && hireInfo(id);
         h += `<div class="item"><div class="top"><span class="nm">${has ? (hi ? hi.name : staffDef(id).name) + '・' : ''}${R.title}</span><b>日薪 ${yen(R.wage)}</b></div><div class="sub">${staffDef(id).desc}${hi ? `<br>工作表現：${IV_NOTE[hi.tier]}` : ''}</div>
           ${has ? schedHtml(id) : `<div class="sub">雇用費 ${yen(HIRE_FEE[0])}～${yen(HIRE_FEE[1])}，要先面試</div>`}

@@ -56,7 +56,7 @@
 
   const hhmm = t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
   const fans = n => { G.fans += n; S.today.fans += n; return `粉絲 +${n}`; };
-  const missing = () => Object.keys(ROLES).filter(r => !S.staff.some(s => s.role === r && !s.away));
+  const missing = () => Object.keys(ROLES).filter(r => !ROLES[r].only).filter(r => !S.staff.some(s => s.role === r && !s.away));
   const MISS_NOTE = { cashier: '客人點餐要排隊等你回來', cook: '點心賣完就沒有人補', server: '餐點要等客人自己來拿…其實是等你回來送', feeder: '貓碗和貓砂盆沒人顧', sitter: '睡著的貓沒人叫醒' };
 
   function can() {
