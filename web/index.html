@@ -222,7 +222,8 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
-      <li><b>分店</b>：每天選一家店去上班，沒去的店由員工照常營業，營業額照算。貓咪可以在喵喵家族調到不同的店（暖陽貓閣最多 7 隻、貓咪庭院最多 15 隻）。下雨天庭院座位會暫停。</li>
+      <li><b>分店</b>：每天選一家店去上班，沒去的店由員工照常營業，營業額照算。貓咪可以在喵喵家族調到不同的店（暖陽貓閣最多 7 隻、貓咪庭院最多 15 隻、貓咪室內樂園最多 24 隻）。下雨天庭院座位會暫停。</li>
+      <li><b>貓咪室內樂園</b>：開了貓咪庭院之後，存到 ¥1,000,000 就能在「分店地圖」開第三家店。傳統皇宮風格的五層樓：1F 接待客人、2F 貓咪玩具館（在「商店」的「玩具」買玩具擺上去）、3F 和 4F 是接客區、5F 是員工休息區，累了的貓也會上去睡。店長要走樓梯；在「我的店」可以加裝員工專用電梯。開張後喵喵家族多了「送養」，新家會寄感謝信來。</li>
       <li><b>貓咪親密度</b>：店長每摸一次頭，那隻貓的親密度 +1（名字下面的愛心數字）。到 10、25、45、70、100 會解鎖蹭蹭腳、擊掌、翻肚子、抱抱、碰鼻子，點貓咪就能選。</li>
       <li><b>收銀台</b>：店長幫客人點餐時要自己找錢，點錢幣和鈔票放進找零盤，再按「找錢給客人」。少找客人會不開心，多找會虧錢。</li>
       <li>貓咪頭上出現「摸摸我」時，走過去摸牠會很開心，會更常去陪客人玩；放著不理牠會鬧脾氣一陣子。手機的「喵音樂」可以換背景音樂。</li>
@@ -420,6 +421,21 @@ const SHOP = [
   { id: 'garden',  name: '新鮮蔬果', desc: '一箱 5 份草莓、薄荷和南瓜，做庭院餐點用（頂樓菜園自己種不用錢）', price: 80, amt: 5, unit: '份', shop: 2 },
 ];
 // 商店「道具」: `keep` ones stay forever (saved in G.furn like furniture), the others only last for today (S.buff)
+// 貓咪室內樂園's 2F toy hall: toys you buy stand on 2F; guests come to look at them and cats go there to play.
+// Each toy brings 5% more guests and one more place on 2F for a loft guest to watch from. Prices are before the shop's ×3.
+const TOYS = {
+  toySpin:   { name: '羽毛轉轉樂',   img: 'toy_spin',   price: 6000,  lv: 1, x: 860,  y: 492, w: 80,  seat: { x: 850, y: 522 }, desc: '一轉起來羽毛就飛，貓咪追著跑' },
+  toyTunnel: { name: '彩虹貓隧道',   img: 'toy_tunnel', price: 10000, lv: 1, x: 1130, y: 600, w: 160, seat: { x: 1232, y: 594 }, desc: '長長的彩虹布隧道，貓咪鑽進鑽出' },
+  toyBalls:  { name: '鈴鐺滾球塔',   img: 'toy_balls',  price: 8000,  lv: 2, x: 1010, y: 492, w: 76,  seat: { x: 1100, y: 532 }, desc: '三層軌道裡的小球叮叮噹噹' },
+  toySofa:   { name: '貓抓板沙發',   img: 'toy_sofa',   price: 13000, lv: 3, x: 560,  y: 600, w: 130, seat: { x: 476, y: 596 }, desc: '紙做的小沙發，可以抓也可以睡' },
+  toyCastle: { name: '紙箱城堡',     img: 'toy_castle', price: 20000, lv: 4, x: 1310, y: 600, w: 140, seat: { x: 1200, y: 560 }, desc: '有塔樓和小窗戶的紙箱城堡，貓咪的秘密基地' },
+  toyTower:  { name: '皇宮貓跳台',   img: 'toy_tower',  price: 30000, lv: 5, x: 700,  y: 492, w: 120, seat: { x: 620, y: 528 }, desc: '金色屋頂的皇宮造型貓跳台，客人最愛拍照' },
+};
+const TOY_IDS = Object.keys(TOYS);
+const toysHere = () => G.at === 3 ? (G.toys || []).filter(t => TOYS[t]) : [];
+const toySeats = () => toysHere().map(t => ({ ...TOYS[t].seat, toy: t }));
+const toyFlow = () => 1 + .05 * toysHere().length;
+const ELEV_PRICE = 300000; // the staff elevator of 貓咪室內樂園 (bought in 我的店)
 const TOOLS = {
   wand:   { name: '逗貓棒',       price: 150, lv: 1, keep: true, desc: '店長摸貓時，親密度每次多 +1' },
   lucky:  { name: '招財貓擺飾',   price: 400, lv: 2, keep: true, desc: '擺在收銀台旁，給 5 星的客人有機會留下 ¥10 小費' },
@@ -483,7 +499,11 @@ const SOFA_SEATS = [{ x: 440, y: 520 }, { x: 505, y: 520 }, { x: 570, y: 520 }, 
 const COFFEE = { x: 850, y: 512 };
 // the floor button cycles through this shop's floors (1F, 2F, and the rooftop in the second shop)
 const nextFloor = () => { const fl = floorsHere(), i = fl.indexOf(S.view); return i < 0 ? 2 : fl[(i + 1) % fl.length]; };
-const floorChoices = () => { const fl = floorsHere(); return fl.includes(S.view) ? fl.filter(f => f !== S.view) : [nextFloor()]; };
+// 貓咪室內樂園 has five floors: the two buttons go one floor down and one floor up
+const floorChoices = () => {
+  if (LAYOUT.STACK) { const st = LAYOUT.STACK, i = st.indexOf(S.view); return [st[i - 1], st[i + 1]].filter(f => f != null); }
+  const fl = floorsHere(); return fl.includes(S.view) ? fl.filter(f => f !== S.view) : [nextFloor()];
+};
 const otherFloor = () => floorsHere().filter(f => f !== S.view).find(f => floorAlerts(f).length) || nextFloor();
 let BEDS = {
   orange: { f: 2, x: 206, y: 230, ground: { x: 236, y: 522 } },
@@ -630,6 +650,8 @@ let EXTRA_BEDS = [
 const SHOP_DEFS = {
   1: { name: '暖陽貓閣', cats: 7, cost: 1, sale: 1, desc: '巷子裡的雙層貓咪咖啡廳，一切開始的地方' },
   2: { name: '貓咪庭院', cats: 15, cost: 2, sale: 1.5, price: 100000, desc: '三層樓的大店：一樓後面有露天庭院、二樓是更大的貓閣、三樓是頂樓菜園。流浪貓常來庭院晃晃' },
+  // the third shop (Chuck, 2026-10-24): opens once you own 貓咪庭院 (need) and have the cash; no stray, no garden, all indoors
+  3: { name: '貓咪室內樂園', cats: 24, cost: 3, sale: 2, price: 1000000, need: 2, desc: '傳統皇宮風格的五層樓：1F 接待客人、2F 貓咪玩具館、3F 和 4F 是接客區、5F 員工休息區（累了的貓也會上去睡）。員工專用電梯可以之後加裝' },
 };
 const shopDef = (at = G ? G.at : 1) => SHOP_DEFS[at] || SHOP_DEFS[1];
 const costMul = () => shopDef().cost;
@@ -670,6 +692,54 @@ const LAYOUTS = {
        ],
        OUT_X: 1110, catCap: (lv, ex) => 4 + lv * 2 + ex,
        WINDOWS: { 1: [[930, 206, 140, 180]], 2: [[660, 80, 210, 330], [1090, 90, 130, 300]] }, RUG: { x: 845, rx: 240 } },
+  // 貓咪室內樂園: five floors stacked up. 1F and 2F keep the first shop's left half (stairs, oven, counter, bowl, litter) so the
+  // same walking routes work; the staff elevator stands where 2F's staff-room door was (and behind the 1F counter).
+  // Floor ids: 1 = 1F, 2 = 2F toy hall, 5 = 3F, 6 = 4F, 3 = 5F staff rest area (the staff room keeps id 3 everywhere).
+  // A switchback stair: 2F up at the right end -> 3F, 3F up at the left end -> 4F, 4F up at the right end -> 5F's door.
+  3: { FW: { 1: 1440, 2: 1440, 3: 960, 5: 1440, 6: 1440 },
+       STACK: [1, 2, 5, 6, 3],
+       LINKS: [
+         { a: 1, b: 2, pts: [{ f: 1, ...STAIRS[1] }, { f: 1, ...STAIR_BOTTOM }, { f: 1, ...STAIR_TOP }, { f: 2, ...WELL_2F }, { f: 2, ...STAIRS[2] }] },
+         { a: 2, b: 5, pts: [{ f: 2, x: 1384, y: 500 }, { f: 5, x: 1240, y: 540 }] },
+         { a: 5, b: 6, pts: [{ f: 5, x: 90, y: 506 }, { f: 6, x: 200, y: 540 }] },
+         { a: 6, b: 3, pts: [{ f: 6, x: 1384, y: 500 }, { f: 3, ...ROOM_IN }] },
+       ],
+       ELEV: { 1: { x: 565, y: 482 }, 2: { x: 563, y: 494 }, 5: { x: 868, y: 494 }, 6: { x: 563, y: 494 }, 3: { x: 262, y: 506 } },
+       PROP: { plant: { x: 1062, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 1210, y: 480 }, plantAlt: { x: 1062, y: 480 } },
+       CUSHION_EXTRA: [{ x: 1090, y: 586 }, { x: 1190, y: 592 }],
+       BAR_SEATS: [{ x: 1150, y: 506 }, { x: 1204, y: 506 }],
+       BEANBAG_SEATS: [{ x: 735, y: 518 }, { x: 955, y: 518 }],
+       HAMMOCK_SEATS: [{ x: 1150, y: 516 }, { x: 1232, y: 520 }],
+       MURAL: { x: 760, y: 442 },
+       SHOWCASE: { x: 886, y: 484 }, WARMER: { x: 543, y: 418 },
+       // Chuck's sketch: seats on both sides of the counter (the front row left of it, the room right of it), 10 tables in all
+       TABLE_POS: [{ x: 720, y: 526 }, { x: 870, y: 526 }, { x: 262, y: 596 }, { x: 382, y: 596 }, { x: 1020, y: 526 }, { x: 780, y: 596 }, { x: 502, y: 596 }, { x: 940, y: 596 }, { x: 1300, y: 526 }, { x: 1100, y: 596 }],
+       MAX_TABLES: 10, TABLE_CAPS: [6, 7, 8, 9, 10],
+       // four expansions (the other shops have two); each opens more seats upstairs on 3F (5) or 4F (6)
+       EXPANSIONS: [
+         { lv: 2, price: 200000, name: '3F 擺上屏風雅座', desc: '1F 多 1 張桌子的位置、3F 多 2 個坐墊、多 2 隻貓的位置，客人上門速度 ×1.15', cushions: [{ f: 5, x: 920, y: 586 }, { f: 5, x: 1040, y: 546 }], flow: 1.15 },
+         { lv: 3, price: 400000, name: '4F 鋪上龍鳳地毯', desc: '1F 再多 1 張桌子的位置、4F 多 2 個坐墊、再多 2 隻貓的位置，客人上門速度 ×1.3', cushions: [{ f: 6, x: 500, y: 600 }, { f: 6, x: 1180, y: 556 }], flow: 1.3 },
+         { lv: 5, price: 700000, name: '掛滿宮燈、打通 3F 側廳', desc: '1F 再多 1 張桌子的位置、3F 再多 2 個坐墊、再多 2 隻貓的位置，客人上門速度 ×1.45', cushions: [{ f: 5, x: 1160, y: 586 }, { f: 5, x: 360, y: 586 }], flow: 1.45 },
+         { lv: 7, price: 1200000, name: '金色大殿：4F 貴賓席', desc: '1F 再多 1 張桌子的位置、4F 再多 2 個坐墊、再多 2 隻貓的位置，客人上門速度 ×1.6', cushions: [{ f: 6, x: 680, y: 520 }, { f: 6, x: 1000, y: 520 }], flow: 1.6 },
+       ],
+       // loft guests sit on 2F, 3F and 4F
+       CUSHION_POS: [{ x: 680, y: 546 }, { x: 790, y: 586 }, { x: 900, y: 546 }, { x: 1010, y: 586 },
+         { f: 5, x: 560, y: 546 }, { f: 5, x: 680, y: 586 }, { f: 5, x: 800, y: 546 },
+         { f: 6, x: 600, y: 556 }, { f: 6, x: 760, y: 586 }, { f: 6, x: 920, y: 556 }, { f: 6, x: 1080, y: 586 }],
+       BEDS: {},
+       EXTRA_BEDS: [ // cat tree and shelves as in the first shop; the 5F ones (f: 3) are where tired cats go up to sleep
+         { f: 2, x: 206, y: 230, ground: { x: 236, y: 522 } }, { f: 2, x: 452, y: 206, ground: { x: 452, y: 508 } }, { f: 2, x: 338, y: 144, ground: { x: 338, y: 520 } },
+         { f: 3, x: 210, y: 160, ground: { x: 220, y: 540 } }, { f: 1, x: 112, y: 96, ground: { x: 168, y: 528 } }, { f: 6, x: 200, y: 196, ground: { x: 200, y: 522 } },
+         { f: 5, x: 300, y: 496, ground: { x: 300, y: 514 }, basket: '#D8C2A0' }, { f: 2, x: 210, y: 334, ground: { x: 250, y: 524 } }, { f: 3, x: 880, y: 584, ground: { x: 880, y: 590 }, basket: '#E3B7A0' },
+         { f: 6, x: 420, y: 196, ground: { x: 420, y: 522 } }, { f: 2, x: 352, y: 496, ground: { x: 352, y: 514 }, basket: '#D8C2A0' }, { f: 5, x: 1000, y: 494, ground: { x: 1000, y: 512 }, basket: '#C9A27E' },
+         { f: 1, x: 36, y: 186, ground: { x: 170, y: 520 } }, { f: 3, x: 300, y: 160, ground: { x: 300, y: 540 } }, { f: 6, x: 1150, y: 494, ground: { x: 1150, y: 512 }, basket: '#C9A27E' },
+         { f: 2, x: 566, y: 122, ground: { x: 566, y: 512 } }, { f: 2, x: 640, y: 494, ground: { x: 640, y: 512 }, basket: '#C9A27E' }, { f: 5, x: 1200, y: 494, ground: { x: 1200, y: 512 }, basket: '#B8C4B0' },
+         { f: 1, x: 1040, y: 494, ground: { x: 1040, y: 512 }, basket: '#C9A27E' }, { f: 6, x: 380, y: 500, ground: { x: 380, y: 516 }, basket: '#E3C9A0' }, { f: 2, x: 1065, y: 494, ground: { x: 1065, y: 512 }, basket: '#B8C4B0' },
+         { f: 5, x: 640, y: 494, ground: { x: 640, y: 512 }, basket: '#E3C9A0' }, { f: 1, x: 1300, y: 492, ground: { x: 1300, y: 510 }, basket: '#B8C4B0' }, { f: 2, x: 850, y: 494, ground: { x: 850, y: 512 }, basket: '#D8C2A0' },
+         { f: 6, x: 800, y: 500, ground: { x: 800, y: 516 }, basket: '#D8C2A0' },
+       ],
+       OUT_X: 99999, catCap: (lv, ex) => 6 + lv * 2 + ex * 2,
+       WINDOWS: { 1: [[1170, 180, 200, 260]], 2: [[675, 100, 275, 310], [1020, 100, 250, 310]], 3: [[440, 140, 170, 195]], 5: [[575, 120, 135, 260], [236, 120, 135, 260]], 6: [[700, 150, 230, 225], [1015, 150, 230, 225]] }, RUG: { x: 845, rx: 240 } },
 };
 // rooftop garden (second shop): reached by the stairs at the right end of 2F; six planter boxes
 const ROOF_DOOR2 = { x: 1384, y: 500 }, ROOF_IN = { x: 1360, y: 540 };
@@ -683,21 +753,27 @@ function applyLayout(id) {
   const L = LAYOUT = LAYOUTS[id] || LAYOUTS[1];
   ({ PROP, SHOWCASE, WARMER, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, MAX_TABLES, EXPANSIONS, TABLE_CAPS, CUSHION_POS, BEDS, EXTRA_BEDS, OUT_X } = L);
   if (id === 2) for (const n of ['s2bg1', 's2bg2', 's2bg4', ...GUESTS2.map(c => c + '_0'), ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's2' + r + '_0')]) art(n);
+  if (id === 3) for (const n of [...shopArt(3), ...TOY_IDS.map(t => TOYS[t].img)]) art(n);
   prerender();
 }
+// painted floors and the crew's sprites a shop needs before it opens
+const shopArt = id => id === 2 ? ['s2bg1', 's2bg2', 's2bg4'] : id === 3 ? ['s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6', ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's3' + r + '_0')] : [];
 const fw = f => LAYOUT.FW[f] || 960; // width of floor f in the current shop
-const bgName = f => (G && G.at === 2 && f !== 3 ? 's2bg' : 'bg') + f; // painted background of floor f
+const bgName = f => (G && G.at === 3 ? 's3bg' : G && G.at === 2 && f !== 3 ? 's2bg' : 'bg') + f; // painted background of floor f
 // the highest level among your shops: the adoption centre and the wardrobe go by it
 const topLv = () => Math.max(...G.owned.map(id => shopLv(shopRec(id).exp)));
 // ---- weather: one per day (both shops share the sky); rain closes the courtyard seats and keeps cats off the roof
 const WX = { sun: { icon: '☀️', name: '晴天' }, cloud: { icon: '⛅', name: '多雲' }, rain: { icon: '🌧️', name: '下雨' } };
 const wxOf = day => { if (day <= 2) return 'sun'; const r = hash(day * 1.37, 91.7); return r < .2 ? 'rain' : r < .45 ? 'cloud' : 'sun'; };
-const wxFlow = (at = G.at, wx = S.wx) => wx === 'rain' ? (at === 2 ? .85 : .9) : wx === 'sun' && at === 2 ? 1.1 : 1;
+// 貓咪室內樂園 is all indoors: on a rainy day people come in out of the rain
+const wxFlow = (at = G.at, wx = S.wx) => wx === 'rain' ? (at === 2 ? .85 : at === 3 ? 1.1 : .9) : wx === 'sun' && at === 2 ? 1.1 : 1;
 // side rooms off 2F: the staff room (3) behind the curtain, and in the second shop the rooftop garden (4) up the stairs on the right
 const SIDE = { 3: { door: ROOM_DOOR2, inn: ROOM_IN }, 4: { door: ROOF_DOOR2, inn: ROOF_IN } };
 const isOut = t => t.x > OUT_X; // a courtyard seat
-const floorsHere = () => G && G.at === 2 ? [1, 2, 4] : [1, 2];
-const fname = f => f === 4 ? '3F' : f === 3 ? '休息室' : f + 'F'; // the rooftop is "3F" to players; the staff room keeps id 3
+// the floors guests and cats use (the staff room is not one of them; in 貓咪室內樂園 it is 5F, the top of the stack)
+const floorsHere = () => G && G.at === 3 ? [1, 2, 5, 6] : G && G.at === 2 ? [1, 2, 4] : [1, 2];
+const FNAME3 = { 1: '1F', 2: '2F', 5: '3F', 6: '4F', 3: '5F' };
+const fname = f => G && G.at === 3 ? FNAME3[f] : f === 4 ? '3F' : f === 3 ? '休息室' : f + 'F'; // the rooftop is "3F" to players; the staff room keeps id 3
 const dutyCap = () => Math.min(Object.keys(BEDS).length + EXTRA_BEDS.length, shopDef().cats, LAYOUT.catCap(shopLv(), G.expand));
 const onDuty = () => G.duty.filter(id => G.cats.some(c => c.id === id));
 function assignBeds(ids) {
@@ -724,12 +800,14 @@ const ROLES = {
   feeder:  { name: '小芸', title: '餵食人員',   wage: 80,  desc: '顧好 2F 的貓碗和貓砂盆（要有貓糧、貓砂）', apron: '#E3AE97', hair: '#4C3A30', shirt: '#FFFFFF', home: { f: 2, x: 372, y: 528 }, long: true },
   sitter:  { name: '阿凱', title: '逗貓人員',   wage: 80,  desc: '叫醒睡飽的貓，帶貓去陪 2F 的客人',         apron: '#D8C27A', hair: '#A0703F', shirt: '#F4F0E8', home: { f: 2, x: 760, y: 520 } },
   // 貓咪庭院 only: the room is big enough for a second server (a player asked for one, 2026-10-23); she wears the first shop's uniform
-  server2: { name: '小柔', title: '庭院送餐人員', wage: 100, desc: '庭院比較大，跟另一位上收餐人員一起送餐、收桌子、打掃洗手間', apron: '#9FB8AD', hair: '#6B4A3A', shirt: '#FFFFFF', home: { f: 1, x: 1060, y: 560 }, long: true, only: 2 },
+  server2: { name: '小柔', title: '庭院送餐人員', wage: 100, desc: '庭院比較大，跟另一位上收餐人員一起送餐、收桌子、打掃洗手間', apron: '#9FB8AD', hair: '#6B4A3A', shirt: '#FFFFFF', home: { f: 1, x: 1060, y: 560 }, long: true, only: [2, 3] },
 };
-const rolesHere = () => Object.keys(ROLES).filter(r => !ROLES[r].only || ROLES[r].only === G.at);
+const rolesHere = () => Object.keys(ROLES).filter(r => !ROLES[r].only || ROLES[r].only.includes(G.at));
 // 貓咪庭院 hires its own crew: same jobs, different people (sprites s2cook ...)
 const ROLES2 = { cook: '阿翔', server: '小葵', cashier: '阿德', feeder: '小綠', sitter: '阿樂', server2: '小柔' };
-const staffDef = (role, at = G ? G.at : 1) => at === 2 ? { ...ROLES[role], name: ROLES2[role], spr: role === 'server2' ? 'server' : 's2' + role, desc: role === 'feeder' ? '顧好 2F 的貓碗和貓砂盆，也會上頂樓菜園種菜、澆水、收成' : ROLES[role].desc } : { ...ROLES[role], spr: role };
+// 貓咪室內樂園's crew wear palace-style uniforms (sprites s3cook ...); its second server keeps the first shop's look
+const ROLES3 = { cook: '阿福', server: '小蓮', cashier: '阿文', feeder: '小桃', sitter: '阿寶', server2: '小雪' };
+const staffDef = (role, at = G ? G.at : 1) => at === 3 ? { ...ROLES[role], name: ROLES3[role], spr: role === 'server2' ? 'server' : 's3' + role, title: role === 'server2' ? '二號送餐人員' : ROLES[role].title, desc: role === 'server2' ? '店很大，跟另一位上收餐人員一起送餐、收桌子、打掃洗手間' : ROLES[role].desc } : at === 2 ? { ...ROLES[role], name: ROLES2[role], spr: role === 'server2' ? 'server' : 's2' + role, desc: role === 'feeder' ? '顧好 2F 的貓碗和貓砂盆，也會上頂樓菜園種菜、澆水、收成' : ROLES[role].desc } : { ...ROLES[role], spr: role };
 const roleName = role => (G && G.hired && G.hired[role] ? G.hired[role].name : staffDef(role).name);
 // ---- job interviews: the manager picks who to hire; a poor pick works slowly and fewer guests come in (fans never drop)
 const HIRE_FEE = [9000, 12000];
@@ -842,17 +920,17 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [],
-           at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [] };
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [],
+           at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
 // The shop you are working in today has those fields right on G, so the rest of the game never needs to know
 // which shop it is; the other shops wait in G.shops until you go there (loadShop).
-const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden'];
+const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden', 'toys', 'elev'];
 function freshShop(id) {
   const prices = {}; for (const k of ['loft', 'beans', 'treat', ...DISHES]) prices[k] = baseOf(k, id);
   return { exp: 0, furn: [], tables: 4, expand: 0, staff: [], hired: {}, sched: {}, duty: [], prices, stock: { flour: 10, food: 6, catfood: 3, litter: 3, beans: 0, treat: 10, garden: 10 },
-           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [] };
+           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [], toys: [], elev: false };
 }
 const shopRec = id => id === G.at ? G : G.shops[id];
 function loadShop(id) {
@@ -893,6 +971,11 @@ const BOND = [
   { at: 2500, title: '宇宙無敵好朋友' },
   { at: 5000, title: '喵生摯愛' },
   { at: 9999, title: '超越時空的家人' },
+  // four more (Chuck, 2026-10-24: "親密度可以更多"); bond belongs to the cat, so these count in every shop
+  { at: 15000, title: '皇宮御貓' },
+  { at: 25000, title: '喵界守護神' },
+  { at: 50000, title: '千年一遇的知己' },
+  { at: 99999, title: '永遠的喵星摯友' },
 ];
 const BOND_MAX = 99999;
 const bondOf = k => G.bond[k.id] || 0;
@@ -1178,6 +1261,8 @@ const BADGES = [
   { id: 'dress3',  icon: '👗', name: '愛打扮的店長', desc: '衣櫃裡有 3 套衣服',         ok: () => G.wardrobe.length >= 3 },
   { id: 'dressall', icon: '🎀', name: '時尚店長',  desc: '收集全部衣服',               ok: () => OUTFITS.every(o => o.ev || G.wardrobe.includes(o.id)) },
   { id: 'shop2',   icon: '🏡', name: '第二家店',   desc: '開了第二家店「貓咪庭院」',    ok: () => G.owned.includes(2) },
+  { id: 'shop3',   icon: '🏯', name: '第三家店',   desc: '開了第三家店「貓咪室內樂園」', ok: () => G.owned.includes(3) },
+  { id: 'rehome',  icon: '💌', name: '幸福的新家', desc: '送養一隻貓到愛牠的新家',     ok: () => G.stats.rehome >= 1 },
   { id: 'stray',   icon: '🐈', name: '庭院的新朋友', desc: '收編一隻庭院的流浪貓',     ok: () => G.stats.stray >= 1 },
   { id: 'harvest', icon: '🥕', name: '頂樓小農夫', desc: '在頂樓菜園收成 10 次',        ok: () => G.stats.harvest >= 10 },
 ];
@@ -1410,7 +1495,7 @@ function startDay(carry) {
     mgr: { floor: 1, x: MGR_COUNTER.x, y: MGR_COUNTER.y, path: [], speed: 270, face: 1, task: null, carry: null, mode: 'idle', actT: 0, si: 0 },
     tasks: [], customers: [], queue: [], cid: 0,
     tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []),
-    cushions: CUSHION_POS.concat(furnCushions(), expandCushions()).map(p => ({ ...p, cust: null })),
+    cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
     startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false, buff: {},
@@ -1551,7 +1636,7 @@ window.addEventListener('online', retryMissingArt);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
-const LAZY_ART = /^((c(9|1\d|2\d)|mo\d+m?|s2\w+)_\d|acc_\w+|s2bg\d)$/;
+const LAZY_ART = /^((c(9|1\d|2\d)|mo\d+m?|s[23]\w+)_\d|acc_\w+|s[23]bg\d|toy_\w+)$/;
 const artOk = n => { const im = ART[n]; return !!(im && im.complete && im.naturalWidth); };
 // Wait (at most ARTWAIT ms) until every core sprite, plus the given extra ones, has arrived; onTick(done, total) shows progress.
 const ARTWAIT = 10000;
@@ -1580,16 +1665,23 @@ function tag(t, x, y, size = 11) {
   rrect(x - w / 2, y - size * .8, w, size * 1.6, 7, 'rgba(255,252,246,.88)', 'rgba(106,75,58,.55)', 1); text(t, x, y, size, '#6B4A35', 'center', FONT, 700);
 }
 function bgLabels(f) {
+  if (G.at === 3 && LAYOUT.ELEV[f]) tag(G.elev ? '員工電梯' : '電梯（還沒裝）', LAYOUT.ELEV[f].x, f === 1 ? 222 : f === 3 ? 230 : 280);
   if (f === 1) { tag('烤箱', 390, 470); tag('↑ 2F', 150, 462); if (G.at === 2) tag('庭院', OUT_X + 90, 300); }
-  else if (f === 2) { tag('↓ 1F', 66, 352); tag('員工休息室', 557, 290); if (G.at === 2) tag('↑ 3F 頂樓菜園', ROOF_DOOR2.x - 10, 300); }
+  else if (f === 2) { tag('↓ 1F', 66, 352); if (G.at !== 3) tag('員工休息室', 557, 290); if (G.at === 2) tag('↑ 3F 頂樓菜園', ROOF_DOOR2.x - 10, 300); if (G.at === 3) { tag('↑ 3F', ROOF_DOOR2.x - 10, 300); tag('2F 貓咪玩具館', 1000, 40, 15); } }
   else if (f === 4) { tag('↓ 2F', 1395, 312); text('頂樓菜園', 560, 40, 22, '#6B4A35', 'center', DFONT, 700); }
+  else if (G.at === 3) { // 3F, 4F and 5F of 貓咪室內樂園
+    const U = linkUp(f), D = linkDown(f), d = D.pts[D.pts.length - 1];
+    if (U) tag('↑ ' + fname(U.b), U.pts[0].x + (U.pts[0].x > W / 2 ? -20 : 30), 300);
+    tag('↓ ' + fname(D.a), d.x + (d.x > W / 2 ? 60 : f === 3 ? -50 : -110), f === 3 ? 273 : 352);
+    tag(f === 3 ? '5F 員工休息區' : f === 5 ? '3F 接客區' : '4F 接客區', W / 2, 40, 15);
+  }
   else { tag('← 2F 閣樓', 86, 273); text('員工休息室', 480, 40, 22, '#8D6E63', 'center', DFONT, 700); }
 }
 
 // ====================== static backgrounds ======================
 const BG = {};
 function prerender() {
-  const two = G && G.at === 2, draw = two ? { 1: s2bg1, 2: s2bg2, 3: bg3, 4: s2bg4 } : { 1: bg1, 2: bg2, 3: bg3 }, w0 = W;
+  const two = G && G.at === 2, draw = G && G.at === 3 ? { 1: s3bg1, 2: s2bg2, 3: bg3, 5: () => s3upper(-1), 6: () => s3upper(1) } : two ? { 1: s2bg1, 2: s2bg2, 3: bg3, 4: s2bg4 } : { 1: bg1, 2: bg2, 3: bg3 }, w0 = W;
   for (const f of Object.keys(draw).map(Number)) {
     W = fw(f);
     const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2;
@@ -1598,7 +1690,7 @@ function prerender() {
     paperGrain(cx, 6000 * W / 960);
     BG[f] = c;
   }
-  if (!two) delete BG[4];
+  for (const f of Object.keys(BG)) if (!draw[f]) delete BG[f];
   W = w0; g = ctx;
 }
 function wallBase() {
@@ -1790,6 +1882,21 @@ function s2bg2() {
   for (let i = 0; i < 10; i++) { const y = FLOOR - 8 - i * 42, x = W - 30 - i * 13; wood(x - 70, y - 7, 100, 9, '#B98A5C', 1.2); }
   line(1300, FLOOR, 1300, 40, 'rgba(106,75,58,.5)', 1.2); rect(1300, 14, 140, 26, '#E9DCC4', INK, 1.3);
   text('↑ 3F 頂樓菜園', 1384, 300, 12, '#9B8577', 'center', FONT, 700);
+}
+// 貓咪室內樂園's backup drawings (shown only until the painted palace floors arrive): 1F all indoors, plain upper floors
+function s3bg1() {
+  bg1(); railing(900, W);
+  g.fillStyle = '#F8F4EE'; g.fillRect(900, 176, W - 900, FLOOR - 176); wash(1150, 330, 220, '#F6E2D6', .45);
+  windowFrame(1170, 206, 180, 200, 2, 2);
+  for (const x of [1110, 1400]) rect(x, 0, 22, FLOOR, '#C0504A', INK, 1.3);
+}
+function s3upper(side) { // side: -1 = stairs up on the left (3F), 1 = on the right (4F)
+  wallBase();
+  for (const x of [300, 640, 980, 1320]) rect(x, 0, 20, FLOOR, '#C0504A', INK, 1.3);
+  wood(0, 30, W, 14, '#B0473F', 1.3);
+  const sx = side > 0 ? W - 30 : 30;
+  for (let i = 0; i < 10; i++) wood(sx - side * i * 13 - 50, FLOOR - 8 - i * 42, 100, 9, '#9E5B3C', 1.2);
+  const rx = side > 0 ? 0 : W - 150; wood(rx, 380, 150, 8, '#B0473F', 1.2); for (let x = rx + 8; x < rx + 150; x += 24) wood(x, 388, 6, FLOOR - 388, '#C0504A', 1);
 }
 function s2bg4() {
   // rooftop: open sky, the town's roofs, a low parapet, a pergola that keeps the cat baskets dry, the stair hatch
@@ -2008,7 +2115,7 @@ function drawFurn2() {
   if (hasF('cattree') && !propArt('cattree', PROP.cattree.x, PROP.cattree.y, 92)) { const { x, y } = PROP.cattree; rect(x - 6, y - 150, 12, 150, '#E3CDA4', INK, 1.2); for (const h of [50, 100, 150]) ell(x, y - h, 30, 7, '#D9C3A0', INK, 1.2); }
   if (hasF('books') && !propArt('bookshelf', PROP.books.x, PROP.books.y, 90)) { const { x, y } = PROP.books; wood(x - 42, y - 80, 84, 80, '#A9774B', 1.3); for (let i = 0; i < 8; i++) rect(x - 36 + i * 9, y - 72, 7, 30, ['#C96B5B', '#6E8FB3', '#E2B573', '#7FA66A'][i % 4], INK, .8); }
   if (hasF('cushion')) for (const c of CUSHION_EXTRA) cushion(c.x, c.y, '#EAD3C6');
-  for (const c of expandCushions()) cushion(c.x, c.y, '#D9E2D0');
+  for (const c of expandCushions()) if ((c.f || 2) === 2) cushion(c.x, c.y, '#D9E2D0');
   if (hasF('bed')) { if (!propArt('petbed', 206, 466, 60)) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); } text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
   if (hasF('deodor') && propArt('deodor', 457, 552, 30)) { ell(457, 530, 3, 3, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); }
   else if (hasF('deodor')) { rrect(446, 520, 22, 30, 5, '#E8EEF0', INK, 1.2); ell(457, 530, 4, 4, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); for (let i = 0; i < 3; i++) line(450 + i * 4, 542, 450 + i * 4, 547, 'rgba(90,64,50,.4)', 1); }
@@ -2161,7 +2268,7 @@ function drawMgr() {
     hk.x = cx; hk.y = cy; hk._inAnim = true; drawCat(hk); hk._inAnim = false; hk.x = ox; hk.y = oy; g.restore();
     g.globalAlpha = clamp(hk.hearts, 0, 1); heart(m.x + 18, m.y - 150 - (1 - hk.hearts) * 16, 8); g.globalAlpha = 1;
   }
-  const lbl = hk && m.floor !== 3 ? '放下' : '動作', ab = $('actBtn'); if (ab.textContent !== lbl) ab.textContent = lbl; // holding a cat: the big button says so
+  const lbl = hk && (m.floor !== 3 || LAYOUT.LINKS) ? '放下' : '動作', ab = $('actBtn'); if (ab.textContent !== lbl) ab.textContent = lbl; // holding a cat: the big button says so
   if (m.task && m.mode === 'act' && m.task.steps[m.si].dur > .3) progressRing(m, m.y - 150);
   else if (!m.task && started && S.phase !== 'settle') {
     const a = nearbyActions()[0];
@@ -2332,6 +2439,11 @@ function moveAlong(e, dt) {
   while (e.path.length) {
     const p = e.path[0];
     if (p.f !== e.floor) { e.floor = p.f; e.x = p.x; e.y = p.y; e.path.shift(); continue; }
+    if (p.wait) { // standing at the elevator door until it comes
+      e.waitT = (e.waitT || 0) + dt;
+      if (e.waitT < p.wait) return false;
+      e.waitT = 0; e.path.shift(); continue;
+    }
     if (p.jump) {
       if (!e.jumpFrom) { e.jumpFrom = { x: e.x, y: e.y }; e.jumpT = 0; }
       e.jumpT += dt / .6; const t = Math.min(1, e.jumpT);
@@ -2350,6 +2462,7 @@ function moveAlong(e, dt) {
 }
 const behindCounter = (f, x, y) => f === 1 && x > 440 && x < 640 && y < 494;
 function routeTo(e, f, x, y) {
+  if (LAYOUT.LINKS) return routeLinks(e, f, x, y);
   const path = []; let cf = e.floor, cx = e.x, cy = e.y;
   if (SIDE[cf] && f !== cf) { const sd = SIDE[cf]; path.push({ f: cf, ...sd.inn }, { f: 2, ...sd.door }); cf = 2; cx = sd.door.x; cy = sd.door.y; }
   if (SIDE[f] && cf !== f) {
@@ -2361,6 +2474,29 @@ function routeTo(e, f, x, y) {
     if (cf === 1) path.push({ f: 1, ...STAIR_BOTTOM }, { f: 1, ...STAIR_TOP }, { f: 2, ...WELL_2F }, { f: 2, ...STAIRS[2] });
     else path.push({ f: 2, ...WELL_2F }, { f: 1, ...STAIR_TOP }, { f: 1, ...STAIR_BOTTOM }, { f: 1, ...STAIRS[1] });
     cf = f; cx = STAIRS[f].x; cy = STAIRS[f].y;
+  }
+  leg(path, cf, cx, cy, x, y); e.path = path;
+}
+// 貓咪室內樂園: floor to floor along LAYOUT.LINKS (the shortest chain of stairs), or for staff the elevator once it is installed
+const ELEV_WAIT = 1.2;
+function routeLinks(e, f, x, y) {
+  const path = []; let cf = e.floor, cx = e.x, cy = e.y;
+  const E = LAYOUT.ELEV;
+  if (cf !== f && e.role && G.elev && E[cf] && E[f]) {
+    leg(path, cf, cx, cy, E[cf].x, E[cf].y); path.push({ f: cf, x: E[cf].x, y: E[cf].y, wait: ELEV_WAIT }, { f, ...E[f] });
+    cf = f; cx = E[f].x; cy = E[f].y;
+  }
+  if (cf !== f) {
+    const prev = { [cf]: null }, q = [cf];
+    while (q.length && !(f in prev)) {
+      const u = q.shift();
+      for (const L of LAYOUT.LINKS) { const v = L.a === u ? L.b : L.b === u ? L.a : null; if (v != null && !(v in prev)) { prev[v] = { u, L }; q.push(v); } }
+    }
+    const hops = []; for (let v = f; prev[v]; v = prev[v].u) hops.unshift(prev[v]);
+    for (const { u, L } of hops) {
+      const pts = L.a === u ? L.pts : [...L.pts].reverse(), end = pts[pts.length - 1];
+      leg(path, cf, cx, cy, pts[0].x, pts[0].y); path.push(...pts.slice(1)); cf = end.f; cx = end.x; cy = end.y;
+    }
   }
   leg(path, cf, cx, cy, x, y); e.path = path;
 }
@@ -2384,7 +2520,7 @@ function updMgr(dt) {
   if (m.boost > 0) m.boost -= dt; if (m.coffeeCool > 0) m.coffeeCool -= dt;
   m.speed = m.boost > 0 ? 380 : 270;
   // walking through the staff-room door (by tapping, a task or the stick) always takes the view along
-  if (m.lastFloor !== m.floor) { if (SIDE[m.lastFloor] || SIDE[m.floor]) { S.view = m.floor; updateButtons(); } m.lastFloor = m.floor; }
+  if (m.lastFloor !== m.floor) { if (SIDE[m.lastFloor] || SIDE[m.floor] || LAYOUT.LINKS) { S.view = m.floor; updateButtons(); } m.lastFloor = m.floor; }
   const jx = JOY.x || KEYV.x, jy = JOY.y || KEYV.y, mag = Math.hypot(jx, jy);
   if (m.climb) { // walking the stairs (from the joystick or the action button)
     const done = moveAlong(m, dt);
@@ -2394,12 +2530,15 @@ function updMgr(dt) {
   }
   if (m.sitting) { if (mag > .15 || S.tasks.length) { m.sitting = false; m.y = Math.min(594, m.y + 14); } else { m.moving = false; return; } }
   // looking at the other floor and pushing the stick: the manager walks over there instead of the view snapping back
-  if (mag > .15 && S.view !== m.floor && S.view !== 3 && m.floor !== 3) { walkToFloor(S.view); return; }
-  if (mag > .15 && ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 120 && (jy > .5 || jx < -.6)))) { climbStairs(); return; }
-  if (mag > .15 && m.floor === 2 && Math.abs(m.x - ROOM_DOOR2.x) < 46 && m.y < 500 && jy < -.5) { enterRoom(); return; }
-  if (mag > .15 && m.floor === 3 && m.x < 175 && jx < -.6) { leaveRoom(); return; }
-  if (mag > .15 && G.at === 2 && m.floor === 2 && Math.abs(m.x - ROOF_DOOR2.x) < 50 && m.y < 510 && jy < -.5) { walkToFloor(4); return; }
-  if (mag > .15 && m.floor === 4 && m.x > ROOF_IN.x - 20 && jx > .6) { leaveRoom(); return; }
+  if (LAYOUT.LINKS) { if (mag > .15 && stickStairs(m, jx, jy)) return; }
+  else {
+    if (mag > .15 && S.view !== m.floor && S.view !== 3 && m.floor !== 3) { walkToFloor(S.view); return; }
+    if (mag > .15 && ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 120 && (jy > .5 || jx < -.6)))) { climbStairs(); return; }
+    if (mag > .15 && m.floor === 2 && Math.abs(m.x - ROOM_DOOR2.x) < 46 && m.y < 500 && jy < -.5) { enterRoom(); return; }
+    if (mag > .15 && m.floor === 3 && m.x < 175 && jx < -.6) { leaveRoom(); return; }
+    if (mag > .15 && G.at === 2 && m.floor === 2 && Math.abs(m.x - ROOF_DOOR2.x) < 50 && m.y < 510 && jy < -.5) { walkToFloor(4); return; }
+    if (mag > .15 && m.floor === 4 && m.x > ROOF_IN.x - 20 && jx > .6) { leaveRoom(); return; }
+  }
   if (mag > .15) { // joystick / arrow keys drive the manager directly; a queued task resumes on release
     m.manual = true; m.path = [];
     const sp = m.speed * Math.min(1, mag);
@@ -2544,7 +2683,7 @@ const heldCat = () => S.cats.find(k => k.anim && k.anim.kind === 'hug');
 function putDown(k = heldCat()) {
   if (!k) return;
   const m = S.mgr;
-  if (m.floor === 3) { toast(`休息室不能放貓，回到 1F 或 2F 再放下${k.name}`); return; }
+  if (m.floor === 3 && !LAYOUT.LINKS) { toast(`休息室不能放貓，回到 1F 或 2F 再放下${k.name}`); return; } // 貓咪室內樂園's 5F is where tired cats sleep
   k.anim = null; k.onBed = false; k.floor = m.floor; k.x = clamp(m.x + 36 * m.face, 160, fw(m.floor) - 60); k.y = clamp(m.y + 6, 490, 594);
   if (behindCounter(k.floor, k.x, k.y)) { k.x = k.x < 540 ? KGATE_L.x - 40 : KGATE.x + 60; k.y = clamp(k.y, 540, 594); }
   k.state = 'idle'; k.t = rand(1, 3); k.hearts = 1.2;
@@ -2624,9 +2763,9 @@ function findJob(s) {
       const k = c && S.cats.find(k => !k.hold && !k.anim && !k.onBed && (k.state === 'idle' || k.state === 'walk'));
       if (c && k) {
         c.helped = true;
-        return { label: '帶貓陪客', steps: [{ pos: () => ({ f: 2, x: clamp(c.x - 60, 150, fw(2) - 80), y: clamp(c.y + 8, 490, 594) }), dur: 1, fn: () => {
+        return { label: '帶貓陪客', steps: [{ pos: () => ({ f: c.floor, x: clamp(c.x - 60, 150, fw(c.floor) - 80), y: clamp(c.y + 8, 490, 594) }), dur: 1, fn: () => {
           if (c.state !== 'petting' || k.hold || k.onBed) return;
-          routeTo(k, 2, clamp(c.x + 46, 150, fw(2) - 60), clamp(c.y + 4, 490, 594)); k.state = 'walk'; k.hearts = 1;
+          routeTo(k, c.floor, clamp(c.x + 46, 150, fw(c.floor) - 60), clamp(c.y + 4, 490, 594)); k.state = 'walk'; k.hearts = 1;
         } }] };
       }
       return null;
@@ -2813,7 +2952,7 @@ function takeOrder(quiet, w) {
 function sayFor(c, t) { c.say = { text: t, t: 2.2 }; }
 function goLoft(c) {
   const cu = S.cushions.find(k => !k.cust);
-  if (cu) { cu.cust = c; c.cushion = cu; routeTo(c, 2, cu.x, cu.y + 4); }
+  if (cu) { cu.cust = c; c.cushion = cu; routeTo(c, cu.f || 2, cu.x, cu.y + 4); }
   else routeTo(c, 2, rand(fw(2) * .625, fw(2) * .94), rand(540, 594));
   c.state = 'toLoft';
 }
@@ -2880,14 +3019,14 @@ function updCust(c, dt) {
     case 'toTable': if (arrived) { c.state = 'waitFood'; c.pat = c.maxPat = (c.special ? 70 : 55) * patMul(); c.wait = 0; c.face = 1; } break;
     case 'waitFood': if (S.phase === 'open') c.pat -= dt; c.wait += dt; if (c.pat <= 0) angryLeave(c, '餐點一直沒來'); break;
     case 'eating': c.t -= dt; if (c.t <= 0) afterEat(c); break;
-    case 'toLoft': if (arrived) { c.state = 'petting'; c.t = S.phase === 'closing' ? rand(6, 9) : rand(18, 28); c.face = c.x > fw(2) * .8 ? -1 : 1; } break;
+    case 'toLoft': if (arrived) { c.state = 'petting'; c.t = S.phase === 'closing' ? rand(6, 9) : rand(18, 28); c.face = c.x > fw(c.floor) * .8 ? -1 : 1; if (c.cushion?.toy) { c.sawCat = true; sayFor(c, `${TOYS[c.cushion.toy].name}好好玩！`); } } break;
     case 'petting':
       c.t -= dt;
-      if (!c.sawCat && S.cats.some(k => k.floor === 2 && k.state !== 'sleep' && !k.onBed && Math.abs(k.x - c.x) < 120 && Math.abs(k.y - c.y) < 70)) c.sawCat = true;
+      if (!c.sawCat && S.cats.some(k => k.floor === c.floor && k.state !== 'sleep' && !k.onBed && Math.abs(k.x - c.x) < 120 && Math.abs(k.y - c.y) < 70)) c.sawCat = true;
       if (c.order?.treat && !c.fed && !c.catBuddy) {
         // shake the meat-paste stick: the nearest free awake cat comes running
-        const k = S.cats.filter(k => k.floor === 2 && k.state !== 'sleep' && !k.onBed && !k.hold && !k.anim && !k.target && (k.state === 'idle' || k.state === 'walk')).sort((a, b) => Math.abs(a.x - c.x) - Math.abs(b.x - c.x))[0];
-        if (k) { c.catBuddy = k; k.target = c; k.treat = true; c.fed = 'calling'; sayFor(c, '咪咪～來吃肉泥！'); routeTo(k, 2, clamp(c.x + (c.x > fw(2) / 2 ? -50 : 50), 160, fw(2) - 40), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; }
+        const k = S.cats.filter(k => k.floor === c.floor && k.state !== 'sleep' && !k.onBed && !k.hold && !k.anim && !k.target && (k.state === 'idle' || k.state === 'walk')).sort((a, b) => Math.abs(a.x - c.x) - Math.abs(b.x - c.x))[0];
+        if (k) { c.catBuddy = k; k.target = c; k.treat = true; c.fed = 'calling'; sayFor(c, '咪咪～來吃肉泥！'); routeTo(k, c.floor, clamp(c.x + (c.x > fw(c.floor) / 2 ? -50 : 50), 160, fw(c.floor) - 40), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; }
       }
       if (c.t <= 0) afterLoft(c); break;
     case 'toWC': if (arrived) { c.state = 'inWC'; c.t = 2.5; c.hidden = true; if (S.restroomDirt >= 3) { c.stars -= 1; c.notes.push('洗手間很髒'); } } break;
@@ -2919,9 +3058,11 @@ function wander(k) {
   if (Math.random() < (k.P.roam || .2)) {
     const f = pick(floorsHere().filter(x => x !== k.floor && !(x === 4 && S.rain)));
     routeTo(k, f, rand(160, right(f)), rand(500, 594));
-  } else if (k.floor === 2 && Math.random() < .6 && S.customers.some(c => c.state === 'petting')) {
-    const c = pick(S.customers.filter(c => c.state === 'petting'));
-    routeTo(k, 2, clamp(c.x + (Math.random() < .5 ? -48 : 48), 160, fw(2) - 40), clamp(c.y + rand(-6, 10), 500, 594));
+  } else if (k.floor !== 1 && Math.random() < .6 && S.customers.some(c => c.state === 'petting' && c.floor === k.floor)) {
+    const c = pick(S.customers.filter(c => c.state === 'petting' && c.floor === k.floor));
+    routeTo(k, k.floor, clamp(c.x + (Math.random() < .5 ? -48 : 48), 160, fw(k.floor) - 40), clamp(c.y + rand(-6, 10), 500, 594));
+  } else if (k.floor === 2 && toysHere().length && Math.random() < .4) { // the toy hall: go and play with a toy
+    const T = TOYS[pick(toysHere())]; routeTo(k, 2, clamp(T.x + rand(-40, 40), 160, fw(2) - 60), clamp(T.y + (T.y < 520 ? 14 : -10), 500, 594)); k.hearts = .8;
   } else routeTo(k, k.floor, rand(160, right(k.floor)), rand(500, 594));
   k.state = 'walk';
 }
@@ -3064,14 +3205,16 @@ function awayDay(id) {
   return { id, name: r.shopName, guests, revenue, cost: wages + temp + food, temp, fans, exp, crew };
 }
 // 分店地圖: open the second shop, or go to another one
+// 貓咪庭院 needs the cumulative revenue goal; a shop with `need` needs that shop opened first instead
+const branchReady = id => SHOP_DEFS[id].need ? G.owned.includes(SHOP_DEFS[id].need) : G.landReady;
 function openBranch(id) {
   const D = SHOP_DEFS[id];
-  if (G.owned.includes(id) || !G.landReady || G.cash < D.price || S.phase === 'settle') return;
+  if (G.owned.includes(id) || !branchReady(id) || G.cash < D.price || S.phase === 'settle') return;
   G.cash -= D.price; G.owned.push(id); G.shops[id] = freshShop(id);
   // cats resting in the dorm come along, up to what the new shop can hold
   const free = G.cats.map(c => c.id).filter(c => !catShop(c)), cap = dutyCapOf(id);
   G.shops[id].duty = free.slice(0, cap);
-  sfx('build'); toast(`第二家店「${D.name}」開張了！${G.shops[id].duty.length ? `宿舍的 ${G.shops[id].duty.length} 隻貓搬過去上班` : '到喵喵家族把幾隻貓排過去上班吧'}`);
+  sfx('build'); toast(`第${['', '一', '二', '三', '四'][G.owned.length]}家店「${D.name}」開張了！${G.shops[id].duty.length ? `宿舍的 ${G.shops[id].duty.length} 隻貓搬過去上班` : '到喵喵家族把幾隻貓排過去上班吧'}`);
   saveProgress();
 }
 // during morning prep you can go straight there; otherwise it takes effect tomorrow
@@ -3530,7 +3673,7 @@ function update(dt) {
     if (!hold || S.cid === 0) S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
-      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / (collabNow()?.guests || 1) / (window.FRIENDS ? FRIENDS.boost() : 1) * staffDrag() / wxFlow() * rand(.7, 1.3); }
+      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / toyFlow() / (collabNow()?.guests || 1) / (window.FRIENDS ? FRIENDS.boost() : 1) * staffDrag() / wxFlow() * rand(.7, 1.3); }
       else S.spawnT = 5;
     }
     if (S.time >= 1230 && !S.lastCall) { S.lastCall = true; sfx('notify'); toast('20:30 最後點餐，之後不再接新客人囉'); }
@@ -3564,7 +3707,7 @@ function drawWorld() {
   const bgi = art(bgName(f));
   if (bgi) { ctx.drawImage(bgi, 0, 0, W, H); bgLabels(f); } else if (BG[f]) ctx.drawImage(BG[f], 0, 0, W, H);
   drawWeather(f, true);
-  if (f === 1) { drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); drawFurn1(); }
+  if (f === 1) { if (G.at !== 3) drawMenuBoard(); drawOvenGlow(); drawRestroomState(); doorSign(); drawFurn1(); }
   else if (f === 2) { drawFurn2(); drawBowl(); drawLitter(); }
   else if (f === 3) { g.globalAlpha = .4; for (let i = 0; i < 3; i++) ell(855 + Math.sin(S.t * 2 + i) * 3, 330 - i * 10 - (S.t * 8 % 10), 5 + i * 2, 3, '#FFFFFF', '#C9B8A8', .8); g.globalAlpha = 1; }
   for (const k of S.cats) { const b = k.bed; if (b.basket && b.f === f && propArt('basket', b.x, b.y + 12, 66)) continue; if (b.basket && b.f === f) { ell(b.x, b.y + 4, 30, 9, b.basket, INK, 1.3); ell(b.x, b.y - 1, 24, 6, '#F4EBDD', null); for (let i = -2; i <= 2; i++) line(b.x + i * 11, b.y + 2, b.x + i * 11 + 2, b.y + 11, 'rgba(90,60,40,.35)', 1); } }
@@ -3572,6 +3715,7 @@ function drawWorld() {
   if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
   if (f === 1 && S.stray) items.push({ y: S.stray.y, d: drawStray });
   if (f === 4) G.garden.forEach((p, i) => items.push({ y: PLOTS[i].y, d: () => drawPlot(p, i) }));
+  if (G.at === 3) drawPalace(f, items);
   if (S.mgr.floor === f && !S.out) items.push({ y: S.mgr.y, d: drawMgr });
   S.staff.forEach(s => { if (s.floor === f) items.push({ y: s.y, d: () => drawStaff(s) }); });
   S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.y, d: () => drawCat(k) }); });
@@ -3585,6 +3729,12 @@ function drawWorld() {
   if (S.mini) drawMini();
   if (S.cook) drawCook();
   if (S.reg) drawReg();
+}
+// 貓咪室內樂園: the painted floors carry no cushions, so the loft seats are drawn here; 2F also shows the toys you bought
+function drawPalace(f, items) {
+  for (const c of CUSHION_POS) if ((c.f || 2) === f) cushion(c.x, c.y, '#E9C9A8');
+  if (f !== 2) for (const c of expandCushions()) if (c.f === f) cushion(c.x, c.y, '#E3B0A0');
+  if (f === 2) for (const t of toysHere()) { const T = TOYS[t]; items.push({ y: T.y - (T.y < 520 ? 20 : 0), d: () => { if (!propArt(T.img, T.x, T.y, T.w)) { rrect(T.x - T.w / 2, T.y - 60, T.w, 60, 8, '#F1D9B5', INK, 1.3); text(T.name, T.x, T.y - 28, 10, '#8D4A3A'); } } }); }
 }
 // clouds and rain show through the windows (behind everyone) and over the open-air parts: the courtyard and the roof
 function drawWeather(f, back) {
@@ -3639,7 +3789,7 @@ function floorAlerts(f) {
   } else if (f === 4) {
     if (G.garden.some(p => p.s === 2)) a.push('菜園可以收成了');
     else if (!S.rain && G.garden.some(p => p.s === 1 && !(p.wet > 0))) a.push('菜園的菜要澆水');
-  } else {
+  } else if (f === 2) {
     if (G.bowl === 0 && S.cats.some(k => k.hunger > 70)) a.push('貓咪餓了，貓碗是空的');
     if (G.litterDirt >= litterMax()) a.push('貓砂盆要清');
   }
@@ -3653,7 +3803,7 @@ function hitPerson(p, x, y, sit) { return Math.abs(x - p.x) < 26 && y < p.y + 6 
 function hitTest(x, y) {
   const f = S.view, hk = heldCat(), m = S.mgr;
   // the held cat is drawn in the manager's arms, so tapping her (or the cat) puts it down
-  if (hk && m.floor === f && f !== 3 && Math.abs(x - m.x) < 40 && y < m.y + 8 && y > m.y - 130) return { act: () => putDown(hk) };
+  if (hk && m.floor === f && (f !== 3 || LAYOUT.LINKS) && Math.abs(x - m.x) < 40 && y < m.y + 8 && y > m.y - 130) return { act: () => putDown(hk) };
   // the order bubble comes first: it overlaps the counter and the tables behind it
   for (const c of S.customers) {
     if (c.floor !== f || c.hidden || !c.order) continue; // a speech bubble sits in the same spot, so it counts too
@@ -3667,6 +3817,7 @@ function hitTest(x, y) {
   }
   for (const k of S.cats) if (k.floor === f && Math.abs(x - k.x) < 32 && y < k.y + 8 && y > k.y - 46) return { act: () => actPet(k) };
   for (const s of S.staff) if (s.floor === f && !s.hidden && hitPerson(s, x, y)) return { act: () => { toast(`${s.name}（${s.title}）體力 ${Math.round(s.stamina)}${s.task ? '・正在' + s.task.label : ''}`); if (!s.resting && !(s.chatting > 0)) walkChat(s); } };
+  if (LAYOUT.LINKS && f !== 1) { const h = tapStairs(f, x, y); if (h) return h; }
   if (f === 1) {
     if (S.phase === 'closing' && !S.close.sign && x < 96 && y > 505 && y < 566) return { act: actFlipSign };
     for (const t of S.tables) if (x > t.x - 76 && x < t.x + 46 && y > t.y - 60 && y < t.y + 12) {
@@ -3694,6 +3845,17 @@ function hitTest(x, y) {
     if (x > 1340 && y > 300 && y < 490) return { act: () => addTask('下 2F', [{ f: 2, x: ROOF_DOOR2.x - 60, y: ROOF_DOOR2.y + 30, dur: 0 }]) };
   }
   if (y > FLOOR + 8) return { act: () => actWalk(x, y), weak: true };
+  return null;
+}
+// 貓咪室內樂園: tapping a staircase walks up or down a floor; the elevator is for staff only
+const elevNote = () => toast(G.elev ? '這是員工專用電梯，店長要走樓梯喔' : '這裡預留了員工電梯，到手機「我的店」可以加裝');
+function tapStairs(f, x, y) {
+  const E = LAYOUT.ELEV[f];
+  if (E && Math.abs(x - E.x) < 50 && y > 280 && y < E.y + 4) return { act: elevNote };
+  const U = linkUp(f), D = f !== 2 && linkDown(f);
+  if (U && f !== 1 && Math.abs(x - U.pts[0].x) < 80 && y > 40 && y < 510) return { act: () => addTask('上 ' + fname(U.b), [{ f: U.b, ...stairLanding(f, U.b), dur: 0 }]) };
+  if (D) { const p = D.pts[D.pts.length - 1], right = p.x > fw(f) / 2;
+    if ((right ? x > p.x - 90 : x < p.x + 90) && y > 280) return { act: () => addTask('下 ' + fname(D.a), [{ f: D.a, ...stairLanding(f, D.a), dur: 0 }]) }; }
   return null;
 }
 cv.addEventListener('pointerdown', e => {
@@ -3770,10 +3932,11 @@ const JOY = { x: 0, y: 0 }, KEYV = { x: 0, y: 0 }, KEYS = {};
 })();
 function enterRoom() { walkToFloor(3); }
 // back to 2F from the staff room or the rooftop, stepping out a little from the door
-function leaveRoom() { const m = S.mgr, sd = SIDE[m.floor] || SIDE[3]; m.climb = true; m.manual = false; routeTo(m, 2, sd.door.x + (m.floor === 4 ? -60 : 0), sd.door.y + 30); }
+function leaveRoom() { if (LAYOUT.LINKS) { walkToFloor(stackNext(S.mgr.floor, -1)); return; } const m = S.mgr, sd = SIDE[m.floor] || SIDE[3]; m.climb = true; m.manual = false; routeTo(m, 2, sd.door.x + (m.floor === 4 ? -60 : 0), sd.door.y + 30); }
 // the manager walks (and the view follows) to floor `to`, using the stairs, the staff-room door or the rooftop stairs
 function walkToFloor(to) {
   const m = S.mgr; m.climb = true; m.manual = false;
+  if (LAYOUT.LINKS) { const p = stairLanding(m.floor, to); routeTo(m, to, p.x, p.y); return; }
   const p = to === 4 ? { x: ROOF_IN.x - 80, y: ROOF_IN.y } : to === 3 ? { x: ROOM_IN.x + 60, y: ROOM_IN.y } : { x: STAIRS[to].x + (to === 2 ? 120 : 70), y: STAIRS[to].y + 6 };
   routeTo(m, to, p.x, p.y);
 }
@@ -3802,11 +3965,30 @@ function actCheer(s) {
   } }]);
 }
 function climbStairs() { walkToFloor(S.mgr.floor === 1 ? 2 : 1); }
+// ---- 貓咪室內樂園: the manager always takes the stairs (the elevator is for staff only)
+const stackNext = (f, d) => { const st = LAYOUT.STACK, i = st.indexOf(f); return st[clamp(i + d, 0, st.length - 1)]; };
+const linkUp = f => LAYOUT.LINKS.find(L => L.a === f), linkDown = f => LAYOUT.LINKS.find(L => L.b === f);
+// where the manager stops after walking from floor `from` up or down to floor `to`: a step into the room from the stairs
+function stairLanding(from, to) {
+  if (to === 1) return { x: STAIRS[1].x + 70, y: STAIRS[1].y + 6 };
+  if (to === 2 && from === 1) return { x: STAIRS[2].x + 120, y: STAIRS[2].y + 6 };
+  const up = LAYOUT.STACK.indexOf(to) > LAYOUT.STACK.indexOf(from), L = up ? linkDown(to) : linkUp(to), p = up ? L.pts[L.pts.length - 1] : L.pts[0];
+  return { x: p.x + (p.x > fw(to) / 2 ? -70 : 70), y: Math.max(p.y, 530) };
+}
+// the stick near a staircase: up at the foot of the stairs going up, down where the stairs from below come out
+function stickStairs(m, jx, jy) {
+  if (S.view !== m.floor) { walkToFloor(S.view); return true; }
+  if ((m.floor === 1 && m.x < 150 && jy < -.5) || (m.floor === 2 && m.x < 120 && (jy > .5 || jx < -.6))) { climbStairs(); return true; }
+  const U = m.floor !== 1 && linkUp(m.floor), D = m.floor !== 2 && linkDown(m.floor);
+  if (U && Math.abs(m.x - U.pts[0].x) < 50 && m.y < 516 && jy < -.5) { walkToFloor(U.b); return true; }
+  if (D) { const p = D.pts[D.pts.length - 1], right = p.x > fw(m.floor) / 2; if (Math.abs(m.x - p.x) < 60 && (right ? jx > .6 : jx < -.6)) { walkToFloor(D.a); return true; } }
+  return false;
+}
 function nearbyActions() {
   const m = S.mgr, f = m.floor, list = [];
   const add = (x, y, label, fn) => list.push({ label, fn, d: Math.hypot(m.x - x, (m.y - y) * 1.6) });
   const hk = heldCat();
-  if (hk && f !== 3) return [{ label: '放下' + hk.name, fn: () => putDown(hk), d: 0 }]; // holding a cat: the action button only puts it down
+  if (hk && (f !== 3 || LAYOUT.LINKS)) return [{ label: '放下' + hk.name, fn: () => putDown(hk), d: 0 }]; // holding a cat: the action button only puts it down
   if (f === 1) {
     add(OVEN_SPOT.x, OVEN_SPOT.y, '廚房（甜點・正餐）', chooseBake);
     if (S.queue.length) { add(MGR_COUNTER.x, MGR_COUNTER.y, '幫客人點餐', actOrder); add(QUEUE[0].x, QUEUE[0].y, '幫客人點餐', actOrder); }
@@ -3821,13 +4003,13 @@ function nearbyActions() {
   } else if (f === 2) {
     add(BOWL.staff.x, BOWL.staff.y, '補貓糧', actBowl);
     add(LITTER.staff.x, LITTER.staff.y, '清貓砂', actLitter);
-    add(ROOM_DOOR2.x, ROOM_DOOR2.y, '進入員工休息室', enterRoom);
+    if (!LAYOUT.LINKS) add(ROOM_DOOR2.x, ROOM_DOOR2.y, '進入員工休息室', enterRoom);
     if (G.at === 2) add(ROOF_DOOR2.x, ROOF_DOOR2.y, '上 3F 頂樓菜園', () => walkToFloor(4));
   } else if (f === 4) {
     add(ROOF_IN.x, ROOF_IN.y, '下 2F', leaveRoom);
     G.garden.forEach((p, i) => { const l = plotLabel(p, i); if (l) add(PLOTS[i].x + 40, PLOTS[i].y + 40, l, () => actPlot(i)); });
-  } else {
-    add(ROOM_IN.x, ROOM_IN.y, '回 2F 閣樓', leaveRoom);
+  } else if (f === 3) {
+    if (!LAYOUT.LINKS) add(ROOM_IN.x, ROOM_IN.y, '回 2F 閣樓', leaveRoom);
     add(COFFEE.x, COFFEE.y, '喝杯咖啡', actCoffee);
     if (!m.sitting) for (const p of SOFA_SEATS) add(p.x, p.y, '坐下休息', () => actSit(p.x));
     for (const s of S.staff) if (s.floor === 3 && s.resting) add(s.x, s.y, `幫${s.name}打氣`, () => actCheer(s));
@@ -3838,6 +4020,11 @@ function nearbyActions() {
     add(p.x, p.y, k.state === 'sleep' ? (S.phase === 'closing' ? `跟${k.name}說晚安` : '叫醒' + k.name) : '摸摸' + k.name, () => actPet(k));
   }
   if (f === 1 || f === 2) add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
+  if (LAYOUT.LINKS) { // the switchback stairs of 貓咪室內樂園
+    const U = f !== 1 && linkUp(f), D = f !== 2 && f !== 1 && linkDown(f);
+    if (U) add(U.pts[0].x, U.pts[0].y, '上 ' + fname(U.b), () => walkToFloor(U.b));
+    if (D) { const p = D.pts[D.pts.length - 1]; add(p.x, p.y, '下 ' + fname(D.a), () => walkToFloor(D.a)); }
+  }
   return list.filter(a => a.d < 100).sort((a, b) => a.d - b.d);
 }
 function doAction() {
@@ -3922,7 +4109,7 @@ function updateButtons() {
   const to = floorChoices();
   ['', '2'].forEach((n, i) => {
     const f = to[i], fb = $('floorBtn' + n); fb.hidden = f == null; if (f == null) return;
-    fb.dataset.f = f; $('floorLbl' + n).textContent = `去 ${fname(f)}`; fb.setAttribute('aria-label', f === 2 ? '前往 2F 貓咪閣樓' : f === 4 ? '前往 3F 頂樓菜園' : '回到 1F 店面');
+    fb.dataset.f = f; $('floorLbl' + n).textContent = `去 ${fname(f)}`; fb.setAttribute('aria-label', G.at === 3 ? `前往 ${fname(f)}` : f === 2 ? '前往 2F 貓咪閣樓' : f === 4 ? '前往 3F 頂樓菜園' : '回到 1F 店面');
     const a = floorAlerts(f); $('floorBadge' + n).hidden = !a.length; fb.title = a.join('、');
   });
   const of = otherFloor(), oa = floorAlerts(of), fa = $('floorAlert');
@@ -4037,7 +4224,7 @@ function renderPhone() {
       }
       for (const d of DISHES.filter(d => MENU[d].lv > shopLv() && dishHere(d))) h += `<div class="item locked"><div class="top"><span class="nm">🔒 ${MENU[d].name}</span><span class="sub">店鋪 Lv.${MENU[d].lv} 解鎖</span></div></div>`;
     } else if (phoneApp === 'shop') {
-      const E = evNow(), tabs = [['stock', '食材'], ['furn', '傢俱'], ['wear', '衣服'], ['tool', '道具'], ['event', E ? E.icon + '活動' : '活動']];
+      const E = evNow(), tabs = [['stock', '食材'], ['furn', '傢俱'], ...(G.at === 3 ? [['toy', '玩具']] : []), ['wear', '衣服'], ['tool', '道具'], ['event', E ? E.icon + '活動' : '活動']];
       h += `<div class="stabs">${tabs.map(t => `<button class="${storeTab === t[0] ? 'on' : ''}" data-stab="${t[0]}">${t[1]}</button>`).join('')}</div>`;
       const btn = (key, price) => G.cash >= price ? `<button class="primary" data-buy="${key}">購買</button>` : `<button data-credit="${key}">錢不夠，賒帳購買</button>`;
       if (costMul() > 1) h += `<p class="muted">${G.shopName}在熱鬧的地段，這裡買東西都是暖陽貓閣的 ${costMul()} 倍價錢。</p>`;
@@ -4065,6 +4252,13 @@ function renderPhone() {
                : `<p class="muted">現在沒有活動。每個月會有不同的節日活動，下次是 ${EVENTS.map(e => `${e.month} 月${e.name}`).join('、')}。買過的飾品隨時可以戴。</p>`;
         for (const o of OUTFITS) if (o.ev) h += outfitItem(o);
         for (const id in CHARMS) if (CHARMS[id].ev) h += charmItem(id, true);
+      } else if (storeTab === 'toy' && G.at === 3) {
+        h += `<p class="muted">買來的貓咪玩具擺在 2F 玩具館：客人會上來參觀、跟貓一起玩，貓咪也會跑去玩。每多一個玩具，上門的客人多 5%，2F 也多一個參觀的位置。</p>`;
+        for (const id of TOY_IDS) {
+          const T = TOYS[id], own = toysHere().includes(id), locked = T.lv > shopLv();
+          h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm"><img class="thumb" src="assets/${T.img}.webp" alt="" onerror="this.remove()">${locked ? '🔒 ' : ''}${T.name}</span><b>${yen(cost(T.price))}</b></div><div class="sub">${T.desc}</div>
+            <div class="row" style="margin:0">${own ? '<button disabled>已經擺在 2F 了</button>' : locked ? `<button disabled>店鋪 Lv.${T.lv} 解鎖</button>` : btn(id, cost(T.price))}</div></div>`;
+        }
       } else {
         const day = S.phase !== 'settle';
         h += `<p class="muted">幫店裡加點小幫手。標「今天」的道具只有今天有效，明天要再買。</p>`;
@@ -4132,10 +4326,12 @@ function renderPhone() {
       h += '<p class="kh">擴大店面</p>' + EXPANSIONS.map((E, i) => { const done = G.expand > i, next = G.expand === i, locked = E.lv > lv;
         return `<div class="item${locked && !done ? ' locked' : ''}"><div class="top"><span class="nm">${done ? '✓ ' : locked ? '🔒 ' : ''}第 ${i + 1} 次擴建：${E.name}</span><b>${yen(E.price)}</b></div><div class="sub">${E.desc}</div>
           <div class="row" style="margin:0">${done ? '<button disabled>已完成</button>' : !next ? '<button disabled>先完成上一次擴建</button>' : locked ? `<button disabled>店鋪 Lv.${E.lv} 才能擴建</button>` : G.cash < E.price ? '<button disabled>現金不夠</button>' : `<button class="primary" id="expandBtn" ${S.phase === 'settle' ? 'disabled' : ''}>開始擴建</button>`}</div></div>`; }).join('');
+      if (G.at === 3) h += `<p class="kh">員工電梯</p><div class="item"><div class="top"><span class="nm">${G.elev ? '✓ ' : ''}加裝員工專用電梯</span><b>${yen(ELEV_PRICE)}</b></div><div class="sub">1F 到 5F 都停，員工搭電梯上下樓（上 5F 休息、去 3F 4F 帶貓陪客都快很多）。店長還是要走樓梯喔。</div>
+          <div class="row" style="margin:0">${G.elev ? '<button disabled>已經裝好了</button>' : G.cash < ELEV_PRICE ? `<button disabled>現金不夠（還差 ${yen(ELEV_PRICE - G.cash)}）</button>` : `<button class="primary" id="elevBtn" ${S.phase === 'settle' ? 'disabled' : ''}>加裝電梯</button>`}</div></div>`;
       for (let l = 2; l <= MAX_LV; l++) h += `<div class="item${l > lv ? ' locked' : ''}"><div class="top"><span class="nm">${l > lv ? '🔒' : '✓'} Lv.${l}</span><span class="sub">${l > lv ? `經驗 ${LV_EXP[l - 1]}` : '已解鎖'}</span></div><div class="sub">${unlockNames(l)}</div></div>`;
       h += `<div class="item"><div class="top"><span class="nm">開拓新土地</span><b>${yen(G.earned)} / ${yen(LAND_GOAL)}</b></div>
         <div class="prog"><i style="width:${clamp(G.earned / LAND_GOAL, 0, 1) * 100}%"></i></div>
-        <div class="sub">${G.owned.includes(2) ? '第二家店「貓咪庭院」已經開張了，到手機「分店地圖」換店。' : G.landReady ? '累計營收已達標！到手機「分店地圖」花 ¥100,000 開第二家店「貓咪庭院」。' : '累計營收（兩家店的營業額都算）達到 ¥100,000，就可以開第二家店「貓咪庭院」。'}</div></div>`;
+        <div class="sub">${G.owned.includes(3) ? '三家店都開張了，到手機「分店地圖」換店。' : G.owned.includes(2) ? `第二家店「貓咪庭院」已經開張了。存到 ${yen(SHOP_DEFS[3].price)} 現金，就能在「分店地圖」開第三家店「貓咪室內樂園」。` : G.landReady ? '累計營收已達標！到手機「分店地圖」花 ¥100,000 開第二家店「貓咪庭院」。' : '累計營收（兩家店的營業額都算）達到 ¥100,000，就可以開第二家店「貓咪庭院」。'}</div></div>`;
     } else if (phoneApp === 'map') {
       h += `<p class="muted">每天開店前選一家店去顧，其他的店由那家店的員工照常營業，營業額一樣算進來（沒雇員工的店要付代班費）。${S.phase === 'prep' ? '現在是開店前，可以直接過去。' : '現在換店，明天開店時生效。'}</p>`;
       for (const id of Object.keys(SHOP_DEFS).map(Number)) {
@@ -4145,10 +4341,10 @@ function renderPhone() {
           h += `<div class="item"><div class="top"><span class="nm">${here ? '📍 ' : ''}${r.shopName}</span><b>Lv.${lv}</b></div><div class="sub">${D.desc}<br>上班的貓 ${cats}/${dutyCapOf(id)} 隻（最多 ${D.cats} 隻）・員工 ${r.staff.length} 位${D.cost > 1 ? `・進貨價 ×${D.cost}、售價 ×${D.sale}` : ''}</div>
             <div class="row" style="margin:0">${here ? '<button disabled>今天在這裡</button>' : G.nextShop === id ? `<button data-goshop="${G.at}">取消，明天留在這裡</button>` : `<button class="primary" data-goshop="${id}" ${S.phase === 'settle' ? 'disabled' : ''}>${S.phase === 'prep' ? '現在過去' : '明天去這家'}</button>`}</div></div>`;
         } else {
-          const ok = G.landReady && G.cash >= D.price;
-          h += `<div class="item${G.landReady ? '' : ' locked'}"><div class="top"><span class="nm">${G.landReady ? '🌱 ' : '🔒 '}${D.name}</span><b>${yen(D.price)}</b></div><div class="sub">${D.desc}<br>一樓的露天座位下雨天不能坐；這裡買東西是 ${D.cost} 倍價錢，餐點也能賣 ${D.sale} 倍。最多 ${D.cats} 隻貓上班。</div>
-            ${G.landReady ? '' : `<div class="prog"><i style="width:${clamp(G.earned / LAND_GOAL, 0, 1) * 100}%"></i></div><div class="sub">累計營收 ${yen(G.earned)} / ${yen(LAND_GOAL)} 才能開</div>`}
-            <div class="row" style="margin:0">${!G.landReady ? '<button disabled>累計營收還沒到</button>' : !ok ? `<button disabled>現金不夠（還差 ${yen(D.price - G.cash)}）</button>` : `<button class="primary" data-branch="${id}" ${S.phase === 'settle' ? 'disabled' : ''}>開分店</button>`}</div></div>`;
+          const ready = branchReady(id), ok = ready && G.cash >= D.price, need = D.need && SHOP_DEFS[D.need].name;
+          h += `<div class="item${ready ? '' : ' locked'}"><div class="top"><span class="nm">${ready ? '🌱 ' : '🔒 '}${D.name}</span><b>${yen(D.price)}</b></div><div class="sub">${D.desc}<br>${id === 2 ? '一樓的露天座位下雨天不能坐；' : ''}這裡買東西是 ${D.cost} 倍價錢，餐點也能賣 ${D.sale} 倍。最多 ${D.cats} 隻貓上班。</div>
+            ${ready ? '' : need ? `<div class="sub">先開「${need}」才能開</div>` : `<div class="prog"><i style="width:${clamp(G.earned / LAND_GOAL, 0, 1) * 100}%"></i></div><div class="sub">累計營收 ${yen(G.earned)} / ${yen(LAND_GOAL)} 才能開</div>`}
+            <div class="row" style="margin:0">${!ready ? `<button disabled>${need ? `還沒有${need}` : '累計營收還沒到'}</button>` : !ok ? `<button disabled>現金不夠（還差 ${yen(D.price - G.cash)}）</button>` : `<button class="primary" data-branch="${id}" ${S.phase === 'settle' ? 'disabled' : ''}>開分店</button>`}</div></div>`;
         }
       }
     } else if (phoneApp === 'promo') {
@@ -4171,11 +4367,12 @@ function renderPhone() {
         <canvas id="pgame" width="300" height="360" style="width:100%;max-width:300px;align-self:center;border-radius:14px;border:1px solid var(--line);touch-action:none"></canvas>
         <p id="pgOut" style="text-align:center;margin:6px 0"></p><div class="row" style="margin:0;justify-content:center"><button class="primary" id="pgStart">開始</button></div>`;
     } else if (phoneApp === 'cats') {
-      const where = k => k.anim ? '跟店長玩' : k.state === 'sleep' ? '睡覺中' : k.state === 'play' || k.state === 'toPlay' ? '陪客人玩' : k.state === 'eat' ? '吃飯中' : k.floor === 3 ? '休息室' : `在 ${k.floor}F 散步`;
+      const where = k => k.anim ? '跟店長玩' : k.state === 'sleep' ? '睡覺中' : k.state === 'play' || k.state === 'toPlay' ? '陪客人玩' : k.state === 'eat' ? '吃飯中' : k.floor === 3 ? (G.at === 3 ? '在 5F 休息' : '休息室') : `在 ${fname(k.floor)} 散步`;
       const tab = S.catTab || 'mine', cap = dutyCap(), duty = onDuty();
       const rtag = d => `<span style="font-size:11px;padding:1px 6px;border-radius:8px;color:#fff;background:${RARITY[d.rarity].color};margin-left:4px">${RARITY[d.rarity].name}</span>`;
       h += `<div class="row" style="margin:0 0 6px;gap:6px">${[['mine', `我的貓 ${G.cats.length}`], ['adopt', '領養中心'], ['dex', `圖鑑 ${G.seen.length}/${CAT_IDS.length}`]].map(([k, n]) => `<button data-ctab="${k}" ${k === tab ? 'class="primary"' : ''}>${n}</button>`).join('')}</div>`;
       if (tab === 'mine') {
+        if (G.owned.includes(3)) h += `<p class="muted">貓咪室內樂園開張後可以「送養」：幫貓咪找到愛牠的新家，新家會寄感謝信來，還會多一些粉絲。</p>`;
         h += `<p class="muted">今天是第 ${G.day} 天。${G.owned.length > 1 ? G.owned.map(id => `${shopRec(id).shopName}可以有 ${dutyCapOf(id)} 隻貓上班（現在 ${dutyList(id).length} 隻）`).join('，') + '。' : `店裡同時可以有 ${cap} 隻貓上班（店鋪等級越高、擴建越多，名額越多，最多 ${shopDef().cats} 隻）。`}其他的貓在貓咪宿舍休息。排班從明天開店生效。點「改名」可以幫貓取名字。</p>`;
         const list = G.cats.slice().sort((a, b) => (duty.includes(b.id) - duty.includes(a.id)) || (!!catShop(b.id) - !!catShop(a.id)) || (G.bond[b.id] || 0) - (G.bond[a.id] || 0));
         const pg = S.catPage || 0, per = 30;
@@ -4188,8 +4385,9 @@ function renderPhone() {
             return `<button class="${full ? '' : 'primary'}" data-move="${c.id}:${id}" ${full ? 'disabled' : ''}>${full ? (nm || '上班') + '名額滿了' : nm ? `到${nm}上班` : '排上班'}</button>`; }).join('');
           h += `<div class="item"><div class="top"><span class="nm">${catThumb(d, 30)} ${catNameOf(c.id)}${rtag(d)}</span><b>♥ ${v}</b></div>
             <div class="sub">No.${String(d.no).padStart(3, '0')}・${d.desc}。來店第 ${days} 天（${catRank(days)}）・${BOND[bondLvV(v)].title}・${st}</div>
-            <div class="row" style="margin:0;flex-wrap:wrap"><button data-rename="${c.id}">改名</button>${btns}</div></div>`;
+            <div class="row" style="margin:0;flex-wrap:wrap"><button data-rename="${c.id}">改名</button>${btns}${G.owned.includes(3) ? `<button data-rehome="${c.id}" ${S.phase === 'settle' ? 'disabled' : ''}>送養</button>` : ''}</div></div>`;
         }
+        if (G.letters?.length) h += `<p class="kh">💌 新家寄來的信</p>` + G.letters.slice().reverse().map(l => `<div class="item"><div class="top"><span class="nm">${catThumb(CAT_DEFS[l.id], 26)} ${l.nm}</span><span class="sub">第 ${l.d} 天送養</span></div><div class="sub">${l.fam}：「謝謝你們照顧${l.nm}，牠在新家過得很好！」</div></div>`).join('');
         if (list.length > per) h += `<div class="row" style="margin:0;justify-content:center"><button data-cpage="${pg - 1}" ${pg ? '' : 'disabled'}>‹ 上一頁</button><span class="sub">${pg + 1}/${Math.ceil(list.length / per)}</span><button data-cpage="${pg + 1}" ${(pg + 1) * per < list.length ? '' : 'disabled'}>下一頁 ›</button></div>`;
       } else if (tab === 'adopt') {
         h += `<p class="muted">中途之家每天會送來 4 隻新的貓，明天會換一批。店鋪 Lv.2 開始會出現「少見」的貓，Lv.4「稀有」，Lv.6「傳說」。領養要付現金，不能賒帳。</p>`;
@@ -4292,6 +4490,7 @@ function renderPhone() {
     sfx('delivery'); toast(`跟「${C.co}」簽約了！接下來 ${COLLAB_DAYS} 天，客人可以加購${C.item}`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => { sfx('app_switch'); storeTab = b.dataset.stab; renderPhone(); });
   q('#expandBtn') && (q('#expandBtn').onclick = () => { doExpand(); renderPhone(); });
+  q('#elevBtn') && (q('#elevBtn').onclick = () => { buyElev(); renderPhone(); });
   sc.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(b.dataset.call));
   q('#hangUp') && (q('#hangUp').onclick = () => { CALL = null; renderPhone(); });
   sc.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { claimDaily(+b.dataset.claim); renderPhone(); });
@@ -4303,6 +4502,7 @@ function renderPhone() {
   sc.querySelectorAll('[data-cpage]').forEach(b => b.onclick = () => { S.catPage = +b.dataset.cpage; renderPhone(); });
   sc.querySelectorAll('[data-dpage]').forEach(b => b.onclick = () => { S.dexPage = +b.dataset.dpage; renderPhone(); });
   sc.querySelectorAll('[data-dexr]').forEach(b => b.onclick = () => { S.dexR = +b.dataset.dexr; S.dexPage = 0; renderPhone(); });
+  sc.querySelectorAll('[data-rehome]').forEach(b => b.onclick = () => { if (rehomeCat(b.dataset.rehome)) renderPhone(); });
   sc.querySelectorAll('[data-move]').forEach(b => b.onclick = () => { const [id, to] = b.dataset.move.split(':'); if (moveCat(id, +to)) saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-rename]').forEach(b => b.onclick = () => { const id = b.dataset.rename, c = G.cats.find(c => c.id === id); if (!c) return;
     const v = prompt(`幫${catNameOf(id)}取新名字（最多 6 個字，留空就改回「${CAT_DEFS[id].name}」）`, catNameOf(id)); if (v === null) return;
@@ -4344,6 +4544,26 @@ function renderPhone() {
   q('#acctOut') && (q('#acctOut').onclick = logOut);
 }
 // cats work in one shop at a time (or rest in the dorm, to = 0); 暖陽貓閣 always keeps at least one
+// 送養 (once 貓咪室內樂園 is open): a cat goes to a new family, who write back a thank-you letter; fans and experience come with it
+const LETTER_KEEP = 30;
+const FAMILIES = ['王家', '林家', '陳奶奶', '張家姊妹', '李爺爺', '黃家', '吳老師', '劉家小朋友', '蔡家', '楊家'];
+function rehomeCat(cid) {
+  const c = G.cats.find(c => c.id === cid); if (!c || S.phase === 'settle') return false;
+  if (G.cats.length <= 1) { toast('至少要留一隻貓在身邊喔'); return false; }
+  const from = catShop(cid);
+  if (from === 1 && dutyList(1).length <= 1) { toast(`${shopRec(1).shopName}至少要留一隻貓，先排別的貓去上班`); return false; }
+  const nm = catNameOf(cid), v = G.bond[cid] || 0, fam = pick(FAMILIES);
+  if (!confirm(`真的要讓${nm}去新家嗎？送養之後就不會回來了。`)) return false;
+  if (from) { const l = dutyList(from); l.splice(l.indexOf(cid), 1); }
+  G.cats.splice(G.cats.indexOf(c), 1);
+  const i = S.cats.findIndex(k => k.id === cid); if (i >= 0) { endPlay(S.cats[i]); S.cats.splice(i, 1); }
+  const fans = 5 + Math.min(20, bondLvV(v) * 2);
+  G.fans += fans; S.today.fans += fans; gainExp(20); G.stats.rehome++;
+  (G.letters = G.letters || []).push({ id: cid, nm, fam, d: G.day }); if (G.letters.length > LETTER_KEEP) G.letters.shift();
+  sfx('adopt'); saveProgress();
+  showPopup(`<h2>💌 ${fam}寄來的感謝信</h2><p>謝謝${G.shopName}這麼用心照顧${nm}！${nm}來到我們家第一天就窩在沙發上睡著了，每天都會在門口等我們回家。我們會好好愛牠的。</p><p class="muted">粉絲 +${fans}・經驗 +20</p>`);
+  return true;
+}
 function moveCat(cid, to) {
   const from = catShop(cid);
   if (from === to || (to && !G.owned.includes(to))) return false;
@@ -4362,6 +4582,11 @@ function doExpand() {
   S.cushions.push(...E.cushions.map(p => ({ ...p, cust: null })));
   toast(`擴建完成：${E.name}！`); say(S.mgr, '店變大了，好開心！'); gainExp(15); saveProgress();
 }
+function buyElev() {
+  if (G.at !== 3 || G.elev || G.cash < ELEV_PRICE || S.phase === 'settle') return;
+  G.cash -= ELEV_PRICE; S.today.spent += ELEV_PRICE; G.elev = true; sfx('build');
+  toast('員工電梯裝好了！員工上下樓快多了'); say(S.mgr, '我還是走樓梯運動一下好了'); saveProgress();
+}
 function buy(id, credit) {
   let name, price;
   if (id === 'table') {
@@ -4374,6 +4599,10 @@ function buy(id, credit) {
     if (id === 'cushion') S.cushions.push(...CUSHION_EXTRA.map(p => ({ ...p, cust: null })));
     if (id === 'beanbag' || id === 'hammock') S.cushions.push(...furnCushions().filter(p => p.kind === id).map(p => ({ ...p, cust: null })));
     S.tables.push(...furnSeats(id));
+  } else if (TOYS[id]) {
+    if (toysHere().includes(id) || TOYS[id].lv > shopLv()) return;
+    name = TOYS[id].name; price = TOYS[id].price; (G.toys = G.toys || []).push(id);
+    S.cushions.push({ ...TOYS[id].seat, toy: id, cust: null });
   } else if (TOOLS[id]) {
     const T = TOOLS[id]; if (T.lv > shopLv() || (T.keep ? hasF(id) : S.buff[id] || S.phase === 'settle')) return;
     name = T.name; price = T.price; if (T.keep) G.furn.push(id); else S.buff[id] = true;
@@ -4424,6 +4653,7 @@ function decodeSave(code) {
       shopName: cleanName(s.shopName, SHOP_DEFS[id].name, 10),
       sched: Object.fromEntries(Object.keys(ROLES).filter(r => s.sched?.[r]).map(r => [r, { shift: SHIFTS[s.sched[r].shift] ? s.sched[r].shift : 'all', brk: [0, ...BREAK_HOURS].includes(s.sched[r].brk) ? s.sched[r].brk : DEFAULT_SCHED[r].brk }])),
       duty: Array.isArray(s.duty) ? [...new Set(s.duty.filter(x => CAT_DEFS[x]))] : null,
+      toys: id === 3 && Array.isArray(s.toys) ? [...new Set(s.toys.filter(t => TOYS[t]))] : [], elev: id === 3 && s.elev === true,
       garden: id === 2 ? PLOTS.map((p, i) => { const g = Array.isArray(s.garden) ? s.garden[i] : null; const st = [0, 1, 2].includes(g?.s) ? g.s : 0;
         return { s: st, g: st === 2 ? 1 : st ? clamp(num(g.g, 0), 0, 1) : 0, wet: 0 }; }) : [],
     };
@@ -4454,6 +4684,7 @@ function decodeSave(code) {
     badges: Array.isArray(o.badges) ? [...new Set(o.badges.filter(id => BADGES.some(b => b.id === id)))] : [],
     reviews: Array.isArray(o.reviews) ? o.reviews.filter(r => r && typeof r.t === 'string').slice(0, 80).map(r => ({ d: Math.max(1, Math.floor(num(r.d, 1))), s: clamp(Math.floor(num(r.s, 3)), 1, 5), w: cleanName(r.w, '客人', 8), t: cleanName(r.t, '', 60) })) : [],
     revTotal: Math.max(0, Math.floor(num(o.revTotal, 0))),
+    letters: Array.isArray(o.letters) ? o.letters.filter(l => l && CAT_DEFS[l.id]).slice(-LETTER_KEEP).map(l => ({ id: l.id, nm: cleanName(l.nm, CAT_DEFS[l.id].name, 6), fam: cleanName(l.fam, '新家', 8), d: Math.max(1, Math.floor(num(l.d, 1))) })) : [],
     ig: Array.isArray(o.ig) ? o.ig.filter(p => p && typeof p.id === 'string').slice(0, IG_KEEP).map(p => ({ id: p.id.replace(/[^a-z0-9]/g, '').slice(0, 12), d: Math.max(1, Math.floor(num(p.d, 1))), t: clamp(num(p.t, 0), 0, 1440), f: clamp(Math.floor(num(p.f, 1)), 1, 3), cap: cleanName(p.cap, '', 40), likes: Math.max(0, Math.floor(num(p.likes, 0))), ...(num(p.sid, 0) > 0 ? { sid: Math.floor(p.sid), rl: Math.max(0, Math.floor(num(p.rl, 0))) } : {}), com: (Array.isArray(p.com) ? p.com : []).slice(0, 6).map(c => [cleanName(c?.[0], '路人', 12), cleanName(c?.[1], '', 40)]) })) : [],
     stats: Object.fromEntries(Object.keys(base.stats).map(k => [k, Math.max(0, Math.floor(num(o.stats?.[k], 0)))])),
     seen: Array.isArray(o.seen) ? [...new Set(o.seen.filter(id => CAT_DEFS[id]))] : [],
@@ -4946,6 +5177,7 @@ async function begin(newG) {
   if (opening) return; opening = true;
   const outfit = [0, 1, 2].map(i => (OUTFITS.find(o => o.id === newG.outfit) || OUTFITS[0]).spr + (newG.mgrSex === 'm' ? 'm' : '') + '_' + i);
   if (newG.at === 2) outfit.push('s2bg1', 's2bg2', 's2bg4', ...newG.staff.map(r => 's2' + r + '_0'));
+  if (newG.at === 3) outfit.push('s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6', ...newG.staff.filter(r => r !== 'server2').map(r => 's3' + r + '_0'));
   outfit.forEach(n => art(n));
   if (![...CORE_ART, ...outfit].every(artOk)) {
     $('loadOv').hidden = false;
