@@ -224,7 +224,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
       <li><b>分店</b>：每天選一家店去上班，沒去的店由員工照常營業，營業額照算。貓咪可以在喵喵家族調到不同的店（暖陽貓閣最多 7 隻、貓咪庭院最多 15 隻、貓咪室內樂園最多 24 隻）。下雨天庭院座位會暫停。</li>
-      <li><b>貓咪室內樂園</b>：開了貓咪庭院之後，存到 ¥1,000,000 就能在「分店地圖」開第三家店。傳統皇宮風格的五層樓：1F 接待客人、2F 貓咪玩具館（在「商店」的「玩具」買玩具擺上去）、3F 和 4F 是接客區、5F 是員工休息區，累了的貓也會上去睡。店長要走樓梯；在「我的店」可以加裝員工專用電梯。開張後喵喵家族多了「送養」，新家會寄感謝信來。</li>
+      <li><b>貓咪室內樂園</b>：開了貓咪庭院之後，存到 ¥1,000,000 就能在「分店地圖」開第三家店。傳統皇宮風格的五層樓：1F 接待客人、2F 貓咪玩具館（在「商店」的「玩具」買玩具擺上去）、3F 和 4F 是接客區、5F 是員工休息區，累了的貓也會上去睡。在「我的店」可以加裝電梯，員工和店長都能搭。開張後喵喵家族多了「送養」，新家會寄感謝信來。</li>
       <li><b>貓咪親密度</b>：店長每摸一次頭，那隻貓的親密度 +1（名字下面的愛心數字）。到 10、25、45、70、100 會解鎖蹭蹭腳、擊掌、翻肚子、抱抱、碰鼻子，點貓咪就能選。</li>
       <li><b>收銀台</b>：店長幫客人點餐時要自己找錢，點錢幣和鈔票放進找零盤，再按「找錢給客人」。少找客人會不開心，多找會虧錢。</li>
       <li>貓咪頭上出現「摸摸我」時，走過去摸牠會很開心，會更常去陪客人玩；放著不理牠會鬧脾氣一陣子。手機的「喵音樂」可以換背景音樂。</li>
@@ -436,7 +436,7 @@ const TOY_IDS = Object.keys(TOYS);
 const toysHere = () => G.at === 3 ? (G.toys || []).filter(t => TOYS[t]) : [];
 const toySeats = () => toysHere().map(t => ({ ...TOYS[t].seat, toy: t }));
 const toyFlow = () => 1 + .05 * toysHere().length;
-const ELEV_PRICE = 300000; // the staff elevator of 貓咪室內樂園 (bought in 我的店)
+const ELEV_PRICE = 100000; // the elevator of 貓咪室內樂園 (bought in 我的店); staff and the manager both ride it
 const TOOLS = {
   wand:   { name: '逗貓棒',       price: 150, lv: 1, keep: true, desc: '店長摸貓時，親密度每次多 +1' },
   lucky:  { name: '招財貓擺飾',   price: 400, lv: 2, keep: true, desc: '擺在收銀台旁，給 5 星的客人有機會留下 ¥10 小費' },
@@ -652,7 +652,7 @@ const SHOP_DEFS = {
   1: { name: '暖陽貓閣', cats: 7, cost: 1, sale: 1, desc: '巷子裡的雙層貓咪咖啡廳，一切開始的地方' },
   2: { name: '貓咪庭院', cats: 15, cost: 2, sale: 1.5, price: 100000, desc: '三層樓的大店：一樓後面有露天庭院、二樓是更大的貓閣、三樓是頂樓菜園。流浪貓常來庭院晃晃' },
   // the third shop (Chuck, 2026-10-24): opens once you own 貓咪庭院 (need) and have the cash; no stray, no garden, all indoors
-  3: { name: '貓咪室內樂園', cats: 24, cost: 3, sale: 2, price: 1000000, need: 2, desc: '傳統皇宮風格的五層樓：1F 接待客人、2F 貓咪玩具館、3F 和 4F 是接客區、5F 員工休息區（累了的貓也會上去睡）。員工專用電梯可以之後加裝' },
+  3: { name: '貓咪室內樂園', cats: 24, cost: 3, sale: 2, price: 1000000, need: 2, desc: '傳統皇宮風格的五層樓：1F 接待客人、2F 貓咪玩具館、3F 和 4F 是接客區、5F 員工休息區（累了的貓也會上去睡）。電梯可以之後加裝' },
 };
 const shopDef = (at = G ? G.at : 1) => SHOP_DEFS[at] || SHOP_DEFS[1];
 const costMul = () => shopDef().cost;
@@ -1666,7 +1666,7 @@ function tag(t, x, y, size = 11) {
   rrect(x - w / 2, y - size * .8, w, size * 1.6, 7, 'rgba(255,252,246,.88)', 'rgba(106,75,58,.55)', 1); text(t, x, y, size, '#6B4A35', 'center', FONT, 700);
 }
 function bgLabels(f) {
-  if (G.at === 3 && LAYOUT.ELEV[f]) tag(G.elev ? '員工電梯' : '電梯（還沒裝）', LAYOUT.ELEV[f].x, f === 1 ? 222 : f === 3 ? 230 : 280);
+  if (G.at === 3 && LAYOUT.ELEV[f]) tag(G.elev ? '電梯' : '電梯（還沒裝）', LAYOUT.ELEV[f].x, f === 1 ? 222 : f === 3 ? 230 : 280);
   if (f === 1) { tag('烤箱', 390, 470); tag('↑ 2F', 150, 462); if (G.at === 2) tag('庭院', OUT_X + 90, 300); }
   else if (f === 2) { tag('↓ 1F', 66, 352); if (G.at !== 3) tag('員工休息室', 557, 290); if (G.at === 2) tag('↑ 3F 頂樓菜園', ROOF_DOOR2.x - 10, 300); if (G.at === 3) { tag('↑ 3F', ROOF_DOOR2.x - 10, 300); tag('2F 貓咪玩具館', 1000, 40, 15); } }
   else if (f === 4) { tag('↓ 2F', 1395, 312); text('頂樓菜園', 560, 40, 22, '#6B4A35', 'center', DFONT, 700); }
@@ -2478,12 +2478,13 @@ function routeTo(e, f, x, y) {
   }
   leg(path, cf, cx, cy, x, y); e.path = path;
 }
-// 貓咪室內樂園: floor to floor along LAYOUT.LINKS (the shortest chain of stairs), or for staff the elevator once it is installed
+// 貓咪室內樂園: floor to floor along LAYOUT.LINKS (the shortest chain of stairs), or the elevator once it is installed
+// (staff always; the manager too, except when she chose the stairs)
 const ELEV_WAIT = 1.2;
 function routeLinks(e, f, x, y) {
   const path = []; let cf = e.floor, cx = e.x, cy = e.y;
   const E = LAYOUT.ELEV;
-  if (cf !== f && e.role && G.elev && E[cf] && E[f]) {
+  if (cf !== f && (e.role || (e === S.mgr && !e.byStairs)) && G.elev && E[cf] && E[f]) {
     leg(path, cf, cx, cy, E[cf].x, E[cf].y); path.push({ f: cf, x: E[cf].x, y: E[cf].y, wait: ELEV_WAIT }, { f, ...E[f] });
     cf = f; cx = E[f].x; cy = E[f].y;
   }
@@ -3849,8 +3850,8 @@ function hitTest(x, y) {
   if (y > FLOOR + 8) return { act: () => actWalk(x, y), weak: true };
   return null;
 }
-// 貓咪室內樂園: tapping a staircase walks up or down a floor; the elevator is for staff only
-const elevNote = () => toast(G.elev ? '這是員工專用電梯，店長要走樓梯喔' : '這裡預留了員工電梯，到手機「我的店」可以加裝');
+// 貓咪室內樂園: tapping a staircase walks up or down a floor; tapping the elevator picks a floor to ride to
+const elevNote = () => G.elev ? chooseElev() : toast('這裡預留了電梯，到手機「我的店」可以加裝');
 function tapStairs(f, x, y) {
   const E = LAYOUT.ELEV[f];
   if (E && Math.abs(x - E.x) < 50 && y > 280 && y < E.y + 4) return { act: elevNote };
@@ -3938,7 +3939,7 @@ function leaveRoom() { if (LAYOUT.LINKS) { walkToFloor(stackNext(S.mgr.floor, -1
 // the manager walks (and the view follows) to floor `to`, using the stairs, the staff-room door or the rooftop stairs
 function walkToFloor(to) {
   const m = S.mgr; m.climb = true; m.manual = false;
-  if (LAYOUT.LINKS) { const p = stairLanding(m.floor, to); routeTo(m, to, p.x, p.y); return; }
+  if (LAYOUT.LINKS) { const p = stairLanding(m.floor, to); m.byStairs = true; routeTo(m, to, p.x, p.y); m.byStairs = false; return; }
   const p = to === 4 ? { x: ROOF_IN.x - 80, y: ROOF_IN.y } : to === 3 ? { x: ROOM_IN.x + 60, y: ROOM_IN.y } : { x: STAIRS[to].x + (to === 2 ? 120 : 70), y: STAIRS[to].y + 6 };
   routeTo(m, to, p.x, p.y);
 }
@@ -3967,7 +3968,7 @@ function actCheer(s) {
   } }]);
 }
 function climbStairs() { walkToFloor(S.mgr.floor === 1 ? 2 : 1); }
-// ---- 貓咪室內樂園: the manager always takes the stairs (the elevator is for staff only)
+// ---- 貓咪室內樂園: stairs between neighbouring floors (the elevator, once bought, goes anywhere)
 const stackNext = (f, d) => { const st = LAYOUT.STACK, i = st.indexOf(f); return st[clamp(i + d, 0, st.length - 1)]; };
 const linkUp = f => LAYOUT.LINKS.find(L => L.a === f), linkDown = f => LAYOUT.LINKS.find(L => L.b === f);
 // where the manager stops after walking from floor `from` up or down to floor `to`: a step into the room from the stairs
@@ -4026,6 +4027,7 @@ function nearbyActions() {
     const U = f !== 1 && linkUp(f), D = f !== 2 && f !== 1 && linkDown(f);
     if (U) add(U.pts[0].x, U.pts[0].y, '上 ' + fname(U.b), () => walkToFloor(U.b));
     if (D) { const p = D.pts[D.pts.length - 1]; add(p.x, p.y, '下 ' + fname(D.a), () => walkToFloor(D.a)); }
+    const E = LAYOUT.ELEV[f]; if (G.elev && E) add(E.x, E.y, '搭電梯', chooseElev);
   }
   return list.filter(a => a.d < 100).sort((a, b) => a.d - b.d);
 }
@@ -4165,6 +4167,19 @@ function chooseBake() {
     b.innerHTML = open ? `<span>做${M.name}</span><small>一批 ${M.batch} 份・${COOK_STEPS[d].length} 個步驟・售價 ${yen(G.prices[d])}</small>`
                        : `<span>🔒 ${M.name}</span><small>店鋪 Lv.${M.lv} 解鎖</small>`;
     if (open) b.onclick = () => { closeChoose(); actBake(d); }; else b.disabled = true;
+    row.appendChild(b);
+  }
+  const c = document.createElement('button'); c.textContent = '取消'; c.onclick = closeChoose; row.appendChild(c);
+  card.appendChild(row); $('chooseOv').hidden = false; S.uiPause = true;
+}
+// 貓咪室內樂園: ride the elevator to any floor
+function chooseElev() {
+  const card = $('chooseCard'), f = S.mgr.floor;
+  card.innerHTML = `<h2>搭電梯</h2><p class="muted">要去幾樓？</p>`;
+  const row = document.createElement('div'); row.className = 'row'; row.style.flexDirection = 'column';
+  for (const to of [...LAYOUT.STACK].reverse()) {
+    const b = document.createElement('button'); b.className = 'opt'; b.innerHTML = `<span>${fname(to)}</span>`;
+    if (to === f) b.disabled = true; else b.onclick = () => { closeChoose(); const E = LAYOUT.ELEV[to]; addTask('搭電梯到 ' + fname(to), [{ f: to, x: E.x + 70, y: Math.max(E.y + 30, 530), dur: 0 }]); };
     row.appendChild(b);
   }
   const c = document.createElement('button'); c.textContent = '取消'; c.onclick = closeChoose; row.appendChild(c);
@@ -4328,7 +4343,7 @@ function renderPhone() {
       h += '<p class="kh">擴大店面</p>' + EXPANSIONS.map((E, i) => { const done = G.expand > i, next = G.expand === i, locked = E.lv > lv;
         return `<div class="item${locked && !done ? ' locked' : ''}"><div class="top"><span class="nm">${done ? '✓ ' : locked ? '🔒 ' : ''}第 ${i + 1} 次擴建：${E.name}</span><b>${yen(E.price)}</b></div><div class="sub">${E.desc}</div>
           <div class="row" style="margin:0">${done ? '<button disabled>已完成</button>' : !next ? '<button disabled>先完成上一次擴建</button>' : locked ? `<button disabled>店鋪 Lv.${E.lv} 才能擴建</button>` : G.cash < E.price ? '<button disabled>現金不夠</button>' : `<button class="primary" id="expandBtn" ${S.phase === 'settle' ? 'disabled' : ''}>開始擴建</button>`}</div></div>`; }).join('');
-      if (G.at === 3) h += `<p class="kh">員工電梯</p><div class="item"><div class="top"><span class="nm">${G.elev ? '✓ ' : ''}加裝員工專用電梯</span><b>${yen(ELEV_PRICE)}</b></div><div class="sub">1F 到 5F 都停，員工搭電梯上下樓（上 5F 休息、去 3F 4F 帶貓陪客都快很多）。店長還是要走樓梯喔。</div>
+      if (G.at === 3) h += `<p class="kh">電梯</p><div class="item"><div class="top"><span class="nm">${G.elev ? '✓ ' : ''}加裝電梯</span><b>${yen(ELEV_PRICE)}</b></div><div class="sub">1F 到 5F 都停，員工和店長都能搭（上 5F 休息、去 3F 4F 帶貓陪客都快很多）。走到電梯門口按「搭電梯」選樓層。</div>
           <div class="row" style="margin:0">${G.elev ? '<button disabled>已經裝好了</button>' : G.cash < ELEV_PRICE ? `<button disabled>現金不夠（還差 ${yen(ELEV_PRICE - G.cash)}）</button>` : `<button class="primary" id="elevBtn" ${S.phase === 'settle' ? 'disabled' : ''}>加裝電梯</button>`}</div></div>`;
       for (let l = 2; l <= MAX_LV; l++) h += `<div class="item${l > lv ? ' locked' : ''}"><div class="top"><span class="nm">${l > lv ? '🔒' : '✓'} Lv.${l}</span><span class="sub">${l > lv ? `經驗 ${LV_EXP[l - 1]}` : '已解鎖'}</span></div><div class="sub">${unlockNames(l)}</div></div>`;
       h += `<div class="item"><div class="top"><span class="nm">開拓新土地</span><b>${yen(G.earned)} / ${yen(LAND_GOAL)}</b></div>
@@ -4590,7 +4605,7 @@ function doExpand() {
 function buyElev() {
   if (G.at !== 3 || G.elev || G.cash < ELEV_PRICE || S.phase === 'settle') return;
   G.cash -= ELEV_PRICE; S.today.spent += ELEV_PRICE; G.elev = true; sfx('build');
-  toast('員工電梯裝好了！員工上下樓快多了'); say(S.mgr, '我還是走樓梯運動一下好了'); saveProgress();
+  toast('電梯裝好了！走到電梯門口就能搭'); say(S.mgr, '有電梯，上下樓輕鬆多了'); saveProgress();
 }
 function buy(id, credit) {
   let name, price;
