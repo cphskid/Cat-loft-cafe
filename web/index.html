@@ -2718,7 +2718,13 @@ function actStairs() {
   if (S.mgr.floor === to && !S.mgr.task && !S.tasks.length) return;
   addTask(to === 2 ? '上 2F' : '下 1F', [{ f: to, x: STAIRS[to].x + 80, y: STAIRS[to].y + 10, dur: 0 }]);
 }
-function actWalk(x, y) { addTask('走過去', [{ f: S.view, x, y: clamp(y, 488, 594), dur: 0 }]); }
+// tapping empty floor: one walk at a time, a new tap moves the target instead of stacking up 走過去 in the to-do list
+function actWalk(x, y) {
+  const st = { f: S.view, x, y: clamp(y, 488, 594), dur: 0 }, m = S.mgr;
+  S.tasks = S.tasks.filter(t => t.kind !== 'walk');
+  if (m.task && m.task.kind === 'walk') { m.task.steps = [st]; m.si = 0; beginStep(m); renderTasks(); return; }
+  addTask('走過去', [st], { kind: 'walk' });
+}
 
 // ====================== staff AI ======================
 function warnOnce(key, msg) { if (!S.warned[key]) { S.warned[key] = true; toast(msg); } }
@@ -3869,7 +3875,7 @@ cv.addEventListener('pointerdown', e => {
   if (S.reg) { regClick(p); return; }
   if (S.cook) { if (Math.hypot(p.x - COOK_X.x, p.y - COOK_X.y) < 22) cancelCook(); else { cookPress(); cv.setPointerCapture(e.pointerId); } return; }
   // a tap acts on release; a drag pans the camera instead
-  DRAG.id = e.pointerId; DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.cam0 = CAM.x; DRAG.camy0 = CAM.y; DRAG.moved = false;
+  DRAG.id = e.pointerId; DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.cam0 = CAM.x; DRAG.camy0 = CAM.y; DRAG.moved = false; DRAG.t0 = performance.now();
   cv.setPointerCapture(e.pointerId);
 });
 cv.addEventListener('pointerup', e => {
@@ -3878,8 +3884,24 @@ cv.addEventListener('pointerup', e => {
   DRAG.id = null;
   if (DRAG.moved) { DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; return; }
   if (!started || !S || S.paused || S.phase === 'settle' || S.mini || S.cook || S.reg) return;
-  const p = toCanvas(e), h = hitTest(p.x, p.y); if (h) h.act();
+  const p = toCanvas(e), h = hitTest(p.x, p.y);
+  if (h && h.weak && strayTap(e)) return; // a thumb resting on the edge or just missing a button shouldn't send the manager off
+  if (h) h.act();
 });
+// an empty-floor tap right next to the on-screen controls or the screen edge is almost always a miss, not a "walk here"
+function strayTap(e) {
+  if (e.pointerType === 'mouse') return false;
+  if (performance.now() - DRAG.t0 > 600) return true; // a long press that let go isn't a tap
+  const r = cv.getBoundingClientRect(), x = e.clientX, y = e.clientY, M = 28;
+  if (Math.hypot(x - DRAG.x0, y - DRAG.y0) > 6) return true; // the finger slid a bit: half a swipe, not a tap
+  if (x < r.left + M || x > r.right - M || y > r.bottom - M) return true;
+  for (const el of document.querySelectorAll('.joy, .actbtn, .lbtns, .rbtns, .falert')) {
+    if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') continue; // hidden
+    const b = el.getBoundingClientRect(); if (!b.width) continue;
+    if (x > b.left - M && x < b.right + M && y > b.top - M && y < b.bottom + M) return true;
+  }
+  return false;
+}
 cv.addEventListener('pointercancel', e => { cookRelease(); if (DRAG.id === e.pointerId) { DRAG.id = null; DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; } });
 cv.addEventListener('pointermove', e => {
   if (DRAG.id === e.pointerId) {
