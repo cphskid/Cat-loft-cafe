@@ -155,17 +155,17 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .joy .u{top:7px;left:50%;transform:translateX(-50%)}.joy .d{bottom:7px;left:50%;transform:translateX(-50%)}
 .joy .l{left:8px;top:50%;transform:translateY(-50%)}.joy .r{right:8px;top:50%;transform:translateY(-50%)}
 .knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(141,110,99,.85);border:3px solid rgba(255,255,255,.9);box-shadow:0 3px 8px rgba(93,64,55,.35);pointer-events:none}
-.actbtn{position:absolute;right:calc(20px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));z-index:4;width:84px;height:84px;border-radius:50%;padding:0;font-family:var(--display);font-size:20px;font-weight:700;background:rgba(217,119,62,.85);border-color:rgba(217,119,62,.9);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
+.actbtn{position:absolute;right:calc(20px + env(safe-area-inset-right));bottom:calc(30px + env(safe-area-inset-bottom));z-index:4;width:64px;height:64px;border-radius:50%;padding:0;font-family:var(--display);font-size:16px;font-weight:700;background:rgba(217,119,62,.85);border-color:rgba(217,119,62,.9);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
 .actbtn:hover{background:#C9682F}
 .game.busy .joy,.game.busy .actbtn,.game.busy .lbtns,.game.busy .drawer,.game.busy .openbtn,.game.busy .rbtns{display:none}
 /* phone 設定 app: tuck the joystick / action button into the corner (smaller, see-through) or hide them */
 .game.joy-mini .joy{width:84px;height:84px;left:calc(4px + env(safe-area-inset-left));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.55}
 .game.joy-mini .joy span{display:none}.game.joy-mini .knob{width:36px;height:36px;margin:-18px 0 0 -18px}
-.game.act-mini .actbtn{width:54px;height:54px;font-size:14px;right:calc(4px + env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.65}
+.game.act-mini .actbtn{width:46px;height:46px;font-size:12px;right:calc(4px + env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.65}
 .game.joy-off .joy,.game.act-off .actbtn{display:none}
 .seg{display:flex;gap:6px;margin:6px 0 0}.seg button{flex:1;padding:6px 4px;font-size:13px}.seg button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
 #phoneBtn .badge{background:var(--accent)}
-@media (max-height:460px){.joy{width:100px;height:100px}.actbtn{width:72px;height:72px;font-size:18px}.rbtns{gap:6px}.rb{width:42px;height:42px}.lbtns{top:calc(58px + env(safe-area-inset-top));flex-direction:row}.drawer{left:calc(10px + env(safe-area-inset-left));top:calc(108px + env(safe-area-inset-top));max-height:calc(100% - 118px);width:min(440px,55%)}}
+@media (max-height:460px){.joy{width:100px;height:100px}.actbtn{width:56px;height:56px;font-size:15px}.rbtns{gap:6px}.rb{width:42px;height:42px}.lbtns{top:calc(58px + env(safe-area-inset-top));flex-direction:row}.drawer{left:calc(10px + env(safe-area-inset-left));top:calc(108px + env(safe-area-inset-top));max-height:calc(100% - 118px);width:min(440px,55%)}}
 </style>
 </head>
 <body>
