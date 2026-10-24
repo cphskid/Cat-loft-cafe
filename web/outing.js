@@ -1,4 +1,5 @@
-// 暖陽貓閣「🚪 店長外出」：營業時間走到 1F 門口按「出門走走」，一天一次，出去約 2 小時（遊戲時間）。
+// 暖陽貓閣「🚪 店長外出」：營業時間走到 1F 門口按「出門走走」（或用手機「出去玩」），一天最多 3 次，每次約 2 小時（遊戲時間）。
+// 門口上方會一直飄著「出門走走」的牌子，第一天教學也會介紹。
 // 店長不在的時候，店員照平常的工作顧店（缺哪個職位，那份工作就等店長回來），營收照算。
 //   聯名公司：親自去談合作（簽約打折），合作中就去拜訪（合作多幾天）。
 //   公園：發傳單、坐長椅休息、隨便逛逛（遇到各種小事）。
@@ -8,6 +9,7 @@
 // SHOP、ROLES、roleName、mgrSpr、update、updateButtons、renderTasks、endTask、heldCat、showPopup、saveProgress、dispTotal、DISHES、DOOR、$。
 (function () {
   const OUT_MIN = 120, LAST_START = 18 * 60 + 30; // 2 game hours; must leave by 18:30 to be back before last order
+  const MAX_OUTS = 3; // outings per day
   const MARKET_OFF = .7; // market prices: 30% off the phone price
   const PLACES = {
     co:   { name: '聯名公司', img: 'out_co',   desc: '親自去談合作，簽約比較便宜' },
@@ -59,15 +61,54 @@
   const missing = () => Object.keys(ROLES).filter(r => !ROLES[r].only).filter(r => !S.staff.some(s => s.role === r && !s.away));
   const MISS_NOTE = { cashier: '客人點餐要排隊等你回來', cook: '點心賣完就沒有人補', server: '餐點要等客人自己來拿…其實是等你回來送', feeder: '貓碗和貓砂盆沒人顧', sitter: '睡著的貓沒人叫醒' };
 
+  const outs = () => S.today.outs || (S.today.outed ? 1 : 0); // older saves kept a yes/no
+  const left = () => Math.max(0, MAX_OUTS - outs());
   function can() {
-    return started && S && S.phase === 'open' && !S.out && !S.today.outed && S.time <= LAST_START && !(window.TUT && TUT.hold()) && !heldCat();
+    return started && S && S.phase === 'open' && !S.out && left() > 0 && S.time <= LAST_START && !(window.TUT && TUT.hold()) && !heldCat();
   }
-  // the door action (1F, by the front door); after the outing, or too late in the day, the door says why
+  // why you can't go out right now (null when you can)
+  function why() {
+    if (!started || !S) return '還沒開始營業';
+    if (S.out) return '店長已經在外面了';
+    if (S.phase === 'prep') return '開店營業以後才能出門';
+    if (S.phase !== 'open') return '今天已經打烊了';
+    if (!left()) return `今天已經出門 ${MAX_OUTS} 次了，明天再出去走走吧`;
+    if (S.time > LAST_START) return '太晚了，18:30 以後要留在店裡準備打烊';
+    if (heldCat()) return '先把抱著的貓咪放下來';
+    if (window.TUT && TUT.hold()) return '先照顧好第一位客人';
+    return null;
+  }
+  // the door action (1F, by the front door); after the outings, or too late in the day, the door says why
   function door(add) {
     if (!S || S.phase !== 'open' || S.out) return;
-    if (can()) add(70, 566, '出門走走', pickPlace);
-    else if (S.today.outed) add(70, 566, '今天已經出門過了', () => toast('一天只能出門一次，明天再出去走走吧'));
-    else if (S.time > LAST_START) add(70, 566, '出門走走', () => toast('太晚了，18:30 以後要留在店裡準備打烊'));
+    if (can()) add(70, 566, `出門走走（今天還能 ${left()} 次）`, pickPlace);
+    else if (!left()) add(70, 566, `今天出門 ${MAX_OUTS} 次了`, () => toast(why()));
+    else if (S.time > LAST_START) add(70, 566, '出門走走', () => toast(why()));
+  }
+  // a little sign that floats over the front door whenever you can go out, so the door is easy to find
+  // until the first outing ever, the sign also hugs the screen edge (with an arrow) when the door is scrolled out of view
+  function draw(f) {
+    if (f !== 1 || !can() || (S.close && S.close.dim)) return;
+    const edge = -V.tx / V.s, off = !G.wentOut && edge > 20;
+    const t = off ? `◀ 🚪 出門走走` : `🚪 出門走走 ×${left()}`;
+    g.save(); g.font = `700 15px ${FONT}`; const w = g.measureText(t).width + 20;
+    const x = off ? edge + w / 2 + 8 : Math.max(70, w / 2 + 4), y = 470 + Math.sin(S.t * 3) * 4;
+    rrect(x - w / 2, y - 14, w, 28, 14, 'rgba(255,248,236,.95)', '#D9773E', 2);
+    if (!off) { g.beginPath(); g.moveTo(70 - 7, y + 14); g.lineTo(70 + 7, y + 14); g.lineTo(70, y + 22); g.closePath(); g.fillStyle = '#D9773E'; g.fill(); }
+    g.restore(); text(t, x, y + 5, 15, '#6B4A35', 'center', FONT, 700);
+  }
+  // the phone's 「出去玩」 app: what it says, and leaving straight from the phone
+  const sub = () => S && S.out ? '店長在外面' : left() ? `今天還能 ${left()} 次` : '今天出門完了';
+  function page() {
+    const w = why();
+    return `<div class="item"><div class="top"><span class="nm">🚪 出門走走</span><b>今天還能 ${left()}/${MAX_OUTS} 次</b></div>
+      <div class="sub">營業時間可以出門（18:30 前），一次大約 2 小時，店員會幫忙顧店，營收照算。也可以走到 1F 門口出門。</div></div>
+      ${Object.values(PLACES).map(P => `<div class="item"><div style="display:flex;gap:10px;align-items:center"><img src="assets/${P.img}.webp" alt="" style="width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:8px"><div><div class="nm" style="font-weight:700">${P.name}</div><div class="sub">${P.desc}</div></div></div></div>`).join('')}
+      <div class="row">${w ? `<button disabled>${w}</button>` : '<button class="primary" id="outGo">現在出門</button>'}</div>`;
+  }
+  function bind(sc) {
+    const b = sc.querySelector('#outGo');
+    if (b) b.onclick = () => { closePhone(true); pickPlace(); };
   }
 
   function pickPlace() {
@@ -75,7 +116,7 @@
     S.uiPause = true; ov.hidden = false;
     const miss = missing();
     $('outCard').innerHTML = `<h2 style="margin:0 0 4px">🚪 出門走走</h2>
-      <p class="muted" style="margin:4px 0">出去大約 2 小時（${hhmm(S.time)} 到 ${hhmm(S.time + OUT_MIN)}），店員會幫忙顧店，營收照算。一天只能出門一次。</p>
+      <p class="muted" style="margin:4px 0">出去大約 2 小時（${hhmm(S.time)} 到 ${hhmm(S.time + OUT_MIN)}），店員會幫忙顧店，營收照算。一天最多出門 ${MAX_OUTS} 次（今天還能 ${left()} 次）。</p>
       ${miss.length ? `<div class="out-warn">店裡現在沒有：${miss.map(r => `${ROLES[r].title}（${MISS_NOTE[r]}）`).join('、')}</div>` : '<div class="out-warn" style="color:#6E9B4E">店員都在，可以放心出門！</div>'}
       <div class="out-pick">${Object.entries(PLACES).map(([id, P]) => `<button data-out="${id}"><img src="assets/${P.img}.webp" alt=""><span class="nm">${P.name}</span><span class="sub">${P.desc}</span></button>`).join('')}</div>
       <div class="row"><button id="outNo">還是待在店裡</button></div>`;
@@ -87,7 +128,7 @@
     if (!can()) { ov.hidden = true; S.uiPause = false; return; }
     const m = S.mgr;
     if (m.task) endTask(m); S.tasks = []; renderTasks(); m.sitting = false; m.path = [];
-    S.out = true; S.today.outed = true; S.uiPause = false; // the shop keeps running behind the outing
+    S.out = true; S.today.outs = outs() + 1; G.wentOut = true; S.uiPause = false; // the shop keeps running behind the outing
     Object.assign(O, { at, start: S.time, base: { earned: G.earned, cid: S.cid, angry: S.today.angry, fans: G.fans }, log: [], got: [], bought: {}, pitch: Math.floor(Math.random() * PITCH.length), step: '' });
     m.floor = 1; m.x = DOOR.x; m.y = DOOR.y; m.hidden = true; S.view = 1; updateButtons();
     sfx('notify'); say(m, '我出門一下，店裡交給大家囉！');
@@ -195,13 +236,13 @@
   }
 
   // the shop clock keeps running while the outing screen is open: tick the clock, and bring the manager home before last order
-  let tipped = false; try { tipped = !!localStorage.getItem('catloft-outing-tip'); } catch {}
+  let tipped = false; try { tipped = !!localStorage.getItem('catloft-outing-tip2'); } catch {}
   setInterval(() => {
-    if (!tipped && can()) { tipped = true; try { localStorage.setItem('catloft-outing-tip', '1'); } catch {} toast('新功能：營業時間走到 1F 門口，可以「出門走走」喔！'); }
+    if (!tipped && can() && !(window.TUT && TUT.active())) { tipped = true; try { localStorage.setItem('catloft-outing-tip2', '1'); } catch {} toast(`營業時間走到 1F 門口，或打開手機「出去玩」，一天可以出門 ${MAX_OUTS} 次喔！`); }
     if (!S || !S.out) return;
     clock();
     if (S.phase !== 'open' || S.time >= 1215) back(true);
   }, 300);
 
-  window.OUTING = { door, can, active: () => !!(S && S.out) };
+  window.OUTING = { door, can, draw, sub, page, bind, MAX: MAX_OUTS, active: () => !!(S && S.out) };
 })();

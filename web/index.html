@@ -155,17 +155,17 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .joy .u{top:7px;left:50%;transform:translateX(-50%)}.joy .d{bottom:7px;left:50%;transform:translateX(-50%)}
 .joy .l{left:8px;top:50%;transform:translateY(-50%)}.joy .r{right:8px;top:50%;transform:translateY(-50%)}
 .knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(141,110,99,.85);border:3px solid rgba(255,255,255,.9);box-shadow:0 3px 8px rgba(93,64,55,.35);pointer-events:none}
-.actbtn{position:absolute;right:calc(20px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));z-index:4;width:84px;height:84px;border-radius:50%;padding:0;font-family:var(--display);font-size:20px;font-weight:700;background:rgba(217,119,62,.85);border-color:rgba(217,119,62,.9);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
+.actbtn{position:absolute;right:calc(20px + env(safe-area-inset-right));bottom:calc(30px + env(safe-area-inset-bottom));z-index:4;width:64px;height:64px;border-radius:50%;padding:0;font-family:var(--display);font-size:16px;font-weight:700;background:rgba(217,119,62,.85);border-color:rgba(217,119,62,.9);color:#fff;box-shadow:0 4px 10px rgba(217,119,62,.35);touch-action:manipulation}
 .actbtn:hover{background:#C9682F}
 .game.busy .joy,.game.busy .actbtn,.game.busy .lbtns,.game.busy .drawer,.game.busy .openbtn,.game.busy .rbtns{display:none}
 /* phone 設定 app: tuck the joystick / action button into the corner (smaller, see-through) or hide them */
 .game.joy-mini .joy{width:84px;height:84px;left:calc(4px + env(safe-area-inset-left));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.55}
 .game.joy-mini .joy span{display:none}.game.joy-mini .knob{width:36px;height:36px;margin:-18px 0 0 -18px}
-.game.act-mini .actbtn{width:54px;height:54px;font-size:14px;right:calc(4px + env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.65}
+.game.act-mini .actbtn{width:46px;height:46px;font-size:12px;right:calc(4px + env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));opacity:.65}
 .game.joy-off .joy,.game.act-off .actbtn{display:none}
 .seg{display:flex;gap:6px;margin:6px 0 0}.seg button{flex:1;padding:6px 4px;font-size:13px}.seg button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
 #phoneBtn .badge{background:var(--accent)}
-@media (max-height:460px){.joy{width:100px;height:100px}.actbtn{width:72px;height:72px;font-size:18px}.rbtns{gap:6px}.rb{width:42px;height:42px}.lbtns{top:calc(58px + env(safe-area-inset-top));flex-direction:row}.drawer{left:calc(10px + env(safe-area-inset-left));top:calc(108px + env(safe-area-inset-top));max-height:calc(100% - 118px);width:min(440px,55%)}}
+@media (max-height:460px){.joy{width:100px;height:100px}.actbtn{width:56px;height:56px;font-size:15px}.rbtns{gap:6px}.rb{width:42px;height:42px}.lbtns{top:calc(58px + env(safe-area-inset-top));flex-direction:row}.drawer{left:calc(10px + env(safe-area-inset-left));top:calc(108px + env(safe-area-inset-top));max-height:calc(100% - 118px);width:min(440px,55%)}}
 </style>
 </head>
 <body>
@@ -220,6 +220,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
       <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲；勾「分享給大家看」的照片，其他玩家可以在「大家的貼文」按讚、留言（可以選句子、貼圖或自己打字，髒話會自動變成＊）。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
+      <li><b>出門走走</b>：營業時間（18:30 前）走到 1F 門口，或打開手機「出去玩」，可以出門去公園、市場或聯名公司，一次大約 2 小時，一天最多 3 次。店員會幫忙顧店，營收照算。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
       <li><b>分店</b>：每天選一家店去上班，沒去的店由員工照常營業，營業額照算。貓咪可以在喵喵家族調到不同的店（暖陽貓閣最多 7 隻、貓咪庭院最多 15 隻、貓咪室內樂園最多 24 隻）。下雨天庭院座位會暫停。</li>
@@ -3724,6 +3725,7 @@ function drawWorld() {
   for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
   drawWeather(f, false);
   if (S.close && S.close.dim) drawNight(f);
+  if (window.OUTING) OUTING.draw(f);
   if (window.TUT) TUT.drawWorld(f);
   if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, V.cy, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
@@ -4198,7 +4200,7 @@ function renderPhone() {
   const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
   let h = `<div class="sbar"><span>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span><span>遊戲暫停中</span><span>${yen(G.cash)}</span></div>`;
   if (phoneApp === 'home') {
-    const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'],
+    const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'], ['outing', '出去玩', window.OUTING ? OUTING.sub() : '出門走走', '#6E9B4E', '🚪'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'], ['map', '分店地圖', G.owned.length > 1 ? `${G.owned.length} 家店` : G.landReady ? '可以開分店了！' : '開第二家店', '#5E9B7A', '分'],
                   ['promo', '喵喵宣傳', '傳單・試吃', '#E08A5A', '宣'], ['ig', '喵IG', G.ig.length ? `${G.ig.length} 篇貼文` : '拍照・按讚', '#D9567A', '📷'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
@@ -4209,7 +4211,7 @@ function renderPhone() {
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友' };
+    const titles = { map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, baseOf(d)]).concat([['loft', '2F 吸貓入場費', baseOf('loft')], ['beans', '咖啡豆（一包）', baseOf('beans')], ['treat', '貓咪肉泥（一條）', baseOf('treat')]]);
@@ -4457,6 +4459,8 @@ function renderPhone() {
       h += boardHtml();
     } else if (phoneApp === 'friend') {
       h += FRIENDS.appHtml();
+    } else if (phoneApp === 'outing') {
+      h += OUTING.page();
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
@@ -4466,6 +4470,7 @@ function renderPhone() {
   }
   sc.innerHTML = h;
   if (phoneApp === 'friend') FRIENDS.bind(sc);
+  if (phoneApp === 'outing') OUTING.bind(sc);
   sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { sfx('app_switch'); if (b.dataset.app === 'report') { openFeedback(); return; } phoneApp = b.dataset.app; renderPhone(); });
   sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
   const q = s => sc.querySelector(s);
