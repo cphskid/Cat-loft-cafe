@@ -4004,7 +4004,7 @@ function charmItem(id, wear) {
   return `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${CHARM_WHO[C.slot]}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
     <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
 }
-let phoneApp = 'home', storeTab = 'stock', ivRole = null, ivSeen = {};
+let phoneApp = 'home', storeTab = 'stock', ivRole = null, ivSeen = {}, ivAsk = null;
 function openPhone(app) { sfx('phone_open'); phoneApp = app; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
 function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; if (PG.run) playMusic(G.music); if (!$('phoneOv').hidden) sfx('phone_close'); PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
 $('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
@@ -4101,7 +4101,8 @@ function renderPhone() {
           const k = ivRole + a.i, seen = ivSeen[k];
           h += `<div class="item"><div class="top"><span class="nm">${a.name}・${a.age} 歲${a.tier === 'kid' ? '（小學生）' : ''}</span><b>雇用費 ${yen(a.fee)}</b></div>
             ${seen ? IV_Q.map((qq, j) => `<div class="sub"><b>店長：</b>${qq}<br><b>${a.name}：</b>「${a.ans[j]}」</div>`).join('') : ''}
-            <div class="row" style="margin:0">${seen ? `<button class="primary" data-hire="${ivRole}:${a.i}" ${blocked || S.phase === 'settle' || G.cash < a.fee ? 'disabled' : ''}>${G.cash < a.fee ? '錢不夠' : '錄用'}</button>` : `<button class="primary" data-iv="${k}">面試</button>`}</div></div>`;
+            ${seen && ivAsk === k ? `<div class="sub" style="color:var(--bad)"><b>確定要錄用${a.name}嗎？</b>要付雇用費 ${yen(a.fee)}。</div>` : ''}
+            <div class="row" style="margin:0">${!seen ? `<button class="primary" data-iv="${k}">面試</button>` : ivAsk === k ? `<button data-hirecancel="1">再想想</button><button class="primary" data-hire="${ivRole}:${a.i}" ${blocked || S.phase === 'settle' || G.cash < a.fee ? 'disabled' : ''}>確定錄用</button>` : `<button class="primary" data-askhire="${k}" ${blocked || S.phase === 'settle' || G.cash < a.fee ? 'disabled' : ''}>${G.cash < a.fee ? '錢不夠' : '錄用'}</button>`}</div></div>`;
         }
       } else for (const id of rolesHere()) { const R = ROLES[id];
         const has = G.staff.includes(id), hi = has && hireInfo(id);
@@ -4334,10 +4335,12 @@ function renderPhone() {
   q('#sfxBtn') && (q('#sfxBtn').onclick = () => { G.sfx = !sfxOn(); sfx('ui_click'); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-music]').forEach(b => b.onclick = () => { setMusic(b.dataset.music); toast(b.dataset.music === 'off' ? '音樂關掉了' : '現在播放：' + MUSIC[b.dataset.music].name); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-credit]').forEach(b => b.onclick = () => buy(b.dataset.credit, true));
-  sc.querySelectorAll('[data-hire]').forEach(b => b.onclick = () => { const [r, i] = b.dataset.hire.split(':'); hire(r, +i); ivRole = null; renderPhone(); });
-  sc.querySelectorAll('[data-ivrole]').forEach(b => b.onclick = () => { ivRole = b.dataset.ivrole; sfx('ui_click'); renderPhone(); });
+  sc.querySelectorAll('[data-hire]').forEach(b => b.onclick = () => { const [r, i] = b.dataset.hire.split(':'); hire(r, +i); ivRole = null; ivAsk = null; renderPhone(); });
+  sc.querySelectorAll('[data-askhire]').forEach(b => b.onclick = () => { ivAsk = b.dataset.askhire; sfx('ui_click'); renderPhone(); });
+  sc.querySelectorAll('[data-hirecancel]').forEach(b => b.onclick = () => { ivAsk = null; sfx('ui_click'); renderPhone(); });
+  sc.querySelectorAll('[data-ivrole]').forEach(b => b.onclick = () => { ivRole = b.dataset.ivrole; ivAsk = null; sfx('ui_click'); renderPhone(); });
   sc.querySelectorAll('[data-iv]').forEach(b => b.onclick = () => { ivSeen[b.dataset.iv] = true; sfx('ui_click'); renderPhone(); });
-  q('#ivBack') && (q('#ivBack').onclick = () => { ivRole = null; renderPhone(); });
+  q('#ivBack') && (q('#ivBack').onclick = () => { ivRole = null; ivAsk = null; renderPhone(); });
   sc.querySelectorAll('[data-fire]').forEach(b => b.onclick = () => { fire(b.dataset.fire); renderPhone(); });
   sc.querySelectorAll('[data-shift]').forEach(b => b.onclick = () => { const [r, v] = b.dataset.shift.split(':'); setSched(r, { shift: v }); renderPhone(); });
   sc.querySelectorAll('[data-brk]').forEach(b => b.onclick = () => { const [r, v] = b.dataset.brk.split(':'); setSched(r, { brk: +v }); renderPhone(); });
