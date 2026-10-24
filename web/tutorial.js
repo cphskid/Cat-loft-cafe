@@ -72,6 +72,8 @@
     { key: 'pet', text: () => '有空的時候摸摸貓咪，貓咪開心就會去陪客人玩。點一隻貓試試看。',
       done: () => pets() > S.tut.pets0 || S.tut.t > 60,
       target: () => { const k = S.cats.find(k => k.floor === S.view && !k.onBed) || S.cats.find(k => k.floor === S.view); return k ? { world: { f: k.floor, x: k.x, y: k.y - 52 } } : { dom: '#floorBtn' }; } },
+    { key: 'out', ok: true, text: () => `營業時間可以出門走走！走到 1F 門口（飄著「出門走走」牌子的地方），或打開手機「出去玩」。一天可以出門 ${window.OUTING ? OUTING.MAX : 3} 次，去公園、市場或聯名公司，店員會幫忙顧店。`,
+      done: () => false, target: () => atFloor({ f: 1, x: 70, y: 520 }) },
     { key: 'solo', ok: true, text: () => '做得很好！接下來交給你顧店到 21:00 打烊，有狀況我會提醒你。', done: () => false },
   ];
   // after the guided steps: one-off reminders, each shown at most once on day 1
@@ -187,5 +189,5 @@
     g.restore();
   }
   const phase = () => '跟著教學・時鐘暫停';
-  window.TUT = { render, hold, drawWorld, phase };
+  window.TUT = { render, hold, drawWorld, phase, active };
 })();
