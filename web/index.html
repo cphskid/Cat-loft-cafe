@@ -2149,10 +2149,13 @@ function doorSign() {
 // ====================== characters ======================
 const PS = 1.35; // people scale
 const PH = 132; // on-screen height of a standing painted person (the sprites are 300 px tall)
+// the cash register, cooking and restroom mini-games stop the shop while S.t keeps ticking: everyone stands still meanwhile,
+// otherwise whoever was mid-step walks on the spot until the mini-game closes
+const stepping = p => p.moving && !(S.mini || S.cook || S.reg);
 function personArt(p, o) {
-  const walk = p.moving && !o.sit && Math.floor(S.t * 5) % 2;
+  const walk = stepping(p) && !o.sit && Math.floor(S.t * 5) % 2;
   const im = art(`${o.spr}_${o.sit ? 2 : walk ? 1 : 0}`) || art(`${o.spr}_0`); if (!im) return false;
-  const f = p.face || 1, bob = p.moving ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0;
+  const f = p.face || 1, bob = stepping(p) ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0;
   ell(p.x, p.y, 18, 4.5, 'rgba(70,45,30,.16)');
   sprite(im, p.x, p.y - bob, im.naturalHeight * PH / 300, f < 0);
   if (p.carry) { ell(p.x + 24 * f, p.y - 70, 13, 3.2, '#FFFFFF', INK, 1); drawDish(p.carry, p.x + 24 * f, p.y - 78, .7); }
@@ -2161,7 +2164,7 @@ function personArt(p, o) {
 function drawPerson(p, o) {
   if (o.spr && personArt(p, o)) return;
   g.save(); g.translate(p.x, p.y); g.scale(PS, PS);
-  drawPersonAt({ x: 0, y: 0, face: p.face, moving: p.moving, carry: p.carry, seed: p.x * .05 }, o);
+  drawPersonAt({ x: 0, y: 0, face: p.face, moving: stepping(p), carry: p.carry, seed: p.x * .05 }, o);
   g.restore();
 }
 function drawPersonAt(p, o) {
@@ -2226,12 +2229,12 @@ const MGR_NECK = [[4, 245], [6, 245], [-16, 177]];
 // the hair clip sits above the ear on the back of the head (hidden under hats)
 const MGR_HAIR = { f: [[-14, 280], [-14, 280], [-22, 212]], m: [[-12, 282], [-12, 282], [-20, 214]] };
 function drawMgrWorn(slot, id, m) {
-  const C = CHARMS[id], O = outfitOf(G.outfit), sp = mgrSpr(), sit = m.sitting, pose = sit ? 2 : m.moving && Math.floor(S.t * 5) % 2 ? 1 : 0;
+  const C = CHARMS[id], O = outfitOf(G.outfit), sp = mgrSpr(), sit = m.sitting, pose = sit ? 2 : stepping(m) && Math.floor(S.t * 5) % 2 ? 1 : 0;
   const im = art(`${sp}_${pose}`) || art(`${sp}_0`), acc = C && C.img && art(C.img), f = m.face || 1;
   if (!C) return;
   if (!im || !acc) { if (slot === 'neck') drawCharm(id, m.x - 13 * f, m.y - (sit ? 52 : 70), 1); return; }
   if (slot === 'neck' && O.scarf || slot === 'hair' && O.hat) return; // the Christmas sweater has its own scarf; hats cover clips
-  const k = PH / 300, bob = m.moving ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0;
+  const k = PH / 300, bob = stepping(m) ? Math.abs(Math.sin(S.t * 10)) * 1.5 : 0;
   const [nx, ny] = slot === 'hair' ? MGR_HAIR[G.mgrSex === 'm' ? 'm' : 'f'][pose] : MGR_NECK[pose];
   const w = (slot === 'hair' ? 14 : 30) * k, h = acc.naturalHeight * w / acc.naturalWidth;
   g.save(); g.translate(m.x + f * nx * k, m.y - bob - ny * k); if (f < 0) g.scale(-1, 1);
@@ -2402,7 +2405,7 @@ function drawCat(k) {
   } else {
     const hx = x + 19 * f, hy = y - 26;
     if (!ci) {
-    const step = k.moving ? Math.sin(S.t * 16) * 3 : 0;
+    const step = stepping(k) ? Math.sin(S.t * 16) * 3 : 0;
     g.beginPath(); g.moveTo(x - 16 * f, y - 16); g.quadraticCurveTo(x - 30 * f, y - 22, x - 26 * f, y - 40 + Math.sin(S.t * 3 + x) * 3);
     g.strokeStyle = k.dark; g.lineWidth = k.fluffy ? 8 : 5; g.lineCap = 'round'; g.stroke();
     for (const lx of [-11, -5, 8, 13]) line(x + lx * f, y - 10, x + lx * f + (lx > 0 ? step : -step) * .6, y - 1, k.tux ? '#2A2522' : k.dark, 3.2);
@@ -2810,7 +2813,7 @@ function updStaff(s, dt) {
     if (done) { s.resting = false; s.hidden = false; say(s, pick(['休息好了，回去工作！', '充好電了～', '好，繼續加油！'])); }
     return;
   }
-  if (s.chatting > 0) { s.chatting -= dt; return; }
+  if (s.chatting > 0) { s.chatting -= dt; s.moving = false; return; } // stopped to listen, mid-walk or not
   if (S.phase === 'open') s.stamina -= dt * (s.task ? .7 : .2);
   s.cool -= dt; s.coffeeCool -= dt;
   if (s.task) { runTask(s, dt); return; }
