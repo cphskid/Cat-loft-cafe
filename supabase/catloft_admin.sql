@@ -167,3 +167,71 @@ end $$;
 
 revoke all on function public.catloft_admin_answer(bigint, text, text) from public, anon;
 grant execute on function public.catloft_admin_answer(bigint, text, text) to authenticated;
+
+-- 2026-10-24 Chuck：「管理者那邊可以送衣服，為了讓玩家有自己權利可以決定要不要接受送錢和衣服」、
+-- 「管理者可以看到他的進度如何跟傳訊息給他」。
+-- 禮物多兩種：gift = {outfit: 'mo3'}（店長衣服）、gift = {msg: true}（只有一則訊息，訊息就是 note，最多 200 字）。
+-- 錢和衣服玩家可以「收下」或「不要」：不要的寫 declined_at。管理者自己的 {set:{...}} 調整還是直接套用。
+alter table public.catloft_gifts add column if not exists declined_at timestamptz;
+
+create or replace function public.catloft_admin_gift(p_to uuid, p_gift jsonb, p_note text)
+returns bigint
+language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $$
+declare v_id bigint; v_cash numeric; v_gift jsonb; v_note text := btrim(regexp_replace(coalesce(p_note, ''), '[<>&"''`\\]', '', 'g'));
+begin
+  if not public.catloft_is_admin() then raise exception 'not admin'; end if;
+  if not exists (select 1 from public.catloft_saves where user_id = p_to) then raise exception '找不到這位玩家'; end if;
+  if p_gift ? 'outfit' then
+    if coalesce(p_gift ->> 'outfit', '') !~ '^(basic|mo[0-9]{1,2})$' then raise exception '沒有這件衣服'; end if;
+    v_gift := jsonb_build_object('outfit', p_gift ->> 'outfit'); v_note := left(v_note, 60);
+  elsif p_gift ? 'msg' then
+    if v_note = '' then raise exception '訊息是空的'; end if;
+    v_gift := jsonb_build_object('msg', true); v_note := left(v_note, 200);
+  else
+    begin v_cash := floor((p_gift ->> 'cash')::numeric); exception when others then v_cash := null; end;
+    -- 不限金額，只擋掉 0、負數和遊戲裡數字存不下的大小（JavaScript 安全整數）
+    if v_cash is null or v_cash <= 0 or v_cash > 9007199254740991 then raise exception '金額不對'; end if;
+    v_gift := jsonb_build_object('cash', v_cash); v_note := left(v_note, 60);
+  end if;
+  insert into public.catloft_gifts (to_id, gift, note) values (p_to, v_gift, v_note) returning id into v_id;
+  return v_id;
+end $$;
+
+drop function if exists public.catloft_admin_gifts();
+create or replace function public.catloft_admin_gifts()
+returns table (id bigint, to_id uuid, gift jsonb, note text, created_at timestamptz, claimed_at timestamptz, declined_at timestamptz)
+language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+as $$
+begin
+  if not public.catloft_is_admin() then raise exception 'not admin'; end if;
+  return query select g.id, g.to_id, g.gift, g.note, g.created_at, g.claimed_at, g.declined_at from public.catloft_gifts g order by g.id desc limit 200;
+end $$;
+
+create or replace function public.catloft_my_gifts()
+returns table (id bigint, gift jsonb, note text, created_at timestamptz)
+language sql stable security definer set search_path to 'public', 'pg_temp'
+as $$ select g.id, g.gift, g.note, g.created_at from public.catloft_gifts g
+       where g.to_id = auth.uid() and g.claimed_at is null and g.declined_at is null order by g.id $$;
+
+create or replace function public.catloft_claim_gifts(p_ids bigint[]) returns setof bigint
+language sql security definer set search_path to 'public', 'pg_temp'
+as $$ update public.catloft_gifts set claimed_at = now()
+       where to_id = auth.uid() and claimed_at is null and declined_at is null and id = any (p_ids) returning id $$;
+
+create or replace function public.catloft_decline_gifts(p_ids bigint[]) returns setof bigint
+language sql security definer set search_path to 'public', 'pg_temp'
+as $$ update public.catloft_gifts set declined_at = now()
+       where to_id = auth.uid() and claimed_at is null and declined_at is null and id = any (p_ids) returning id $$;
+
+-- 一位玩家的整份存檔（管理者頁面「看進度」用）
+create or replace function public.catloft_admin_save(p_id uuid) returns jsonb
+language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+as $$
+begin
+  if not public.catloft_is_admin() then raise exception 'not admin'; end if;
+  return (select public.catloft_save_json(s.code) from public.catloft_saves s where s.user_id = p_id);
+end $$;
+
+revoke all on function public.catloft_admin_gifts(), public.catloft_decline_gifts(bigint[]), public.catloft_admin_save(uuid) from public, anon;
+grant execute on function public.catloft_admin_gifts(), public.catloft_decline_gifts(bigint[]), public.catloft_admin_save(uuid) to authenticated;

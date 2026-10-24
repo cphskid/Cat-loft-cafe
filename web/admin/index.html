@@ -7,7 +7,7 @@
 <title>暖陽貓閣｜管理者</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
-/* 管理者頁面：用管理者的遊戲帳號（chency0311、chuck）登入，看所有玩家、問題回報，送錢給玩家（只能送錢，不限金額）。
+/* 管理者頁面：用管理者的遊戲帳號（chency0311、chuck）登入，看所有玩家、問題回報，送玩家錢（不限金額）、店長衣服或訊息，看玩家的遊戲進度。
    密碼不在這個檔案裡：這裡只把輸入的密碼送去 Supabase 登入「管理者」這個帳號，
    能不能讀資料是資料庫那邊判斷的（supabase/catloft_admin.sql 的 catloft_is_admin）。 */
 :root{
@@ -72,7 +72,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 
   <div id="main" hidden>
     <div class="top"><h1>🐾 暖陽貓閣 管理者</h1><span class="sp"></span><button id="reload">重新整理</button><button id="logout">登出</button></div>
-    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="gifts">送過的錢</button><button data-tab="me">🛠️ 調整我的店</button></div>
+    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="gifts">送過的東西</button><button data-tab="me">🛠️ 調整我的店</button></div>
     <div class="card" id="tab-players">
       <div class="top" style="margin-bottom:8px"><input id="q" placeholder="搜尋帳號、店名、好友碼" style="flex:1;max-width:320px"><span class="muted" id="pCount"></span></div>
       <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
@@ -99,16 +99,23 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
       </div>
       <div class="row"><button class="primary" id="mGo">套用</button></div>
     </div>
-    <div class="card" id="tab-gifts" hidden><div class="tbl"><table><thead><tr><th>送出時間</th><th>給誰</th><th>金額</th><th>留言</th><th>收到了嗎</th></tr></thead><tbody id="gBody"></tbody></table></div></div>
+    <div class="card" id="tab-gifts" hidden><div class="tbl"><table><thead><tr><th>送出時間</th><th>給誰</th><th>送了什麼</th><th>留言／訊息</th><th>玩家收了嗎</th></tr></thead><tbody id="gBody"></tbody></table></div></div>
   </div>
 </div>
 
 <div class="ov" id="giftOv" hidden><div class="card">
-  <h2>🎁 送錢給 <span id="giftWho"></span></h2>
-  <p class="muted" style="margin:4px 0 0">玩家下次開遊戲（或一分鐘內）會收到，金額不限。</p>
-  <label class="fld">金額（¥）<input id="gCash" type="number" min="1" step="1" inputmode="numeric" placeholder="例如 10000"></label>
-  <label class="fld">留言（最多 60 字，玩家會看到）<input id="gNote" maxlength="60" placeholder="例如：謝謝你回報問題！"></label>
+  <h2>🎁 送給 <span id="giftWho"></span></h2>
+  <p class="muted" style="margin:4px 0 0">玩家下次開遊戲（或一分鐘內）會跳出來。錢和衣服玩家可以選「收下」或「不要」。</p>
+  <div class="tabs" id="gKind" style="margin:12px 0 0"><button data-k="cash" class="on">💰 錢</button><button data-k="outfit">👗 衣服</button><button data-k="msg">💌 訊息</button></div>
+  <label class="fld" id="gCashF">金額（¥，不限）<input id="gCash" type="number" min="1" step="1" inputmode="numeric" placeholder="例如 10000"></label>
+  <label class="fld" id="gOutfitF" hidden>店長衣服<select id="gOutfit"></select></label>
+  <label class="fld"><span id="gNoteL">留言（最多 60 字，玩家會看到）</span><textarea id="gNote" maxlength="60" rows="2" style="display:block;width:100%;margin-top:3px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:14px" placeholder="例如：謝謝你回報問題！"></textarea></label>
   <div class="row"><button id="gCancel">取消</button><button class="primary" id="gSend">送出</button></div>
+</div></div>
+<div class="ov" id="progOv" hidden><div class="card" style="width:min(560px,100%)">
+  <h2>📊 <span id="progWho"></span> 的進度</h2>
+  <div id="progBody" style="margin-top:8px"><p class="muted">讀取中…</p></div>
+  <div class="row"><button id="progGift">🎁 送東西／傳訊息</button><button class="primary" id="progClose">關閉</button></div>
 </div></div>
 <div id="toast" hidden></div>
 
@@ -116,6 +123,14 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 const SB_URL = 'https://bxrppdsbhuhjluprohkf.supabase.co', SB_KEY = 'sb_publishable_a99TJ4CiEW14ToPcoyn4KQ_NdoqXg2A';
 // 遊戲帳號名稱轉成 Supabase 的 email，跟 ../index.html 的 acctEmail 一樣；誰是管理者由資料庫的 catloft_is_admin 判斷
 const acctEmail = name => 'u' + [...new TextEncoder().encode(name.trim().toLowerCase())].map(b => b.toString(16).padStart(2, '0')).join('') + '@catloft.player';
+// 店長衣服，跟 ../index.html 的 OUTFITS 一樣（id 要對得上；遊戲找不到的 id 會自動當成「不要」）
+const OUTFITS = [['basic', '咖啡廳圍裙'], ['mo1', '貓咪毛衣'], ['mo7', '貓耳連帽衫'], ['mo2', '草莓洋裝／草莓襯衫'], ['mo8', '格紋背心裙／格紋背心'], ['mo6', '草帽洋裝／草帽亞麻衫'],
+  ['mo3', '夏日浴衣'], ['mo9', '咖啡師圍裙'], ['mo4', '甜點師白袍'], ['mo5', '聖誕毛衣'], ['mo10', '萬聖節小魔女／小巫師']];
+const outfitName = id => (OUTFITS.find(o => o[0] === id) || [id, id])[1];
+const LV_EXP = [0, 40, 110, 210, 340, 500, 700], lvOf = exp => LV_EXP.filter(e => (exp || 0) >= e).length;
+const ROLE = { cook: '煮飯', server: '上收餐', cashier: '櫃檯', feeder: '餵食', sitter: '逗貓', server2: '庭院送餐' };
+const SHOP = { 1: '暖陽貓閣', 2: '貓咪庭院' };
+const STAFF_NAME = { 1: { cook: '阿杰', server: '小美', cashier: '阿哲', feeder: '小芸', sitter: '阿凱' }, 2: { cook: '阿翔', server: '小葵', cashier: '阿德', feeder: '小綠', sitter: '阿樂', server2: '小柔' } }; // 沒面試過的員工用遊戲預設的名字
 const KIND = { bug: '壞掉了', confusing: '看不懂', idea: '點子' };
 // 處理狀態，跟樂園老師後台同一組代碼；括號裡是玩家在「我的回報」看到的字（../feedback.js 的 MY_STATUS）
 const STATUS = { new: '新回報（已收到）', bug: '確認是問題（處理中）', unclear: '討論中（處理中）', request: '好點子', fixed: '修好了', dup: '重複回報（已處理）', wontfix: '先不改（看過了）' };
@@ -169,8 +184,9 @@ function renderPlayers() {
   $('pBody').innerHTML = list.map(p => `<tr><td>${p.account ? esc(p.account) : '<span class="muted">訪客</span>'}</td><td>${esc(p.shop_name)}</td><td>${esc(p.mgr_name)}</td>
     <td class="n">${num(p.day)}</td><td class="n">${num(p.lv)}</td><td class="n">${yen(p.cash)}</td><td class="n">${p.debt ? yen(p.debt) : ''}</td><td class="n">${num(p.fans)}</td>
     <td class="n">${yen(p.earned)}</td><td class="n">${num(p.cats)}</td><td class="n">${num(p.shops)}</td><td>${esc(p.friend_code)}</td><td>${when(p.updated_at)}</td>
-    <td><button data-gift="${p.user_id}">🎁 送錢</button></td></tr>`).join('') || '<tr><td colspan="14" class="muted">沒有玩家</td></tr>';
+    <td><button data-prog="${p.user_id}">📊 進度</button> <button data-gift="${p.user_id}">🎁 送東西</button></td></tr>`).join('') || '<tr><td colspan="14" class="muted">沒有玩家</td></tr>';
   $('pBody').querySelectorAll('[data-gift]').forEach(b => b.onclick = () => openGift(players.find(p => p.user_id === b.dataset.gift)));
+  $('pBody').querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProg(players.find(p => p.user_id === b.dataset.prog)));
 }
 function renderFb(list) {
   const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
@@ -194,8 +210,10 @@ function renderFb(list) {
 }
 function renderGifts(list) {
   const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
-  $('gBody').innerHTML = list.map(g => `<tr><td>${when(g.created_at)}</td><td>${esc(who(byId[g.to_id]))}</td><td class="n">${g.gift && g.gift.set ? '🛠️ 調整' : yen(g.gift && g.gift.cash)}</td><td>${esc(g.note)}</td>
-    <td>${g.claimed_at ? '✅ ' + when(g.claimed_at) : '<span class="muted">還沒</span>'}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">還沒送過錢</td></tr>';
+  const what = x => !x ? '' : x.set ? '🛠️ 調整' : x.outfit ? '👗 ' + esc(outfitName(x.outfit)) : x.msg ? '💌 訊息' : '💰 ' + yen(x.cash);
+  const got = g => g.declined_at ? '❌ 不要 ' + when(g.declined_at) : g.claimed_at ? (g.gift && g.gift.msg ? '👀 看過了 ' : '✅ 收下 ') + when(g.claimed_at) : '<span class="muted">還沒打開</span>';
+  $('gBody').innerHTML = list.map(g => `<tr><td>${when(g.created_at)}</td><td>${esc(who(byId[g.to_id]))}</td><td>${what(g.gift)}</td><td style="white-space:normal;min-width:180px">${esc(g.note)}</td>
+    <td>${got(g)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">還沒送過東西</td></tr>';
 }
 function renderMe() {
   const p = players.find(x => x.user_id === selfId);
@@ -219,19 +237,54 @@ $('mGo').onclick = async () => {
   } catch (e) { toast('改不了：' + (e.message || e)); }
   $('mGo').disabled = false;
 };
+let gKind = 'cash';
+$('gOutfit').innerHTML = OUTFITS.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join('');
+function setKind(k) {
+  gKind = k; document.querySelectorAll('#gKind button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  $('gCashF').hidden = k !== 'cash'; $('gOutfitF').hidden = k !== 'outfit';
+  const max = k === 'msg' ? 200 : 60; $('gNote').maxLength = max;
+  $('gNoteL').textContent = k === 'msg' ? '訊息（最多 200 字）' : `留言（最多 ${max} 字，可以不寫）`;
+  $('gNote').placeholder = k === 'msg' ? '例如：謝謝你一直玩貓閣！' : '例如：謝謝你回報問題！';
+}
+document.querySelectorAll('#gKind button').forEach(b => b.onclick = () => setKind(b.dataset.k));
 function openGift(p) {
   giftTo = p; $('giftWho').textContent = who(p);
-  $('gCash').value = ''; $('gNote').value = '';
+  $('gCash').value = ''; $('gNote').value = ''; setKind('cash');
   $('giftOv').hidden = false; $('gCash').focus();
 }
+// 看一位玩家的遊戲進度：讀他的整份存檔（catloft_admin_save）
+async function openProg(p) {
+  giftTo = p; $('progWho').textContent = who(p); $('progBody').innerHTML = '<p class="muted">讀取中…</p>'; $('progOv').hidden = false;
+  let g; try { g = await rpc('catloft_admin_save', { p_id: p.user_id }); } catch (e) { $('progBody').innerHTML = `<p style="color:var(--bad)">讀不到：${esc(e.message || e)}</p>`; return; }
+  if (!g) { $('progBody').innerHTML = '<p class="muted">這位玩家的存檔讀不出來</p>'; return; }
+  const st = g.stats || {}, line = (k, v) => `<tr><td class="muted">${k}</td><td>${v}</td></tr>`;
+  // 現在所在的店，資料直接在存檔最外層；其他店在 shops 裡
+  const shops = (g.owned || [1]).map(id => id === g.at ? g : { ...(g.shops || {})[id], at: id });
+  const shopHtml = (g.owned || [1]).map((id, i) => { const s = shops[i] || {};
+    return line((SHOP[id] || '分店 ' + id) + (id === g.at ? '（現在在這）' : ''), `Lv.${lvOf(s.exp)}・桌子 ${num(s.tables)} 張・擴建 ${num(s.expand)} 次・傢俱 ${num((s.furn || []).length)} 件・貓 ${num((s.duty || []).length)} 隻<br>員工：${(s.staff || []).map(r => esc((s.hired && s.hired[r] && s.hired[r].name) || (STAFF_NAME[id] || {})[r] || '') + '（' + (ROLE[r] || r) + '）').join('、') || '還沒雇人'}`); }).join('');
+  $('progBody').innerHTML = `<div class="tbl"><table style="white-space:normal">
+    ${line('店名／店長', `${esc(g.shopName)}／${esc(g.mgrName)}`)}${line('第幾天', `第 ${num(g.day)} 天`)}
+    ${line('現金', yen(g.cash) + (g.debt ? `（欠款 ${yen(g.debt)}）` : ''))}${line('累計營收', yen(g.earned))}${line('粉絲', num(g.fans))}
+    ${shopHtml}
+    ${line('貓咪', `${num((g.cats || []).length)} 隻`)}${line('客人圖鑑', `${num(Object.keys(g.guests || {}).length)} 種`)}${line('徽章', `${num((g.badges || []).length)} 個`)}
+    ${line('衣服', `${num((g.wardrobe || []).length)} / ${OUTFITS.length} 件，穿著「${esc(outfitName(g.outfit))}」`)}
+    ${line('累計客人', `${num(st.guests)} 位`)}
+    ${line('最後存檔', when(p.updated_at))}</table></div>`;
+}
+$('progClose').onclick = () => { $('progOv').hidden = true; };
+$('progGift').onclick = () => { $('progOv').hidden = true; openGift(giftTo); };
 $('gCancel').onclick = () => { $('giftOv').hidden = true; };
 $('gSend').onclick = async () => {
-  const cash = Math.floor(+$('gCash').value || 0);
-  if (cash <= 0) return toast('請輸入要送的金額');
-  if (!Number.isSafeInteger(cash)) return toast('金額太大了，遊戲裡存不下');
-  const gift = { cash };
+  let gift, done;
+  if (gKind === 'cash') {
+    const cash = Math.floor(+$('gCash').value || 0);
+    if (cash <= 0) return toast('請輸入要送的金額');
+    if (!Number.isSafeInteger(cash)) return toast('金額太大了，遊戲裡存不下');
+    gift = { cash }; done = `送了 ${yen(cash)} 給 ${who(giftTo)}，等玩家決定要不要收`;
+  } else if (gKind === 'outfit') { gift = { outfit: $('gOutfit').value }; done = `送了「${outfitName(gift.outfit)}」給 ${who(giftTo)}，等玩家決定要不要收`; }
+  else { if (!$('gNote').value.trim()) return toast('訊息還沒寫'); gift = { msg: true }; done = `訊息傳給 ${who(giftTo)} 了`; }
   $('gSend').disabled = true;
-  try { await rpc('catloft_admin_gift', { p_to: giftTo.user_id, p_gift: gift, p_note: $('gNote').value }); $('giftOv').hidden = true; toast(`送了 ${yen(cash)} 給 ${who(giftTo)}！`); loadAll(); }
+  try { await rpc('catloft_admin_gift', { p_to: giftTo.user_id, p_gift: gift, p_note: $('gNote').value }); $('giftOv').hidden = true; toast(done); loadAll(); }
   catch (e) { toast('送不出去：' + (e.message || e)); }
   $('gSend').disabled = false;
 };
