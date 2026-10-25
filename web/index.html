@@ -922,7 +922,7 @@ function freshG() {
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
            exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [],
-           at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false };
+           at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
 // The shop you are working in today has those fields right on G, so the rest of the game never needs to know
@@ -951,6 +951,12 @@ function dutyCapOf(id) {
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv() && dishHere(d));
 const hasF = id => G.furn.includes(id);
+// guests only order what the shop has made at least once (or what is in the showcase right now)
+const madeOk = d => !G.made || G.made[d] || S.display[d] > 0;
+const markMade = d => { if (G.made) G.made[d] = 1; };
+// the first days are gentler: guests come slower, fewer at once, wait longer and often pay the exact amount
+const EASY = { 1: { gap: 1.5, max: 3, pat: 1.4, exact: .5 }, 2: { gap: 1.45, max: 4, pat: 1.25, exact: .35 }, 3: { gap: 1.2, max: 6, pat: 1.1, exact: .2 } };
+const easy = () => EASY[G.day] || null;
 const dispTotal = () => DISHES.reduce((a, d) => a + (S.display[d] || 0), 0);
 const patMul = () => (hasF('record') ? 1.2 : 1) * (hasF('plant') ? 1.1 : 1);
 const litterMax = () => hasF('deodor') ? 5 : 3;
@@ -1139,13 +1145,17 @@ function igSnap() {
   const f = S.view, inShot = o => o.floor === f && !o.hidden && o.x > vx0 - 20 && o.x < vx1 + 20;
   const cats = S.cats.filter(k => inShot(k) && k.state !== 'sleep'), sleepy = S.cats.filter(k => inShot(k) && k.state === 'sleep');
   const guests = S.customers.filter(inShot);
-  const likes = Math.round(4 + cats.reduce((a, k) => a + 9 + bondOf(k) / 4, 0) + sleepy.length * 6 + Math.min(10, guests.length) * 3 + Math.min(80, G.fans * .15) + rand(0, 8));
+  // the courtyard and the rooftop garden are pretty on their own, even without a cat in the shot
+  const yard = f === 1 && vx1 > OUT_X && !S.rain, roof = f === 4;
+  const likes = Math.round(4 + (yard || roof ? 14 : 0) + cats.reduce((a, k) => a + 9 + bondOf(k) / 4, 0) + sleepy.length * 6 + Math.min(10, guests.length) * 3 + Math.min(80, G.fans * .15) + rand(0, 8));
   const names = [...cats, ...sleepy].map(k => k.name), pool = [];
   for (const n of names) pool.push(`${n}也太可愛了吧😻`, `想摸${n}！`, `${n}今天也好有精神`, `${n}是我的本命`);
   for (const k of sleepy) pool.push(`${k.name}睡得好香 💤`);
   if (guests.length >= 3) pool.push('看起來好熱鬧！', '下次要去排隊了', '人好多喔，生意好好');
   if (f === 3) pool.push('員工休息室好溫馨', '店長辛苦了～');
   if (f === 2) pool.push('二樓好像貓咪天堂', '好想整天待在貓閣');
+  if (yard) pool.push('庭院好漂亮 🌿', '想在這個庭院喝咖啡', '陽光好舒服～');
+  if (roof) pool.push('頂樓花園好療癒 🌱', '菜園種得好棒', '好想上去吹風');
   if (S.time >= 1260) pool.push('晚安貓貓們 🌙');
   pool.push('店長好會拍', '這間店好溫馨', '收藏了，週末去！', '光線好舒服', `${G.shopName}是我最愛的店`);
   const com = []; const n = clamp(Math.round(likes / 15), 1, 6);
@@ -1498,6 +1508,7 @@ function startDay(carry) {
     tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []),
     cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
+    lv0: shopLv(), // dishes unlocked by a level-up today are only ordered from tomorrow
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
     startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false, buff: {},
     today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, merch: 0, merchN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0, bond: {}, refunds: 0 },
@@ -2587,7 +2598,7 @@ function bakeTask(dish, byMgr) {
   if (byMgr) return { label: '做' + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: .2, pre, fn: () => startCook(dish) }],
     onEnd: () => { if (!S.cook || S.cook.dish !== dish) S.baking[dish] = false; } };
   return { label: (M.meal ? '煮' : '烤') + M.short, kind: 'bake', steps: [{ f: 1, ...OVEN_SPOT, dur: M.bake, pre,
-    fn: () => { sfx(M.meal ? 'plate_done' : 'oven_ding', 1); const n = Math.min(M.batch, G.stock[res]); G.stock[res] -= n; S.display[dish] += n; floatText(1, OVEN_SPOT.x, 360, `+${n} ${M.short}`, '#6E9B4E'); } }],
+    fn: () => { sfx(M.meal ? 'plate_done' : 'oven_ding', 1); const n = Math.min(M.batch, G.stock[res]); G.stock[res] -= n; S.display[dish] += n; markMade(dish); floatText(1, OVEN_SPOT.x, 360, `+${n} ${M.short}`, '#6E9B4E'); } }],
     onEnd: () => { S.baking[dish] = false; } };
 }
 function serveTask(c, from) {
@@ -2876,7 +2887,7 @@ function schedHtml(role) {
 // ====================== customers ======================
 function spawnCustomer(special) {
   if (S.queue.length >= QUEUE.length) return;
-  const c = { id: ++S.cid, floor: 1, x: DOOR.x, y: DOOR.y, path: [], speed: 150, face: 1, state: 'queue', pat: 45 * patMul(), maxPat: 45 * patMul(), wait: 0,
+  const c = { id: ++S.cid, floor: 1, x: DOOR.x, y: DOOR.y, path: [], speed: 150, face: 1, state: 'queue', pat: 45 * patMul() * (easy()?.pat || 1), maxPat: 45 * patMul() * (easy()?.pat || 1), wait: 0,
     stars: 5, notes: [], shirt: pick(SHIRTS), pants: pick(['#5E6B7A', '#6B5B4E', '#4D4A48', '#7C8B70']), hair: pick(HAIRS), long: Math.random() < .45,
     order: null, special: !!special, name: null, sawCat: false, look: special ? 'c6' : pickGuestLook() };
   if (special) { c.name = '小晴'; c.pat = c.maxPat = 80 * patMul(); c.shirt = '#F2F0EA'; c.pants = '#41556E'; c.hair = '#2E2420'; c.long = true; }
@@ -2902,7 +2913,7 @@ function updQueue() { S.queue.forEach((c, i) => { if (c.slot !== i) { c.slot = i
 // green up to 25% over the base price, yellow (some guests hesitate) up to 60% over, red beyond that
 function zone(price, base) { const r = price / base; return r <= 1.2501 ? 'green' : r <= 1.6001 ? 'yellow' : 'red'; }
 function pickDish(c, sweetOnly) {
-  const un = unlockedDishes(), meals = un.filter(d => MENU[d].meal), sweets = un.filter(d => !MENU[d].meal);
+  const all = unlockedDishes().filter(d => MENU[d].lv <= S.lv0), ok = all.filter(madeOk), un = ok.length ? ok : all, meals = un.filter(d => MENU[d].meal), sweets = un.filter(d => !MENU[d].meal);
   const want = !sweetOnly && meals.length && Math.random() < .4 ? pick(meals) : pick(sweets);
   const z = zone(G.prices[want], baseOf(want));
   if (z === 'red') return { dish: null, red: true };
@@ -3066,7 +3077,9 @@ function wander(k) {
   }
   // how far right a cat walks on floor f: not out into the courtyard (or up on the roof) in the rain
   const right = f => f === 1 ? (S.rain ? Math.min(OUT_X - 40, fw(1) - 80) : fw(1) - 80) : fw(f) - (f === 2 ? 60 : 40);
-  if (Math.random() < (k.P.roam || .2)) {
+  if (OUT_X < 99999 && !S.rain && Math.random() < .35) { // a sunny courtyard draws the cats downstairs
+    routeTo(k, 1, rand(OUT_X + 20, right(1)), rand(500, 594));
+  } else if (Math.random() < (k.P.roam || .2)) {
     const f = pick(floorsHere().filter(x => x !== k.floor && !(x === 4 && S.rain)));
     routeTo(k, f, rand(160, right(f)), rand(500, 594));
   } else if (k.floor !== 1 && Math.random() < .6 && S.customers.some(c => c.state === 'petting' && c.floor === k.floor)) {
@@ -3356,7 +3369,7 @@ function cookResult(c) {
 }
 function finishCook() {
   const c = S.cook, r = c.result; S.cook = null; S.baking[c.dish] = false; sfx(MENU[c.dish].meal ? 'plate_done' : 'oven_ding');
-  G.stock[RES(c.dish)] -= r.used; S.display[c.dish] += r.n;
+  G.stock[RES(c.dish)] -= r.used; S.display[c.dish] += r.n; if (r.n) markMade(c.dish);
   floatText(1, OVEN_SPOT.x, 360, `+${r.n} ${MENU[c.dish].short}`, '#6E9B4E');
   if (c.grade === 'perfect') { gainExp(3); G.stats.perfect++; say(S.mgr, '烤得剛剛好！'); }
 }
@@ -3427,9 +3440,12 @@ function openReg(c, o, total) {
   const up100 = Math.ceil(total / 100) * 100, up50 = Math.ceil(total / 50) * 50, opts = [];
   if (up100 > total) opts.push(up100);
   if (up50 > total && up50 !== up100) opts.push(up50);
-  if (total < 500 && up100 < 500) opts.push(500);
-  if (total > 150 && total < 1000) opts.push(1000);
-  const given = !opts.length || Math.random() < .12 ? total : pick(opts);
+  const E = easy();
+  if (!E || G.day > 2) { // day 1-2: guests only round up, no ¥500 / ¥1000 notes
+    if (total < 500 && up100 < 500) opts.push(500);
+    if (total > 150 && total < 1000) opts.push(1000);
+  }
+  const given = !opts.length || Math.random() < (E ? E.exact : .12) ? total : pick(opts);
   S.reg = { c, items: [o.dish, o.loft ? 'loft' : null, o.treat ? 'treat' : null, o.beans ? 'beans' : null, o.merch ? 'merch' : null].filter(Boolean), total, given, tray: [], msg: null, msgT: 0, wrong: false, done: 0, ok: false };
 }
 function regClick(p) {
@@ -3487,7 +3503,7 @@ function drawReg() {
   for (const v of [1000, ...MONEY]) while (left >= v && pieces.length < 6) { pieces.push(v); left -= v; }
   pieces.forEach((v, i) => { if (v === 1000) { rrect(px + i * 30 - 30, B.y + 100 + i * 4, 64, 32, 4, '#B9C7E3', INK, 1.2); text('¥1000', px + i * 30 + 2, B.y + 117 + i * 4, 12, INK, 'center', FONT, 700); } else drawMoney(v, px + i * 30, B.y + 114 + i * 4, .9); });
   text(yen(r.given), B.x + 540, B.y + 172, 20, INK, 'right', DFONT, 700);
-  text(r.given === r.total ? '客人剛好付整數，按「找錢給客人」就好' : '應該找多少呢？點下面的錢放進找零盤', cx, B.y + 222, 15, '#6B4A35', 'center', DFONT, 700);
+  text(r.given === r.total ? '客人剛好付整數，按「找錢給客人」就好' : G.day === 1 ? `要找 ${yen(r.given - r.total)}，點下面的錢放進找零盤（第一天有提示）` : '應該找多少呢？點下面的錢放進找零盤', cx, B.y + 222, 15, '#6B4A35', 'center', DFONT, 700);
   MONEY.forEach((v, i) => { const b = regBtn(i); rrect(b.x, b.y, b.w, b.h, 12, '#FFFFFF', 'rgba(106,75,58,.4)', 1.2); drawMoney(v, b.x + b.w / 2, b.y + b.h / 2, 1); });
   // tray
   rrect(B.x + 30, B.y + 334, B.w - 60, 38, 19, '#EFE4D4', null);
@@ -3684,7 +3700,9 @@ function update(dt) {
     if (!hold || S.cid === 0) S.spawnT -= dt;
     if (S.spawnT <= 0) {
       const m = hourMult(S.time);
-      if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / toyFlow() / (collabNow()?.guests || 1) / (window.FRIENDS ? FRIENDS.boost() : 1) * staffDrag() / wxFlow() * rand(.7, 1.3); }
+      const E = easy();
+      if (m > 0 && E && S.customers.filter(c => !c.gone).length >= E.max) S.spawnT = 3;
+      else if (m > 0) { spawnCustomer(G.day === 1 && S.cid === 0); S.spawnT = (12 / (1 + G.fans / 120)) / m / (hasF('sign') ? 1.2 : 1) / S.promoMul / expandFlow() / toyFlow() / (collabNow()?.guests || 1) / (window.FRIENDS ? FRIENDS.boost() : 1) * staffDrag() / wxFlow() * rand(.7, 1.3) * (E ? E.gap : 1); }
       else S.spawnT = 5;
     }
     if (S.time >= 1230 && !S.lastCall) { S.lastCall = true; sfx('notify'); toast('20:30 最後點餐，之後不再接新客人囉'); }
@@ -4189,7 +4207,8 @@ function chooseBake() {
   for (const [res, title] of groups) for (const d of DISHES.filter(d => dishHere(d) && RES(d) === res)) {
     if (d === DISHES.find(d => dishHere(d) && RES(d) === res)) { const hd = document.createElement('div'); hd.className = 'kh'; hd.textContent = title; row.appendChild(hd); }
     const M = MENU[d], open = M.lv <= shopLv(); const b = document.createElement('button'); b.className = 'opt';
-    b.innerHTML = open ? `<span>做${M.name}</span><small>一批 ${M.batch} 份・${COOK_STEPS[d].length} 個步驟・售價 ${yen(G.prices[d])}</small>`
+    const fresh = M.lv > S.lv0, unmade = G.made && !G.made[d];
+    b.innerHTML = open ? `<span>做${M.name}${fresh || unmade ? ' 🆕' : ''}</span><small>${fresh ? '今天剛解鎖・明天開始客人才會點・' : unmade ? '還沒做過・做好一批後客人才會開始點・' : ''}一批 ${M.batch} 份・${COOK_STEPS[d].length} 個步驟・售價 ${yen(G.prices[d])}</small>`
                        : `<span>🔒 ${M.name}</span><small>店鋪 Lv.${M.lv} 解鎖</small>`;
     if (open) b.onclick = () => { closeChoose(); actBake(d); }; else b.disabled = true;
     row.appendChild(b);
@@ -4713,6 +4732,7 @@ function decodeSave(code) {
     nextShop: owned.includes(o.nextShop) && o.nextShop !== at ? o.nextShop : 0,
     stray: o.stray && CAT_DEFS[o.stray.id] ? { id: o.stray.id, feeds: clamp(Math.floor(num(o.stray.feeds, 0)), 0, 3), last: Math.max(0, Math.floor(num(o.stray.last, 0))) } : null,
     earned: Math.max(0, num(o.earned, 0)),
+    made: o.made && typeof o.made === 'object' ? Object.fromEntries(DISHES.filter(d => o.made[d]).map(d => [d, 1])) : null, // null: a save from before 2026-10-25, every dish counts as made
     ev: Object.fromEntries(Object.entries(o.ev && typeof o.ev === 'object' ? o.ev : {}).filter(([k]) => /^[a-z]+\d{4}$/.test(k)).map(([k, v]) => [k, Math.max(0, num(v, 0))])),
     acc: (() => { const a = o.acc || {}, own = Array.isArray(a.own) ? [...new Set(a.own.filter(id => CHARMS[id]))] : [], mgr = {}, cats = {};
       for (const [sl, id] of Object.entries(a.mgr || {})) if (own.includes(id) && CHARMS[id].slot === sl) mgr[sl] = id;
