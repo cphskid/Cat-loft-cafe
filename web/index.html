@@ -1504,6 +1504,7 @@ function startDay(carry) {
     tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []),
     cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
+    lv0: shopLv(), // dishes unlocked by a level-up today are only ordered from tomorrow
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
     startLv: shopLv(), lvShown: shopLv(), landUp: false, calls: {}, promos: {}, promoMul: 1, gamePaid: false, buff: {},
     today: { dessert: 0, loft: 0, spent: 0, credit: 0, ratings: [], fans: 0, angry: 0, xiaoqing: null, reorders: 0, exp: 0, kept: 0, beans: 0, beansN: 0, treat: 0, treatN: 0, merch: 0, merchN: 0, fed: 0, hours: {}, reviews: 0, loftN: 0, bond: {}, refunds: 0 },
@@ -2902,7 +2903,7 @@ function updQueue() { S.queue.forEach((c, i) => { if (c.slot !== i) { c.slot = i
 // green up to 25% over the base price, yellow (some guests hesitate) up to 60% over, red beyond that
 function zone(price, base) { const r = price / base; return r <= 1.2501 ? 'green' : r <= 1.6001 ? 'yellow' : 'red'; }
 function pickDish(c, sweetOnly) {
-  const all = unlockedDishes(), ok = all.filter(madeOk), un = ok.length ? ok : all, meals = un.filter(d => MENU[d].meal), sweets = un.filter(d => !MENU[d].meal);
+  const all = unlockedDishes().filter(d => MENU[d].lv <= S.lv0), ok = all.filter(madeOk), un = ok.length ? ok : all, meals = un.filter(d => MENU[d].meal), sweets = un.filter(d => !MENU[d].meal);
   const want = !sweetOnly && meals.length && Math.random() < .4 ? pick(meals) : pick(sweets);
   const z = zone(G.prices[want], baseOf(want));
   if (z === 'red') return { dish: null, red: true };
@@ -4178,7 +4179,8 @@ function chooseBake() {
   for (const [res, title] of groups) for (const d of DISHES.filter(d => dishHere(d) && RES(d) === res)) {
     if (d === DISHES.find(d => dishHere(d) && RES(d) === res)) { const hd = document.createElement('div'); hd.className = 'kh'; hd.textContent = title; row.appendChild(hd); }
     const M = MENU[d], open = M.lv <= shopLv(); const b = document.createElement('button'); b.className = 'opt';
-    b.innerHTML = open ? `<span>做${M.name}${G.made && !G.made[d] ? ' 🆕' : ''}</span><small>${G.made && !G.made[d] ? '還沒做過・做好一批後客人才會開始點・' : ''}一批 ${M.batch} 份・${COOK_STEPS[d].length} 個步驟・售價 ${yen(G.prices[d])}</small>`
+    const fresh = M.lv > S.lv0, unmade = G.made && !G.made[d];
+    b.innerHTML = open ? `<span>做${M.name}${fresh || unmade ? ' 🆕' : ''}</span><small>${fresh ? '今天剛解鎖・明天開始客人才會點・' : unmade ? '還沒做過・做好一批後客人才會開始點・' : ''}一批 ${M.batch} 份・${COOK_STEPS[d].length} 個步驟・售價 ${yen(G.prices[d])}</small>`
                        : `<span>🔒 ${M.name}</span><small>店鋪 Lv.${M.lv} 解鎖</small>`;
     if (open) b.onclick = () => { closeChoose(); actBake(d); }; else b.disabled = true;
     row.appendChild(b);
