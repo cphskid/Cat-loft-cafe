@@ -126,11 +126,19 @@
 
   const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
-  async function saveImage(canvas, t) {
-    const blob = await new Promise(ok => canvas.toBlob(ok, 'image/jpeg', .9)), name = `喵型_${t.name}.jpg`;
-    const file = blob && new File([blob], name, { type: 'image/jpeg' });
-    if (file && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  const cardFile = async (canvas, t) => { const blob = await new Promise(ok => canvas.toBlob(ok, 'image/jpeg', .9)); return blob && new File([blob], `喵型_${t.name}.jpg`, { type: 'image/jpeg' }); };
+  function download(file) { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+  async function saveImage(canvas, t) { const f = await cardFile(canvas, t); if (f) download(f); }
+  // the phone's own share sheet (LINE, IG, Messenger…) with the card picture and the link together.
+  // file = the card made ahead of time: iOS only allows share() straight from a tap, so nothing may be awaited before it.
+  async function share(file, t, url, say) {
+    const text = `我是「${t.name}」！你是哪一種喵？來測測看 👉 ${url}`, title = '暖陽貓閣・喵型測驗';
+    const tryShare = async data => { try { await navigator.share(data); return 'ok'; } catch (e) { return e.name === 'AbortError' ? 'ok' : 'no'; } };
+    if (file && navigator.canShare && navigator.canShare({ files: [file] }) && await tryShare({ files: [file], text, title }) === 'ok') return;
+    if (navigator.share && await tryShare({ text, url, title }) === 'ok') return;
+    // no share sheet (a computer): save the picture and copy the text, ready to paste into LINE
+    if (file) download(file);
+    say(await copy(text) ? '圖卡存好了，連結也複製好了，到 LINE 貼上就可以' : '圖卡存好了，再按「複製連結」貼到 LINE');
   }
   // opts: { onDone(type), code: () => invite code or '', extra: (type) => [{label, cls, href | onClick}], note: (type) => html, toast(msg), inviter }
   function mount(el, opts = {}) {
@@ -156,19 +164,21 @@
       el.innerHTML = `<div class="cq"><canvas class="cq-card" id="cqCard" width="1080" height="1350"></canvas>
         <div class="cq-note">把這個連結傳給朋友，他點開就會看到你的圖卡，也能馬上自己測${code ? '。朋友從你的連結來玩，你們都能拿到限定的暖陽好友套裝' : ''}：</div>
         <div class="cq-link"><span>${esc(url.replace('https://', ''))}</span><button data-cq="copy">複製連結</button></div>
-        <div class="cq-btns"><a class="line" href="https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}" target="_blank" rel="noopener">傳到 LINE</a><button data-cq="save">存成圖片</button><button data-cq="again">再測一次</button></div>
+        <div class="cq-btns"><button class="line" data-cq="share">分享圖卡</button><button data-cq="save">存成圖片</button><button data-cq="again">再測一次</button></div>
         <div class="cq-btns" style="margin-top:8px" id="cqExtra"></div>${opts.note ? `<div class="cq-note">${opts.note(t)}</div>` : ''}</div>`;
       const extra = el.querySelector('#cqExtra'), list = opts.extra ? opts.extra(t) : [];
       if (!list.length) extra.remove();
       list.forEach(b => { const n = document.createElement(b.href ? 'a' : 'button'); n.textContent = b.label; if (b.cls) n.className = b.cls; if (b.href) n.href = b.href; else n.onclick = () => b.onClick(n); extra.appendChild(n); });
-      let cv = null;
+      let file = null;
       el.querySelector('[data-cq="copy"]').onclick = async () => say(await copy(url) ? '連結複製好了，貼給朋友吧！' : '請長按連結自己複製');
-      el.querySelector('[data-cq="save"]').onclick = async () => { if (cv) saveImage(cv, t); };
+      el.querySelector('[data-cq="share"]').onclick = () => share(file, t, url, say);
+      el.querySelector('[data-cq="save"]').onclick = () => { if (file) download(file); };
       el.querySelector('[data-cq="again"]').onclick = () => { ans.length = 0; ask(); };
-      cv = await card(t, code);
+      const cv = await card(t, code);
       const slot = el.querySelector('#cqCard'); if (slot) slot.getContext('2d').drawImage(cv, 0, 0);
+      file = await cardFile(cv, t);
     }
     return { ask, result };
   }
-  window.CATQ = { PERS, TYPES, QS, typeOf, persName, score, link, art, card, mount, saveImage, copy, SITE };
+  window.CATQ = { PERS, TYPES, QS, typeOf, persName, score, link, art, card, mount, saveImage, share, copy, SITE };
 })();
