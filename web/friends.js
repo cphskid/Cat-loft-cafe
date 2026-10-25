@@ -213,6 +213,7 @@
 
   window.FRIENDS = {
     get partner() { return F.partner; },
+    get code() { return F.code; },
     boost: () => F.partner ? COOP_GUESTS : 1,
     sub, appHtml, bind, sync, load,
   };

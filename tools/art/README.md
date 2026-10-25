@@ -10,3 +10,6 @@ Backgrounds were repainted from screenshots of the old canvas-drawn floors so th
 
 ## Shop 3 (貓咪室內樂園)
 `tools/art/shop3/bg.sh` paints the palace-style floors (s3bg1/2/3/5/6) with gen2.py; `tools/art/shop3/spr.py` paints the s3* staff sheets and the toy_* sheet, then cut.py + pack.py cut them into webp. 5F (s3bg5) is mirrored after generation so its stairs line up with 4F.
+
+## 喵型測驗 and 暖陽好友套裝
+`web/q/art/<喵型>.webp` (1080x1350) are full-page 4:5 scenes painted with gen2.py from one in-game cat sprite (on white) plus the style reference, with the top and bottom fading into cream paper so the card text can sit there. `tools/quiz/pages.py` writes the /q/ pages and `tools/quiz/og.js` renders their share images (`web/q/og/`). The invite set (`mo11*`, `acc_clip_sun`, `acc_cat_sun`) used the same prompts as outfits3.py, then cut.py and the people sizes from pack.py (stand/walk 300 px tall, sit 228 px).
