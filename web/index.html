@@ -1145,13 +1145,17 @@ function igSnap() {
   const f = S.view, inShot = o => o.floor === f && !o.hidden && o.x > vx0 - 20 && o.x < vx1 + 20;
   const cats = S.cats.filter(k => inShot(k) && k.state !== 'sleep'), sleepy = S.cats.filter(k => inShot(k) && k.state === 'sleep');
   const guests = S.customers.filter(inShot);
-  const likes = Math.round(4 + cats.reduce((a, k) => a + 9 + bondOf(k) / 4, 0) + sleepy.length * 6 + Math.min(10, guests.length) * 3 + Math.min(80, G.fans * .15) + rand(0, 8));
+  // the courtyard and the rooftop garden are pretty on their own, even without a cat in the shot
+  const yard = f === 1 && vx1 > OUT_X && !S.rain, roof = f === 4;
+  const likes = Math.round(4 + (yard || roof ? 14 : 0) + cats.reduce((a, k) => a + 9 + bondOf(k) / 4, 0) + sleepy.length * 6 + Math.min(10, guests.length) * 3 + Math.min(80, G.fans * .15) + rand(0, 8));
   const names = [...cats, ...sleepy].map(k => k.name), pool = [];
   for (const n of names) pool.push(`${n}也太可愛了吧😻`, `想摸${n}！`, `${n}今天也好有精神`, `${n}是我的本命`);
   for (const k of sleepy) pool.push(`${k.name}睡得好香 💤`);
   if (guests.length >= 3) pool.push('看起來好熱鬧！', '下次要去排隊了', '人好多喔，生意好好');
   if (f === 3) pool.push('員工休息室好溫馨', '店長辛苦了～');
   if (f === 2) pool.push('二樓好像貓咪天堂', '好想整天待在貓閣');
+  if (yard) pool.push('庭院好漂亮 🌿', '想在這個庭院喝咖啡', '陽光好舒服～');
+  if (roof) pool.push('頂樓花園好療癒 🌱', '菜園種得好棒', '好想上去吹風');
   if (S.time >= 1260) pool.push('晚安貓貓們 🌙');
   pool.push('店長好會拍', '這間店好溫馨', '收藏了，週末去！', '光線好舒服', `${G.shopName}是我最愛的店`);
   const com = []; const n = clamp(Math.round(likes / 15), 1, 6);
@@ -3067,7 +3071,9 @@ function wander(k) {
   }
   // how far right a cat walks on floor f: not out into the courtyard (or up on the roof) in the rain
   const right = f => f === 1 ? (S.rain ? Math.min(OUT_X - 40, fw(1) - 80) : fw(1) - 80) : fw(f) - (f === 2 ? 60 : 40);
-  if (Math.random() < (k.P.roam || .2)) {
+  if (OUT_X < 99999 && !S.rain && Math.random() < .35) { // a sunny courtyard draws the cats downstairs
+    routeTo(k, 1, rand(OUT_X + 20, right(1)), rand(500, 594));
+  } else if (Math.random() < (k.P.roam || .2)) {
     const f = pick(floorsHere().filter(x => x !== k.floor && !(x === 4 && S.rain)));
     routeTo(k, f, rand(160, right(f)), rand(500, 594));
   } else if (k.floor !== 1 && Math.random() < .6 && S.customers.some(c => c.state === 'petting' && c.floor === k.floor)) {
