@@ -160,7 +160,9 @@
       result(t);
     }
     async function result(t) {
-      const code = (opts.code && opts.code()) || '', url = link(t, code);
+      el.innerHTML = '<div class="cq"><div class="cq-note">圖卡準備中……</div></div>';
+      // the game may still be fetching the player's friend code; links must carry it
+      const code = (opts.code && await opts.code()) || '', url = link(t, code);
       el.innerHTML = `<div class="cq"><canvas class="cq-card" id="cqCard" width="1080" height="1350"></canvas>
         <div class="cq-note">把這個連結傳給朋友，他點開就會看到你的圖卡，也能馬上自己測${code ? '。朋友從你的連結來玩，你們都能拿到限定的暖陽好友套裝' : ''}：</div>
         <div class="cq-link"><span>${esc(url.replace('https://', ''))}</span><button data-cq="copy">複製連結</button></div>
