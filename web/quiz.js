@@ -120,6 +120,8 @@
   .cq-link span{flex:1;min-width:0;padding:10px 12px;font-size:13px;color:#5D4037;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all}
   .cq-link button{flex:none;border:0;border-radius:0;background:#D9773E;color:#fff;padding:10px 14px;font:700 14px ${FONT_B};cursor:pointer}
   .cq-btns{display:flex;flex-wrap:wrap;gap:8px}.cq-btns>*{flex:1 1 30%;text-align:center;padding:10px 6px;border-radius:12px;font:700 14px ${FONT_B};border:1.5px solid #C9A27E;background:#fff;color:#5D4037;cursor:pointer;text-decoration:none;box-sizing:border-box}
+  .cq-warn{margin:10px 0 0;background:#FFF1E0;border:1.5px solid #F0B070;border-radius:12px;padding:9px 12px;font-size:13px;color:#8A4B1E;line-height:1.5}
+  .cq-warn button{display:block;margin:7px auto 0;border:0;border-radius:999px;background:#D9773E;color:#fff;padding:7px 18px;font:700 14px ${FONT_B};cursor:pointer}
   .cq-btns .line{background:#06C755;border-color:#06C755;color:#fff}.cq-btns .go{background:#D9773E;border-color:#D9773E;color:#fff}
   .cq-note{font-size:13px;color:#8B776B;margin:10px 0 0;line-height:1.5}`;
   document.head.appendChild(css);
@@ -132,7 +134,8 @@
   // the phone's own share sheet (LINE, IG, Messenger…) with the card picture and the link together.
   // file = the card made ahead of time: iOS only allows share() straight from a tap, so nothing may be awaited before it.
   async function share(file, t, url, say) {
-    const text = `我是「${t.name}」！你是哪一種喵？來測測看 👉 ${url}`, title = '暖陽貓閣・喵型測驗';
+    const text = (url.includes('?r=') ? `我是「${t.name}」！用我的邀請連結來暖陽貓閣測測你是哪一種喵，開店還送限定太陽貓掌髮夾 👉 ${url}`
+      : `我是「${t.name}」！你是哪一種喵？來測測看 👉 ${url}`), title = '暖陽貓閣・喵型測驗';
     const tryShare = async data => { try { await navigator.share(data); return 'ok'; } catch (e) { return e.name === 'AbortError' ? 'ok' : 'no'; } };
     if (file && navigator.canShare && navigator.canShare({ files: [file] }) && await tryShare({ files: [file], text, title }) === 'ok') return;
     if (navigator.share && await tryShare({ text, url, title }) === 'ok') return;
@@ -140,7 +143,7 @@
     if (file) download(file);
     say(await copy(text) ? '圖卡存好了，連結也複製好了，到 LINE 貼上就可以' : '圖卡存好了，再按「複製連結」貼到 LINE');
   }
-  // opts: { onDone(type), code: () => invite code or '', extra: (type) => [{label, cls, href | onClick}], note: (type) => html, toast(msg), inviter }
+  // opts: { onDone(type), code: () => invite code or '' (may be async), login(done): sign in to get a code, then call done(), extra: (type) => [{label, cls, href | onClick}], note: (type) => html, toast(msg), inviter }
   function mount(el, opts = {}) {
     const ans = [];
     const say = m => (opts.toast || (m => alert(m)))(m);
@@ -165,6 +168,7 @@
       const code = (opts.code && await opts.code()) || '', url = link(t, code);
       el.innerHTML = `<div class="cq"><canvas class="cq-card" id="cqCard" width="1080" height="1350"></canvas>
         <div class="cq-note">把這個連結傳給朋友，他點開就會看到你的圖卡，也能馬上自己測${code ? '。朋友從你的連結來玩，你們都能拿到限定的暖陽好友套裝' : ''}：</div>
+        ${!code && opts.login ? `<div class="cq-warn">這條連結還沒有你的好友碼，朋友從這裡來玩，你拿不到邀請獎勵。<button data-cq="login">登入遊戲帳號</button></div>` : ''}
         <div class="cq-link"><span>${esc(url.replace('https://', ''))}</span><button data-cq="copy">複製連結</button></div>
         <div class="cq-btns"><button class="line" data-cq="share">分享圖卡</button><button data-cq="save">存成圖片</button><button data-cq="again">再測一次</button></div>
         <div class="cq-btns" style="margin-top:8px" id="cqExtra"></div>${opts.note ? `<div class="cq-note">${opts.note(t)}</div>` : ''}</div>`;
@@ -175,6 +179,7 @@
       el.querySelector('[data-cq="copy"]').onclick = async () => say(await copy(url) ? '連結複製好了，貼給朋友吧！' : '請長按連結自己複製');
       el.querySelector('[data-cq="share"]').onclick = () => share(file, t, url, say);
       el.querySelector('[data-cq="save"]').onclick = () => { if (file) download(file); };
+      const lg = el.querySelector('[data-cq="login"]'); if (lg) lg.onclick = () => opts.login(() => result(t));
       el.querySelector('[data-cq="again"]').onclick = () => { ans.length = 0; ask(); };
       const cv = await card(t, code);
       const slot = el.querySelector('#cqCard'); if (slot) slot.getContext('2d').drawImage(cv, 0, 0);

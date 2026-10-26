@@ -42,6 +42,9 @@ main{width:min(460px,100% - 32px);margin:0 auto;padding:18px 0 40px}
 .invite b{font-family:var(--display);font-size:18px}
 .shared canvas{width:100%;aspect-ratio:4/5;border-radius:14px;display:block;box-shadow:0 6px 18px rgba(93,64,55,.2);background:#FBF4E8}
 .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.ov{position:fixed;inset:0;z-index:20;background:rgba(74,52,40,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.lg{width:min(380px,100%);text-align:center}.lg h2{font-family:var(--display);color:var(--wood-d);margin:0 0 4px}.lg p{color:var(--muted);font-size:14px;margin:4px 0 10px}.lg p.sm{font-size:13px;margin-top:12px}.lg a{color:var(--accent-d)}
+.lg input{display:block;width:100%;margin:8px 0;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;font:16px var(--body);background:#fff;color:var(--ink)}
 .foot{text-align:center;color:var(--muted);font-size:13px;margin-top:16px}
 </style>
 </head>
@@ -62,12 +65,56 @@ main{width:min(460px,100% - 32px);margin:0 auto;padding:18px 0 40px}
   if (ref.length === 6) try { localStorage.setItem('catloft-ref', ref); } catch {}
   let inviter = '';
   const toast = m => { const t = document.createElement('div'); t.textContent = m; t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(74,52,40,.92);color:#fff;padding:9px 16px;border-radius:12px;font-size:14px;z-index:9;max-width:90%'; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); };
-  // a player of the game on this device shares with their own friend code (saved by the game)
-  const myCode = () => { try { const c = localStorage.getItem('catloft-mycode') || ''; return /^[A-Z0-9]{6}$/.test(c) && c !== ref ? c : ''; } catch { return ''; } };
+  // A player shares with their own friend code: read it with the game's login on this browser (read only, the game's session is left as is),
+  // else the code the game saved here, else they can log in to their account below.
+  const okCode = c => /^[A-Z0-9]{6}$/.test(c || '') && c !== ref ? c : '';
+  const ls = { get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  async function codeWith(token) {
+    try {
+      const r = await fetch(SB_URL + '/rest/v1/rpc/catloft_my_code', { method: 'POST', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{}' });
+      const c = r.ok ? await r.json() : null;
+      if (typeof c === 'string' && /^[A-Z0-9]{6}$/.test(c)) { ls.set('catloft-mycode', c); return c; }
+    } catch {}
+    return '';
+  }
+  let mine = null;
+  async function myCode() {
+    if (mine === null) {
+      let s = null; try { s = JSON.parse(ls.get('catloft-auth') || 'null'); } catch {}
+      mine = (s && s.access_token && s.expires_at * 1000 > Date.now() + 60000 && await codeWith(s.access_token)) || ls.get('catloft-mycode');
+    }
+    return okCode(mine);
+  }
+  // same account e-mail as the game's acctEmail()
+  const acctEmail = name => 'u' + [...new TextEncoder().encode(name.trim().toLowerCase())].map(b => b.toString(16).padStart(2, '0')).join('') + '@catloft.player';
+  function login(done) {
+    const ov = document.createElement('div'); ov.className = 'ov';
+    ov.innerHTML = `<form class="panel lg"><h2>登入遊戲帳號</h2><p>用你在遊戲「存檔碼」建立的帳號名稱和密碼，分享連結就會帶上你的好友碼。</p>
+      <input name="u" placeholder="帳號名稱" autocomplete="username"><input name="p" type="password" placeholder="密碼" autocomplete="current-password">
+      <div class="row"><button class="btn primary" type="submit">登入</button><button class="btn ghost" type="button" data-x>取消</button></div>
+      <p class="sm">還沒有帳號？先<a href="${UP}">進遊戲開店</a>，在遊戲手機的「喵型測驗」分享，一定會帶你的好友碼。</p></form>`;
+    document.body.appendChild(ov);
+    const f = ov.querySelector('form'); ov.querySelector('[data-x]').onclick = () => ov.remove();
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const u = f.u.value.trim(), p = f.p.value; if (!u || !p) return toast('請輸入帳號名稱和密碼');
+      f.querySelector('[type=submit]').disabled = true;
+      let tok = '';
+      try {
+        const r = await fetch(SB_URL + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: acctEmail(u), password: p }) });
+        tok = r.ok ? (await r.json()).access_token : '';
+      } catch {}
+      f.querySelector('[type=submit]').disabled = false;
+      if (!tok) return toast('帳號名稱或密碼不對');
+      const c = await codeWith(tok);
+      if (!c) return toast('這個帳號還沒開過店，先進遊戲玩一下再來分享吧');
+      mine = c; ov.remove(); toast('好了！分享連結已經帶上你的好友碼'); done();
+    };
+  }
   const game = t => UP + '?quiz=' + t.id + (ref.length === 6 ? '&r=' + ref : '');
   function quiz() {
-    CATQ.mount(box, { toast, code: myCode, extra: t => [{ label: `進遊戲領本命貓「${t.cat}」🐾`, cls: 'go', href: game(t) }],
-      note: t => `本命貓「${t.cat}」是一隻${CATQ.persName(t)}的貓，不用登入就能領：按上面的按鈕進遊戲，開店後牠就會來店裡。` }).ask();
+    CATQ.mount(box, { toast, code: myCode, login, extra: t => [{ label: `進遊戲領本命貓「${t.cat}」🐾`, cls: 'go', href: game(t) }],
+      note: t => `本命貓「${t.cat}」是一隻${CATQ.persName(t)}的貓，不用登入就能領：按上面的按鈕進遊戲，開店後牠就會來店裡。<br>已經在玩的人，從遊戲手機的「喵型測驗」分享最穩，連結一定帶你的好友碼。` }).ask();
     scrollTo(0, 0);
   }
   async function intro() {
