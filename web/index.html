@@ -819,6 +819,22 @@ const ROLES2 = { cook: '阿翔', server: '小葵', cashier: '阿德', feeder: '�
 const ROLES3 = { cook: '阿福', server: '小蓮', cashier: '阿文', feeder: '小桃', sitter: '阿寶', server2: '小雪' };
 const staffDef = (role, at = G ? G.at : 1) => at === 3 ? { ...ROLES[role], name: ROLES3[role], spr: role === 'server2' ? 'server' : 's3' + role, title: role === 'server2' ? '二號送餐人員' : ROLES[role].title, desc: role === 'server2' ? '店很大，跟另一位上收餐人員一起送餐、收桌子、打掃洗手間' : ROLES[role].desc } : at === 2 ? { ...ROLES[role], name: ROLES2[role], spr: role === 'server2' ? 'server' : 's2' + role, desc: role === 'feeder' ? '顧好 2F 的貓碗和貓砂盆，也會上頂樓菜園種菜、澆水、收成' : ROLES[role].desc } : { ...ROLES[role], spr: role };
 const roleName = role => (G && G.hired && G.hired[role] ? G.hired[role].name : staffDef(role).name);
+// up to 3 people per job (Chuck, 2026-10-26: one each could not keep up). The first keeps the plain role id
+// ('cook') so older saves still work; the 2nd and 3rd are 'cook#2' and 'cook#3', each with their own hire info and shifts.
+const ROLE_MAX = 3;
+const roleOf = key => key.split('#')[0];
+const slotOf = key => +(key.split('#')[1] || 1);
+const slotKey = (role, n) => n > 1 ? role + '#' + n : role;
+const validKey = k => typeof k === 'string' && /^[a-z0-9]+(#[23])?$/.test(k) && !!ROLES[roleOf(k)];
+const keysOf = role => G.staff.filter(k => roleOf(k) === role).sort((a, b) => slotOf(a) - slotOf(b));
+const freeSlot = role => [1, 2, 3].map(n => slotKey(role, n)).find(k => !G.staff.includes(k));
+// the 2nd and 3rd person in a job wear a crew look borrowed from the other shops, so they don't look like clones
+const SPR_SETS = ['', 's2', 's3'];
+function slotSpr(role, n, own) {
+  if (n === 1) return own;
+  const base = role === 'server2' ? 'server' : role, mine = own.slice(0, own.length - base.length);
+  return SPR_SETS.filter(p => p !== mine)[n - 2] + base;
+}
 // ---- job interviews: the manager picks who to hire; a poor pick works slowly and fewer guests come in (fans never drop)
 const HIRE_FEE = [9000, 12000];
 const IV_Q = ['為什麼想來我們店工作？', '客人突然變很多的時候，你會怎麼做？', '一個禮拜可以來幾天？'];
@@ -831,14 +847,17 @@ const IV_A = {
 const IV_Q_LV = { good: 1, meh: .75, lazy: .5, kid: .5 };
 const IV_NOTE = { good: '做事很可靠', meh: '表現普通，有點慢', lazy: '常常偷懶，客人會變少', kid: '還是小學生，做得很慢，客人會變少' };
 const KID_NAMES = ['小宇', '豆豆', '小安', '妞妞', '小樂', '小可'], ADULT_NAMES = ['阿明', '小晴', '阿翔', '佳佳', '阿德', '小蓉', '志明', '春嬌'];
-function applicants(role) {
-  let seed = (G.day * 7349 + role.length * 131 + role.charCodeAt(0)) % 2147483647; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647, pk = a => a[Math.floor(rnd() * a.length)];
+function applicants(role, n = slotOf(freeSlot(role) || role)) {
+  let seed = (G.day * 7349 + role.length * 131 + role.charCodeAt(0) + (n - 1) * 977) % 2147483647; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647, pk = a => a[Math.floor(rnd() * a.length)];
   const fee = (a, b) => Math.round((a + rnd() * (b - a)) / 100) * 100;
-  const other = pk(ADULT_NAMES.filter(n => n !== staffDef(role).name));
+  // nobody already on the team turns up again
+  const taken = G.staff.map(k => hireInfo(k) ? hireInfo(k).name : staffDef(roleOf(k)).name), adults = ADULT_NAMES.filter(x => !taken.includes(x));
+  const first = taken.includes(staffDef(role).name) ? pk(adults) : staffDef(role).name;
+  const other = pk(adults.filter(x => x !== first && x !== staffDef(role).name));
   const list = [
-    { name: staffDef(role).name, age: 20 + Math.floor(rnd() * 8), tier: 'good', fee: fee(11000, 12000) },
+    { name: first, age: 20 + Math.floor(rnd() * 8), tier: 'good', fee: fee(11000, 12000) },
     { name: other, age: 19 + Math.floor(rnd() * 20), tier: pk(['good', 'meh', 'meh', 'lazy']), fee: fee(9500, 11500) },
-    { name: pk(KID_NAMES), age: 8 + Math.floor(rnd() * 4), tier: 'kid', fee: HIRE_FEE[0] },
+    { name: pk(KID_NAMES.filter(x => !taken.includes(x))), age: 8 + Math.floor(rnd() * 4), tier: 'kid', fee: HIRE_FEE[0] },
   ];
   for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
   return list.map((a, i) => ({ ...a, i, ans: IV_A[a.tier].map(v => v[Math.floor(rnd() * 2)]) }));
@@ -913,10 +932,13 @@ const SHIFT_SPLIT = 840; // 14:00, the morning shift goes home and the evening s
 const BREAK_HOURS = [10, 11, 12, 13, 15, 16, 17, 18, 19];
 // two people share each default break, so the break room is never empty for long
 const DEFAULT_SCHED = { cook: { shift: 'all', brk: 15 }, server: { shift: 'all', brk: 13 }, cashier: { shift: 'all', brk: 16 }, feeder: { shift: 'all', brk: 13 }, sitter: { shift: 'all', brk: 15 }, server2: { shift: 'all', brk: 14 } };
-const schedOf = role => ({ ...DEFAULT_SCHED[role], ...(G.sched[role] || {}) });
+// the 2nd and 3rd person in a job take their break a little later, so the job is never left empty
+const defSched = key => { const d = DEFAULT_SCHED[roleOf(key)], n = slotOf(key); if (n === 1) return d;
+  const i = BREAK_HOURS.indexOf(d.brk), h = BREAK_HOURS[(i + (n - 1) * 2) % BREAK_HOURS.length]; return { ...d, brk: h }; };
+const schedOf = key => ({ ...defSched(key), ...(G.sched[key] || {}) });
 const breakFits = (shift, h) => shift === 'all' || (shift === 'am' && h * 60 < SHIFT_SPLIT) || (shift === 'pm' && h * 60 >= SHIFT_SPLIT);
-const todayShift = role => (S && S.staff.find(s => s.role === role) || schedOf(role)).shift;
-const wageOf = (role, shift = todayShift(role)) => Math.round(ROLES[role].wage * SHIFTS[shift].pay);
+const todayShift = key => (S && S.staff.find(s => s.key === key) || schedOf(key)).shift;
+const wageOf = (key, shift = todayShift(key)) => Math.round(ROLES[roleOf(key)].wage * SHIFTS[shift].pay);
 const dayWages = () => G.staff.reduce((a, r) => a + wageOf(r), 0);
 const SHIRTS = ['#9FB8AD', '#E3AE97', '#A7B5D6', '#D8C27A', '#C9A3C1', '#8FB0C9', '#E8D8C3', '#B9C99A'];
 const HAIRS = ['#3E2C23', '#6B4A3A', '#2B2420', '#A0703F', '#4C3A30'];
@@ -1510,12 +1532,12 @@ function welcomeCat(id, hello) {
   S.cats.push(k); goBed(k); k.energy = 40; say(k, '喵？這裡是新家嗎'); later(2.5, () => say(S.mgr, `歡迎你，${d.name}！`));
   sfx('adopt'); toast(`${hello || ''}${d.name}來到${G.shopName}了！`); saveProgress();
 }
-function makeStaff(role, atDoor) {
-  const R = staffDef(role), h = R.home;
-  const s = { role, ...R, floor: atDoor ? 1 : h.f, x: atDoor ? DOOR.x : h.x, y: atDoor ? DOOR.y : h.y, path: [], speed: 230, face: 1,
+function makeStaff(key, atDoor) {
+  const role = roleOf(key), slot = slotOf(key), R = staffDef(role), h = { ...R.home, x: R.home.x + [0, -46, 46][slot - 1] };
+  const s = { role, key, slot, ...R, spr: slotSpr(role, slot, R.spr), home: h, floor: atDoor ? 1 : h.f, x: atDoor ? DOOR.x : h.x, y: atDoor ? DOOR.y : h.y, path: [], speed: 230, face: 1,
     stamina: 100, task: null, mode: 'idle', actT: 0, si: 0, carry: null, cool: 0, resting: false, hidden: false,
-    ...schedOf(role), away: false, brkDone: false, coffeeCool: rand(20, 60) };
-  const hi = hireInfo(role); if (hi) { s.name = hi.name; s.q = IV_Q_LV[hi.tier]; s.kid = hi.tier === 'kid'; s.speed *= .6 + .4 * s.q; }
+    ...schedOf(key), away: false, brkDone: false, coffeeCool: rand(20, 60) };
+  const hi = hireInfo(key); if (hi) { s.name = hi.name; s.q = IV_Q_LV[hi.tier]; s.kid = hi.tier === 'kid'; s.speed *= .6 + .4 * s.q; }
   if (atDoor) routeTo(s, h.f, h.x, h.y);
   return s;
 }
@@ -2607,7 +2629,7 @@ function runTask(w, dt) {
     }
   }
 }
-function beginStep(w) { const st = w.task.steps[w.si]; const p = st.pos ? st.pos() : st; routeTo(w, p.f, p.x, p.y); w.mode = 'walk'; }
+function beginStep(w) { const st = w.task.steps[w.si]; const p = st.pos ? st.pos() : st; routeTo(w, p.f, p.x + (w.slot > 1 && w.task.kind !== 'rest' ? (w.slot === 2 ? -28 : 28) : 0), p.y); w.mode = 'walk'; }
 function endTask(w) { const t = w.task; w.task = null; w.mode = 'idle'; t && t.onEnd && t.onEnd(w); if (w === S.mgr) renderTasks(); }
 const isMgr = w => w === S.mgr;
 
@@ -2643,12 +2665,12 @@ function clearTask(t) {
   return { label: '收桌子', steps: [{ f: 1, x: Math.min(fw(1) - 15, t.x + 40), y: t.y - 2, dur: .6, fn: () => { t.dirty = false; sfx('clear', 1); } }], onEnd: () => t.busy = false };
 }
 function bowlTask() {
-  return { label: '補貓糧', steps: [{ f: 2, ...BOWL.staff, dur: 1,
+  return { label: '補貓糧', kind: 'bowl', steps: [{ f: 2, ...BOWL.staff, dur: 1,
     pre: w => { if (G.bowl >= 6) { if (isMgr(w)) toast('貓碗還是滿的'); return false; } if (G.stock.catfood <= 0) { if (isMgr(w)) toast('沒有貓糧了，打開手機的「商店」買'); return false; } },
     fn: () => { sfx('kibble', 2); G.stock.catfood--; G.bowl = 6; floatText(2, BOWL.x, BOWL.y - 60, '裝滿了', '#6E9B4E'); } }] };
 }
 function litterTask() {
-  return { label: '清貓砂', steps: [{ f: 2, ...LITTER.staff, dur: 1.4,
+  return { label: '清貓砂', kind: 'litter', steps: [{ f: 2, ...LITTER.staff, dur: 1.4,
     pre: w => { if (G.litterDirt <= 0) { if (isMgr(w)) toast('貓砂盆很乾淨'); return false; } if (G.stock.litter <= 0) { if (isMgr(w)) toast('沒有貓砂了，打開手機的「商店」買'); return false; } },
     fn: () => { sfx('litter', 2); G.stock.litter--; G.litterDirt = 0; floatText(2, LITTER.x, LITTER.y - 50, '乾淨了', '#6E9B4E'); } }] };
 }
@@ -2767,10 +2789,10 @@ function findJob(s) {
   const open = S.phase === 'open';
   switch (s.role) {
     case 'cook': {
-      if (Object.values(S.baking).some(Boolean) || S.cook) return null;
-      const can = unlockedDishes().filter(d => G.stock[RES(d)] > 0 && (S.phase !== 'closing' || S.customers.some(c => c.state === 'waitFood' && c.order.dish === d && !S.display[d])));
+      if (S.cook || Object.values(S.baking).filter(Boolean).length >= S.staff.filter(o => o.role === 'cook' && !o.away).length) return null;
+      const can = unlockedDishes().filter(d => G.stock[RES(d)] > 0 && !S.baking[d] && (S.phase !== 'closing' || S.customers.some(c => c.state === 'waitFood' && c.order.dish === d && !S.display[d])));
       if (S.phase === 'closing') return can.length ? bakeTask(can[0]) : null; // after closing time only cook what a waiting guest still needs
-      if (!can.length) { warnOnce('flour', `${roleName('cook')}：麵粉和食材都用完了，沒辦法做`); return null; }
+      if (!can.length) { if (unlockedDishes().some(d => S.baking[d])) return null; warnOnce('flour', `${roleName('cook')}：麵粉和食材都用完了，沒辦法做`); return null; }
       const d = can.sort((a, b) => S.display[a] - S.display[b])[0];
       if (S.display[d] >= (unlockedDishes().length > 2 ? 3 : 4)) return null;
       return bakeTask(d);
@@ -2793,8 +2815,9 @@ function findJob(s) {
       return { label: '點餐', kind: 'order', steps: [{ f: 1, ...CASHIER_SPOT, dur: .8, fn: w => { if (!takeOrder(true, w)) w.cool = 2; } }] };
     }
     case 'feeder': {
-      if (G.bowl <= 2) { if (G.stock.catfood > 0) return bowlTask(); warnOnce('catfood', `${roleName('feeder')}：貓糧用完了`); }
-      if (G.litterDirt >= 2) { if (G.stock.litter > 0) return litterTask(); warnOnce('litter', `${roleName('feeder')}：貓砂用完了`); }
+      const mate = kind => S.staff.some(o => o !== s && o.task?.kind === kind);
+      if (G.bowl <= 2 && !mate('bowl')) { if (G.stock.catfood > 0) return bowlTask(); warnOnce('catfood', `${roleName('feeder')}：貓糧用完了`); }
+      if (G.litterDirt >= 2 && !mate('litter')) { if (G.stock.litter > 0) return litterTask(); warnOnce('litter', `${roleName('feeder')}：貓砂用完了`); }
       if (G.at === 2 && S.phase === 'open') return gardenJob();
       return null;
     }
@@ -2824,11 +2847,17 @@ function onShift(s) {
   if (s.shift === 'pm') return (S.phase === 'open' || S.phase === 'closing') && S.time >= SHIFT_SPLIT;
   return false;
 }
-const seatOf = s => SOFA_SEATS[Math.max(0, G.staff.indexOf(s.role)) % SOFA_SEATS.length];
+const seatOf = s => s.seat || SOFA_SEATS[Math.max(0, G.staff.indexOf(s.key)) % SOFA_SEATS.length];
+// a free spot on the sofa; with a big crew the last ones to come in stand in front of it
+function pickSeat(s) {
+  const taken = S.staff.filter(o => o !== s && (o.resting || o.task?.kind === 'rest')).map(seatOf);
+  s.seat = SOFA_SEATS.find(p => !taken.includes(p)) || { x: SOFA_SEATS[taken.length % SOFA_SEATS.length].x + 24, y: 592 };
+  return s.seat;
+}
 function giveTask(s, t) { s.task = t; s.si = 0; beginStep(s); }
 // tired (stamina < 20) rests until fully recovered; a scheduled break lasts its whole hour
 function goRest(s, why) {
-  giveTask(s, { label: why === 'break' ? '休息時間' : '休息', kind: 'rest', steps: [{ f: 3, ...seatOf(s), dur: 0, fn: w => {
+  giveTask(s, { label: why === 'break' ? '休息時間' : '休息', kind: 'rest', steps: [{ f: 3, ...pickSeat(s), dur: 0, fn: w => {
     w.resting = why; w.face = 1;
     toast(why === 'break' ? `${w.name}的休息時間到了，去員工休息室坐一下` : `${w.name}累了，去員工休息室休息`);
   } }] });
@@ -2871,26 +2900,26 @@ function updStaff(s, dt) {
   if (Math.random() < dt * .25) { const h = s.home; routeTo(s, h.f, clamp(h.x + rand(-40, 40), 150, fw(h.f) - 80), clamp(h.y + rand(-8, 12), 484, 594)); }
 }
 function hire(role, i = 0) {
-  const a = applicants(role)[i];
-  if (G.staff.includes(role) || !a || G.cash < a.fee || G.debt > 0) return;
-  G.cash -= a.fee; (G.hired || (G.hired = {}))[role] = { name: a.name, tier: a.tier }; ivSeen = {};
-  G.staff.push(role); const s = makeStaff(role, true); if (!onShift(s)) s.shift = 'all'; S.staff.push(s); sfx('hire');
+  const key = freeSlot(role), a = key && applicants(role)[i];
+  if (!a || G.cash < a.fee || G.debt > 0) return;
+  G.cash -= a.fee; (G.hired || (G.hired = {}))[key] = { name: a.name, tier: a.tier }; ivSeen = {};
+  G.staff.push(key); const s = makeStaff(key, true); if (!onShift(s)) s.shift = 'all'; S.staff.push(s); sfx('hire');
   toast(`${a.name}（${ROLES[role].title}）來上班了`);
   if (s.kid) later(2, () => say(s, '店長好！我會加油的！'));
   saveProgress();
 }
-function fire(role) {
-  G.staff = G.staff.filter(r => r !== role);
-  const s = S.staff.find(s => s.role === role);
+function fire(key) {
+  G.staff = G.staff.filter(r => r !== key);
+  const s = S.staff.find(s => s.key === key);
   if (s) { if (s.task) endTask(s); S.staff = S.staff.filter(x => x !== s); }
-  toast(`${s ? s.name : ROLES[role].name}離職了`); if (G.hired) delete G.hired[role];
+  toast(`${s ? s.name : ROLES[roleOf(key)].name}離職了`); if (G.hired) delete G.hired[key]; delete G.sched[key];
 }
 // shift changes count from tomorrow (or right away before opening); a new break hour counts right away
-function setSched(role, ch) {
-  const nx = { ...schedOf(role), ...ch };
+function setSched(key, ch) {
+  const nx = { ...schedOf(key), ...ch };
   if (nx.brk && !breakFits(nx.shift, nx.brk)) nx.brk = BREAK_HOURS.find(h => breakFits(nx.shift, h)) || 0;
-  G.sched[role] = nx;
-  const s = S.staff.find(s => s.role === role); if (!s) return;
+  G.sched[key] = nx;
+  const s = S.staff.find(s => s.key === key); if (!s) return;
   s.brk = nx.brk;
   if (S.phase === 'prep') s.shift = nx.shift;
 }
@@ -3236,13 +3265,13 @@ function growGarden(dt) {
 function awayDay(id) {
   const r = shopRec(id), L = LAYOUTS[id], lv = shopLv(r.exp), D = SHOP_DEFS[id];
   const flow = r.expand ? L.EXPANSIONS[r.expand - 1].flow : 1, sign = r.furn.includes('sign') ? 1.2 : 1;
-  const crew = r.staff.length, eff = crew ? .6 + crew * .08 : .6, seats = r.tables + (r.furn.includes('bar') ? 2 : 0);
+  const crew = r.staff.length, eff = crew ? .6 + Math.min(crew, 9) * .07 : .6, seats = r.tables + (r.furn.includes('bar') ? 2 : 0);
   const guests = Math.round(Math.min(seats * 9, 17 * (1 + G.fans / 120) * flow * sign * wxFlow(id) * eff * rand(.9, 1.1)));
   const dishes = DISHES.filter(d => MENU[d].lv <= lv && (!MENU[d].shop || MENU[d].shop === id));
   const avg = dishes.reduce((a, d) => a + r.prices[d], 0) / Math.max(1, dishes.length);
   const cats = r.duty.filter(c => G.cats.some(x => x.id === c)).length;
   const revenue = Math.round(guests * (avg * .9 + (cats ? r.prices.loft * .6 : 0)));
-  const wages = r.staff.reduce((a, role) => a + Math.round(ROLES[role].wage * SHIFTS[(r.sched[role] && r.sched[role].shift) || 'all'].pay), 0);
+  const wages = r.staff.reduce((a, key) => a + Math.round(ROLES[roleOf(key)].wage * SHIFTS[(r.sched[key] && r.sched[key].shift) || 'all'].pay), 0);
   const temp = crew ? 0 : Math.round(200 * D.cost), food = Math.round(revenue * .25);
   const exp = 10 + Math.floor(guests / 3), fans = Math.floor(guests / 15);
   r.exp += exp; G.fans += fans; gainEarned(revenue);
@@ -3619,9 +3648,9 @@ function chatter(dt) {
     else if (S.customers.length >= 6) l = ['今天客人好多喔！', '大家加油！'];
     talk(st, G.mgrName + '店長，' + l[0], m, l[1]);
   });
-  for (const a of S.staff) for (const b of S.staff) if (a.role < b.role && free(a) && free(b) && near(a, b)) opts.push(() => { const [x, y] = pick(CREW_TALK); talk(a, x, b, y); });
+  for (const a of S.staff) for (const b of S.staff) if (a.key < b.key && free(a) && free(b) && near(a, b)) opts.push(() => { const [x, y] = pick(CREW_TALK); talk(a, x, b, y); });
   const resting = S.staff.filter(s => s.resting && s.floor === 3 && !s.say);
-  for (const a of resting) for (const b of resting) if (a.role < b.role) { const f = () => { const [x, y] = pick(BREAK_TALK); talk(a, x, b, y); }; opts.push(f, f); }
+  for (const a of resting) for (const b of resting) if (a.key < b.key) { const f = () => { const [x, y] = pick(BREAK_TALK); talk(a, x, b, y); }; opts.push(f, f); }
   for (const s of resting) if (free(m) && m.floor === 3) opts.push(() => talk(s, pick(['店長也來休息呀', '店長辛苦了～']), m, pick(['大家都辛苦了', '喝杯咖啡吧'])));
   for (const k of S.cats) if (!k.onBed && k.state !== 'sleep' && free(k)) {
     if (free(m) && near(k, m, 170)) opts.push(() => talk(m, pick(['你今天好乖喔', '要不要摸摸？', '不可以偷吃甜點喔']), k, pick(['喵～', '喵嗚？', '呼嚕呼嚕'])));
@@ -4368,10 +4397,10 @@ function renderPhone() {
     } else if (phoneApp === 'hire') {
       const blocked = G.debt > 0;
       const wages = dayWages();
-      h += `<p class="muted">員工會自己找事做，打烊時領日薪。今天雇用也要付今天的薪水。今天的薪資 ${yen(wages)}。</p>`;
+      h += `<p class="muted">員工會自己找事做，打烊時領日薪。今天雇用也要付今天的薪水。今天的薪資 ${yen(wages)}。每種職位最多可以雇 ${ROLE_MAX} 位，人多比較忙得過來。</p>`;
       if (G.staff.length) h += `<p class="muted">排班：早班、晚班領 6 成薪水，休假不用付薪水。${S.phase === 'prep' ? '開門前改的班今天就生效。' : '改的班明天生效，休息時間馬上生效。'}</p>`;
       if (blocked) h += `<p style="color:var(--bad);font-size:13px;margin:0">還有負債 ${yen(G.debt)}，還清前不能雇新員工。</p>`;
-      if (ivRole && !G.staff.includes(ivRole)) {
+      if (ivRole && freeSlot(ivRole)) {
         const R = ROLES[ivRole];
         h += `<div class="row" style="margin:0 0 8px"><button id="ivBack">← 回到職缺</button></div><p class="muted">${R.title}今天有 3 位來應徵。店長要親自面試，聽完回答再決定要錄用誰。選錯人會做得很慢，客人也會變少。錄用時付一次雇用費。</p>`;
         for (const a of applicants(ivRole)) {
@@ -4381,11 +4410,14 @@ function renderPhone() {
             ${seen && ivAsk === k ? `<div class="sub" style="color:var(--bad)"><b>確定要錄用${a.name}嗎？</b>要付雇用費 ${yen(a.fee)}。</div>` : ''}
             <div class="row" style="margin:0">${!seen ? `<button class="primary" data-iv="${k}">面試</button>` : ivAsk === k ? `<button data-hirecancel="1">再想想</button><button class="primary" data-hire="${ivRole}:${a.i}" ${blocked || S.phase === 'settle' || G.cash < a.fee ? 'disabled' : ''}>確定錄用</button>` : `<button class="primary" data-askhire="${k}" ${blocked || S.phase === 'settle' || G.cash < a.fee ? 'disabled' : ''}>${G.cash < a.fee ? '錢不夠' : '錄用'}</button>`}</div></div>`;
         }
-      } else for (const id of rolesHere()) { const R = ROLES[id];
-        const has = G.staff.includes(id), hi = has && hireInfo(id);
-        h += `<div class="item"><div class="top"><span class="nm">${has ? (hi ? hi.name : staffDef(id).name) + '・' : ''}${R.title}</span><b>日薪 ${yen(R.wage)}</b></div><div class="sub">${staffDef(id).desc}${hi ? `<br>工作表現：${IV_NOTE[hi.tier]}` : ''}</div>
-          ${has ? schedHtml(id) : `<div class="sub">雇用費 ${yen(HIRE_FEE[0])}～${yen(HIRE_FEE[1])}，要先面試</div>`}
-          <div class="row" style="margin:0">${has ? `<button data-fire="${id}">請他離職</button>` : `<button class="primary" data-ivrole="${id}" ${blocked || S.phase === 'settle' ? 'disabled' : ''}>看應徵者</button>`}</div></div>`;
+      } else for (const id of rolesHere()) { const R = ROLES[id], keys = keysOf(id), n = keys.length;
+        h += `<div class="item"><div class="top"><span class="nm">${R.title}</span><b>${n}/${ROLE_MAX} 位・日薪 ${yen(R.wage)}</b></div><div class="sub">${staffDef(id).desc}</div>`;
+        for (const k of keys) { const hi = hireInfo(k);
+          h += `<div class="sub" style="margin-top:8px;padding-top:6px;border-top:1px dashed rgba(0,0,0,.12)"><b>${hi ? hi.name : staffDef(id).name}</b>${hi ? `・${IV_NOTE[hi.tier]}` : ''}</div>
+            ${schedHtml(k)}<div class="row" style="margin:0"><button data-fire="${k}">請他離職</button></div>`;
+        }
+        h += n < ROLE_MAX ? `<div class="sub">${n ? `還可以再雇 ${ROLE_MAX - n} 位。` : ''}雇用費 ${yen(HIRE_FEE[0])}～${yen(HIRE_FEE[1])}，要先面試</div>
+          <div class="row" style="margin:0"><button class="primary" data-ivrole="${id}" ${blocked || S.phase === 'settle' ? 'disabled' : ''}>${n ? `再雇一位（第 ${n + 1} 位）` : '看應徵者'}</button></div></div>` : `<div class="sub">這個職位已經雇滿 ${ROLE_MAX} 位了</div></div>`;
       }
     } else if (phoneApp === 'wallet') {
       h += `<div class="item"><div class="top"><span class="nm">現金</span><b>${yen(G.cash)}</b></div><div class="top"><span class="nm">負債</span><b style="color:var(--bad)">${yen(G.debt)}</b></div>
@@ -4739,13 +4771,13 @@ function decodeSave(code) {
       prices: Object.fromEntries(Object.keys(f.prices).map(k => [k, clamp(num(s.prices?.[k], f.prices[k]), 5, baseOf(k, id) * 2)])),
       bowl: clamp(num(s.bowl, 0), 0, 6), litterDirt: Math.max(0, num(s.litterDirt, 0)),
       tables: clamp(Math.floor(num(s.tables, 4)), 4, L.MAX_TABLES), expand: clamp(Math.floor(num(s.expand, 0)), 0, L.EXPANSIONS.length),
-      staff: Array.isArray(s.staff) ? [...new Set(s.staff.filter(r => ROLES[r]))] : [],
-      hired: Object.fromEntries(Object.keys(ROLES).filter(r => s.hired?.[r] && IV_A[s.hired[r].tier]).map(r => [r, { name: cleanName(s.hired[r].name, ROLES[r].name, 6), tier: s.hired[r].tier }])),
+      staff: Array.isArray(s.staff) ? [...new Set(s.staff.filter(validKey))] : [],
+      hired: Object.fromEntries(Object.keys(s.hired || {}).filter(r => validKey(r) && IV_A[s.hired[r]?.tier]).map(r => [r, { name: cleanName(s.hired[r].name, ROLES[roleOf(r)].name, 6), tier: s.hired[r].tier }])),
       exp: Math.max(0, Math.floor(num(s.exp, 0))),
       furn: Array.isArray(s.furn) ? [...new Set(s.furn.filter(x => FURN[x] || (TOOLS[x] && TOOLS[x].keep)))] : [],
       keep: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(num(s.keep?.[d], 0)))])),
       shopName: cleanName(s.shopName, SHOP_DEFS[id].name, 10),
-      sched: Object.fromEntries(Object.keys(ROLES).filter(r => s.sched?.[r]).map(r => [r, { shift: SHIFTS[s.sched[r].shift] ? s.sched[r].shift : 'all', brk: [0, ...BREAK_HOURS].includes(s.sched[r].brk) ? s.sched[r].brk : DEFAULT_SCHED[r].brk }])),
+      sched: Object.fromEntries(Object.keys(s.sched || {}).filter(r => validKey(r) && s.sched[r]).map(r => [r, { shift: SHIFTS[s.sched[r].shift] ? s.sched[r].shift : 'all', brk: [0, ...BREAK_HOURS].includes(s.sched[r].brk) ? s.sched[r].brk : defSched(r).brk }])),
       duty: Array.isArray(s.duty) ? [...new Set(s.duty.filter(x => CAT_DEFS[x]))] : null,
       toys: id === 3 && Array.isArray(s.toys) ? [...new Set(s.toys.filter(t => TOYS[t]))] : [], elev: id === 3 && s.elev === true,
       garden: id === 2 ? PLOTS.map((p, i) => { const g = Array.isArray(s.garden) ? s.garden[i] : null; const st = [0, 1, 2].includes(g?.s) ? g.s : 0;
@@ -5274,8 +5306,9 @@ let opening = false;
 async function begin(newG) {
   if (opening) return; opening = true;
   const outfit = [0, 1, 2].map(i => (OUTFITS.find(o => o.id === newG.outfit) || OUTFITS[0]).spr + (newG.mgrSex === 'm' ? 'm' : '') + '_' + i);
-  if (newG.at === 2) outfit.push('s2bg1', 's2bg2', 's2bg4', ...newG.staff.map(r => 's2' + r + '_0'));
-  if (newG.at === 3) outfit.push('s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6', ...newG.staff.filter(r => r !== 'server2').map(r => 's3' + r + '_0'));
+  if (newG.at === 2) outfit.push('s2bg1', 's2bg2', 's2bg4');
+  if (newG.at === 3) outfit.push('s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6');
+  for (const k of newG.staff) { const r = roleOf(k), own = staffDef(r, newG.at).spr, n = slotSpr(r, slotOf(k), own); if (LAZY_ART.test(n + '_0')) outfit.push(n + '_0'); }
   outfit.forEach(n => art(n));
   if (![...CORE_ART, ...outfit].every(artOk)) {
     $('loadOv').hidden = false;
