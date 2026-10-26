@@ -14,7 +14,9 @@
   const ls = { get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
   const on = () => !!(CLOUD.sb && !CLOUD.db);
   const rpc = async (fn, args) => { const { data, error } = await CLOUD.sb.rpc(fn, args); if (error) throw error; return data; };
-  const code = () => (window.FRIENDS && FRIENDS.code) || '';
+  // remembered on this device too, so the quiz page outside the game can put it in shared links
+  const code = () => { const c = (window.FRIENDS && FRIENDS.code) || ''; if (c && c !== ls.get('catloft-mycode')) ls.set('catloft-mycode', c); return c; };
+  const ensureCode = async () => { if (!code() && on() && window.FRIENDS) try { await FRIENDS.sync(); } catch {} return code(); };
 
   // ?quiz=lazy&r=K7M2QX from the quiz page
   (function takeUrl() {
@@ -91,7 +93,7 @@
     if (!on() || !CLOUD.uid || !started || I.stating) return;
     I.stating = true;
     try {
-      if (!code() && window.FRIENDS) await FRIENDS.sync(); // the friend code is the invite code in shared links
+      await ensureCode(); // the friend code is the invite code in shared links
       const row = (await rpc('catloft_invite_stats') || [])[0] || {};
       I.done = Number(row.done) || 0; I.waiting = Number(row.waiting) || 0;
       const got = [];
@@ -135,7 +137,7 @@
     if (view === 'quiz') {
       const t = CATQ.typeOf(G.mtype);
       const ui = CATQ.mount(sc.querySelector('#cqBox'), {
-        toast, code,
+        toast, code: ensureCode,
         onDone: t => { G.mtype = t.id; saveProgress(); },
         extra: t => G.hm ? [{ label: '回喵型測驗', onClick: () => { view = 'home'; renderPhone(); } }]
           : [{ label: `收下本命貓「${t.cat}」🐾`, cls: 'go', onClick: () => { view = 'home'; closePhone(true); takeHonmei(t); } }],

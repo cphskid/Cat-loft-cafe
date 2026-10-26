@@ -62,9 +62,11 @@ main{width:min(460px,100% - 32px);margin:0 auto;padding:18px 0 40px}
   if (ref.length === 6) try { localStorage.setItem('catloft-ref', ref); } catch {}
   let inviter = '';
   const toast = m => { const t = document.createElement('div'); t.textContent = m; t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(74,52,40,.92);color:#fff;padding:9px 16px;border-radius:12px;font-size:14px;z-index:9;max-width:90%'; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); };
+  // a player of the game on this device shares with their own friend code (saved by the game)
+  const myCode = () => { try { const c = localStorage.getItem('catloft-mycode') || ''; return /^[A-Z0-9]{6}$/.test(c) && c !== ref ? c : ''; } catch { return ''; } };
   const game = t => UP + '?quiz=' + t.id + (ref.length === 6 ? '&r=' + ref : '');
   function quiz() {
-    CATQ.mount(box, { toast, extra: t => [{ label: `進遊戲領本命貓「${t.cat}」🐾`, cls: 'go', href: game(t) }],
+    CATQ.mount(box, { toast, code: myCode, extra: t => [{ label: `進遊戲領本命貓「${t.cat}」🐾`, cls: 'go', href: game(t) }],
       note: t => `本命貓「${t.cat}」是一隻${CATQ.persName(t)}的貓，不用登入就能領：按上面的按鈕進遊戲，開店後牠就會來店裡。` }).ask();
     scrollTo(0, 0);
   }
