@@ -84,6 +84,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .app-ic:hover{background:rgba(255,248,236,.9)}
 .app-ic .ico{position:relative;width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:22px;color:#fff;overflow:hidden;box-shadow:0 3px 8px rgba(93,64,55,.22)}
 .app-ic .ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.app-ic .ico .badge.sm{top:3px;right:3px;z-index:1;color:#fff}
 .app-ic span{font-size:13px;color:var(--ink);font-weight:700}
 .app-ic small{font-size:11px;color:var(--muted)}
 .item{background:rgba(255,255,255,.92)}
@@ -123,6 +124,16 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 #chooseCard{max-height:88vh;overflow:auto}
 .sexPick{display:flex;gap:10px;margin-bottom:10px}.sexPick button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-width:2px}.sexPick button.on{border-color:#D9773E;background:#FFF1E4}.sexPick img{height:110px}
 .kh{margin:10px 0 2px;font-size:14px;color:var(--wood-d);text-align:left;font-weight:700}
+.signg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0}
+.signd{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 3px;border:1px solid var(--line);border-radius:10px;background:var(--white);text-align:center}
+.signd small{font-size:11px;color:var(--muted)}
+.signd .si{font-size:20px;height:30px;display:flex;align-items:center}
+.signd .si img{height:30px}
+.signd .st{font-size:11px;line-height:1.25;font-weight:700}
+.signd.big{grid-column:span 2;background:#F1F7EC;border-color:#A9C99A}
+.signd.got{opacity:.5}
+.signd.got i{position:absolute;top:2px;right:6px;font-style:normal;color:var(--good);font-weight:700}
+.signd.now{border:2px solid #E0A040;background:#FFF6E3;opacity:1}
 .unl{margin:8px 0 0;padding-left:20px;text-align:left;line-height:1.8}
 .hudtop{position:absolute;left:calc(10px + env(safe-area-inset-left));top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:4;max-width:calc(100% - 80px)}
 .hudbar{display:flex;align-items:center;gap:8px;border-radius:20px;padding:5px 12px;background:rgba(253,251,247,.92);border:1px solid var(--line);box-shadow:0 2px 8px rgba(60,40,30,.18);font-variant-numeric:tabular-nums;color:var(--ink)}
@@ -458,6 +469,9 @@ const CHARMS = {
   // 暖陽好友套裝: only from inviting friends (invite.js hands out item n at the n-th friend who joins)
   sunclip:  { inv: 1, slot: 'hair', name: '太陽貓掌髮夾', price: 0, lv: 1, img: 'acc_clip_sun', desc: '暖陽好友套裝：金黃色小太陽，中間印著粉紅貓掌。邀請朋友才拿得到' },
   suncat:   { inv: 2, slot: 'cat', name: '太陽鈴鐺項圈', price: 0, lv: 1, img: 'acc_cat_sun', band: '#E9B44C', ph: 20, desc: '暖陽好友套裝：小太陽形狀的金鈴鐺，刻著貓掌。邀請 2 位朋友解鎖' },
+  // 每日簽到: the day-7 prize of the 1st and 2nd round (checkin.js), never sold
+  clover:     { sign: 1, slot: 'cat', name: '幸運草鈴鐺項圈', price: 0, lv: 1, img: 'acc_cat_clover', band: '#6FA35A', ph: 20, desc: '每日簽到限定：小金鈴上印著四葉幸運草和粉紅貓掌。簽到滿 7 天才拿得到' },
+  cloverclip: { sign: 2, slot: 'hair', name: '幸運草髮夾', price: 0, lv: 1, img: 'acc_clip_clover', desc: '每日簽到限定：綠綠的四葉幸運草，中間有一個小貓掌。簽到滿 14 天才拿得到' },
   sakura:   { slot: 'hair', name: '櫻花髮夾', price: 5000, lv: 1, img: 'acc_clip_sakura', desc: '粉紅色的小櫻花，夾在耳朵上方' },
   catclip:  { slot: 'hair', name: '貓咪髮夾', price: 8000, lv: 2, img: 'acc_clip_cat', desc: '奶油色的虎斑貓臉髮夾' },
   bowclip:  { slot: 'hair', name: '紅色蝴蝶結髮夾', price: 12000, lv: 3, img: 'acc_clip_bow', desc: '大大的紅色緞帶蝴蝶結' },
@@ -953,7 +967,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0,
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' },
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
@@ -4313,17 +4327,17 @@ function renderPhone() {
   if (phoneApp === 'home') {
     const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'], ['outing', '出去玩', window.OUTING ? OUTING.sub() : '出門走走', '#6E9B4E', '🚪'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'], ['map', '分店地圖', G.owned.length > 1 ? `${G.owned.length} 家店` : G.landReady ? '可以開分店了！' : '開第二家店', '#5E9B7A', '分'],
-                  ['promo', '喵喵宣傳', '傳單・試吃', '#E08A5A', '宣'], ['ig', '喵IG', G.ig.length ? `${G.ig.length} 篇貼文` : '拍照・按讚', '#D9567A', '📷'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
+                  ['promo', '喵喵宣傳', '傳單・試吃', '#E08A5A', '宣'], ['ig', '喵IG', G.ig.length ? `${G.ig.length} 篇貼文` : '拍照・按讚', '#D9567A', '📷'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['sign', '每日簽到', window.CHECKIN ? CHECKIN.sub() : '', '#6FA35A', '簽'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '今天誰最會賺', '#C9A03A', '榜']);
     if (CLOUD.sb && !CLOUD.db && window.FRIENDS) apps.splice(apps.length - 2, 0, ['friend', '好友', FRIENDS.sub(), '#D98AA0', '友']);
     if (window.MEOW) apps.splice(apps.length - 2, 0, ['quiz', '喵型測驗', MEOW.sub(), '#E0A040', '喵']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
-      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}${a[0] === 'report' && FB.unread ? '<span class="badge sm">!</span>' : ''}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()"></span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
+      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()">${(a[0] === 'report' && FB.unread) || (a[0] === 'sign' && window.CHECKIN && CHECKIN.can()) ? '<span class="badge sm">!</span>' : ''}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩' };
+    const titles = { quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, baseOf(d)]).concat([['loft', '2F 吸貓入場費', baseOf('loft')], ['beans', '咖啡豆（一包）', baseOf('beans')], ['treat', '貓咪肉泥（一條）', baseOf('treat')]]);
@@ -4359,8 +4373,8 @@ function renderPhone() {
       } else if (storeTab === 'wear') {
         h += `<p class="muted">店長的衣服買了馬上換上；髮夾和貓咪衣飾之後在「衣櫃」可以隨時換。</p><p class="kh">店長衣服</p>`;
         for (const o of OUTFITS) if (o.price && !o.ev) h += outfitItem(o);
-        h += '<p class="kh">店長髮夾</p>'; for (const id in CHARMS) if (!CHARMS[id].ev && !CHARMS[id].inv && CHARMS[id].slot === 'hair') h += charmItem(id, false);
-        h += '<p class="kh">貓咪衣飾</p><p class="muted">買一次，每隻貓都可以戴。</p>'; for (const id in CHARMS) if (!CHARMS[id].ev && !CHARMS[id].inv && CHARMS[id].slot === 'cat') h += charmItem(id, false);
+        h += '<p class="kh">店長髮夾</p>'; for (const id in CHARMS) if (!CHARMS[id].ev && !CHARMS[id].inv && !CHARMS[id].sign && CHARMS[id].slot === 'hair') h += charmItem(id, false);
+        h += '<p class="kh">貓咪衣飾</p><p class="muted">買一次，每隻貓都可以戴。</p>'; for (const id in CHARMS) if (!CHARMS[id].ev && !CHARMS[id].inv && !CHARMS[id].sign && CHARMS[id].slot === 'cat') h += charmItem(id, false);
       } else if (storeTab === 'event') {
         h += E ? `<div class="item"><div class="top"><span class="nm">${E.icon} ${E.name}活動</span><b>${yen(evEarned(E))}</b></div><div class="sub">${E.desc}<br>這個月的活動營收：${yen(evEarned(E))}</div></div>`
                : `<p class="muted">現在沒有活動。每個月會有不同的節日活動，下次是 ${EVENTS.map(e => `${e.month} 月${e.name}`).join('、')}。買過的飾品隨時可以戴。</p>`;
@@ -4579,6 +4593,8 @@ function renderPhone() {
       h += FRIENDS.appHtml();
     } else if (phoneApp === 'outing') {
       h += OUTING.page();
+    } else if (phoneApp === 'sign') {
+      h += CHECKIN.page();
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
@@ -4590,6 +4606,7 @@ function renderPhone() {
   if (phoneApp === 'friend') FRIENDS.bind(sc);
   if (phoneApp === 'quiz') MEOW.bind(sc);
   if (phoneApp === 'outing') OUTING.bind(sc);
+  if (phoneApp === 'sign') CHECKIN.bind(sc);
   sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { sfx('app_switch'); if (b.dataset.app === 'report') { openFeedback(); return; } if (b.dataset.app === 'quiz') MEOW.reset(); phoneApp = b.dataset.app; renderPhone(); });
   sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
   const q = s => sc.querySelector(s);
@@ -4601,7 +4618,7 @@ function renderPhone() {
   });
   sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
   sc.querySelectorAll('[data-charm]').forEach(b => b.onclick = () => { const id = b.dataset.charm, C = CHARMS[id], E = evNow();
-    if (G.acc.own.includes(id) || C.inv || G.cash < C.price || (C.ev ? !E || E.id !== C.ev || evEarned(E) < C.need : C.lv > shopLv())) return;
+    if (G.acc.own.includes(id) || C.inv || C.sign || G.cash < C.price || (C.ev ? !E || E.id !== C.ev || evEarned(E) < C.need : C.lv > shopLv())) return;
     G.cash -= C.price; S.today.spent += C.price; G.acc.own.push(id); if (C.slot !== 'cat') G.acc.mgr[C.slot] = id;
     sfx('delivery'); toast(C.slot !== 'cat' ? `${G.mgrName}店長戴上了「${C.name}」！` : `買了「${C.name}」，挑一隻貓幫牠戴上吧`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-mwear]').forEach(b => b.onclick = () => { const id = b.dataset.id; if (id && !G.acc.own.includes(id)) return;
@@ -4814,6 +4831,8 @@ function decodeSave(code) {
     // 喵型測驗: last result, which 本命貓 this save got, who invited this player (s: 0 = not joined yet, 1 = joined, 2 = first day done, 3 = link not valid), invite rewards handed out
     mtype: window.CATQ && CATQ.typeOf(o.mtype) ? o.mtype : '', hm: window.CATQ && CATQ.typeOf(o.hm) ? o.hm : '',
     ref: o.ref && /^[A-Z0-9]{6}$/.test(o.ref.c) ? { c: o.ref.c, s: [0, 1, 2, 3].includes(o.ref.s) ? o.ref.s : 0 } : null, inv: clamp(Math.floor(num(o.inv, 0)), 0, 9999),
+    // 每日簽到 (checkin.js): how many days signed in, and the real-world date of the last one
+    sign: { n: clamp(Math.floor(num(o.sign?.n, 0)), 0, 99999), last: typeof o.sign?.last === 'string' && /^\d{4}-\d\d-\d\d$/.test(o.sign.last) ? o.sign.last : '' },
     letters: Array.isArray(o.letters) ? o.letters.filter(l => l && CAT_DEFS[l.id]).slice(-LETTER_KEEP).map(l => ({ id: l.id, nm: cleanName(l.nm, CAT_DEFS[l.id].name, 6), fam: cleanName(l.fam, '新家', 8), d: Math.max(1, Math.floor(num(l.d, 1))) })) : [],
     ig: Array.isArray(o.ig) ? o.ig.filter(p => p && typeof p.id === 'string').slice(0, IG_KEEP).map(p => ({ id: p.id.replace(/[^a-z0-9]/g, '').slice(0, 12), d: Math.max(1, Math.floor(num(p.d, 1))), t: clamp(num(p.t, 0), 0, 1440), f: clamp(Math.floor(num(p.f, 1)), 1, 3), cap: cleanName(p.cap, '', 40), likes: Math.max(0, Math.floor(num(p.likes, 0))), ...(num(p.sid, 0) > 0 ? { sid: Math.floor(p.sid), rl: Math.max(0, Math.floor(num(p.rl, 0))) } : {}), com: (Array.isArray(p.com) ? p.com : []).slice(0, 6).map(c => [cleanName(c?.[0], '路人', 12), cleanName(c?.[1], '', 40)]) })) : [],
     stats: Object.fromEntries(Object.keys(base.stats).map(k => [k, Math.max(0, Math.floor(num(o.stats?.[k], 0)))])),
@@ -5389,5 +5408,6 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 <script src="igpub.js"></script>
 <script src="gifts.js"></script>
 <script src="outing.js"></script>
+<script src="checkin.js"></script>
 </body>
 </html>

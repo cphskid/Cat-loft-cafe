@@ -13,3 +13,6 @@ Backgrounds were repainted from screenshots of the old canvas-drawn floors so th
 
 ## 喵型測驗 and 暖陽好友套裝
 `web/q/art/<喵型>.webp` (1080x1350) are full-page 4:5 scenes painted with gen2.py from one in-game cat sprite (on white) plus the style reference, with the top and bottom fading into cream paper so the card text can sit there. `tools/quiz/pages.py` writes the /q/ pages and `tools/quiz/og.js` renders their share images (`web/q/og/`). The invite set (`mo11*`, `acc_clip_sun`, `acc_cat_sun`) used the same prompts as outfits3.py, then cut.py and the people sizes from pack.py (stand/walk 300 px tall, sit 228 px).
+
+## 每日簽到
+`acc_cat_clover` / `acc_clip_clover` (day-7 prizes) and `ic_sign` (phone icon) were painted with gen2.py using `acc_cat_sun` / `acc_clip_sun` / `ic_daily` on white as the style reference, cut with cut.py, then scaled to 120 px (collar) / 100 px (clip) tall like the other accessories and 144 px for the icon.
