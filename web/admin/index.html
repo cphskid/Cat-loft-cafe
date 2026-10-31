@@ -75,7 +75,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
     <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="gifts">送過的東西</button><button data-tab="me">🛠️ 調整我的店</button></div>
     <div class="card" id="tab-players">
       <div class="top" style="margin-bottom:8px"><input id="q" placeholder="搜尋帳號、店名、好友碼" style="flex:1;max-width:320px"><span class="muted" id="pCount"></span></div>
-      <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
+      <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th title="從 2026/10/31 開始算，只算畫面開著、兩分鐘內有操作的時間">總遊玩時間</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
     </div>
     <div class="card" id="tab-fb" hidden><div id="fbList"></div></div>
     <div class="card" id="tab-me" hidden>
@@ -140,6 +140,8 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { storageKey: 'c
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const yen = n => n == null ? '' : '¥' + Math.round(n).toLocaleString();
 const num = n => n == null ? '' : Math.round(n).toLocaleString();
+// 遊玩秒數 → 「3 小時 25 分」；舊存檔沒有這個欄位時空白
+const playTime = s => s == null ? '' : s < 60 ? '不到 1 分' : (s >= 3600 ? Math.floor(s / 3600) + ' 小時 ' : '') + Math.floor(s % 3600 / 60) + ' 分';
 const when = t => t ? new Date(t).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
 const who = p => p ? (p.account || `（訪客）${p.shop_name || ''}`) : '？';
 let toastT; function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
@@ -183,8 +185,8 @@ function renderPlayers() {
   $('pCount').textContent = `共 ${players.length} 位玩家` + (q ? `，符合 ${list.length} 位` : '');
   $('pBody').innerHTML = list.map(p => `<tr><td>${p.account ? esc(p.account) : '<span class="muted">訪客</span>'}</td><td>${esc(p.shop_name)}</td><td>${esc(p.mgr_name)}</td>
     <td class="n">${num(p.day)}</td><td class="n">${num(p.lv)}</td><td class="n">${yen(p.cash)}</td><td class="n">${p.debt ? yen(p.debt) : ''}</td><td class="n">${num(p.fans)}</td>
-    <td class="n">${yen(p.earned)}</td><td class="n">${num(p.cats)}</td><td class="n">${num(p.shops)}</td><td>${esc(p.friend_code)}</td><td>${when(p.updated_at)}</td>
-    <td><button data-prog="${p.user_id}">📊 進度</button> <button data-gift="${p.user_id}">🎁 送東西</button></td></tr>`).join('') || '<tr><td colspan="14" class="muted">沒有玩家</td></tr>';
+    <td class="n">${yen(p.earned)}</td><td class="n">${num(p.cats)}</td><td class="n">${num(p.shops)}</td><td>${esc(p.friend_code)}</td><td class="n">${playTime(p.play)}</td><td>${when(p.updated_at)}</td>
+    <td><button data-prog="${p.user_id}">📊 進度</button> <button data-gift="${p.user_id}">🎁 送東西</button></td></tr>`).join('') || '<tr><td colspan="15" class="muted">沒有玩家</td></tr>';
   $('pBody').querySelectorAll('[data-gift]').forEach(b => b.onclick = () => openGift(players.find(p => p.user_id === b.dataset.gift)));
   $('pBody').querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProg(players.find(p => p.user_id === b.dataset.prog)));
 }
@@ -268,7 +270,7 @@ async function openProg(p) {
     ${shopHtml}
     ${line('貓咪', `${num((g.cats || []).length)} 隻`)}${line('客人圖鑑', `${num(Object.keys(g.guests || {}).length)} 種`)}${line('徽章', `${num((g.badges || []).length)} 個`)}
     ${line('衣服', `${num((g.wardrobe || []).length)} / ${OUTFITS.length} 件，穿著「${esc(outfitName(g.outfit))}」`)}
-    ${line('累計客人', `${num(st.guests)} 位`)}
+    ${line('累計客人', `${num(st.guests)} 位`)}${line('總遊玩時間', playTime(g.play) + '<span class="muted">（從 2026/10/31 開始算）</span>')}
     ${line('最後存檔', when(p.updated_at))}</table></div>`;
 }
 $('progClose').onclick = () => { $('progOv').hidden = true; };

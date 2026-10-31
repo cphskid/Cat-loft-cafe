@@ -967,7 +967,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' },
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0,
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
@@ -4832,6 +4832,8 @@ function decodeSave(code) {
     mtype: window.CATQ && CATQ.typeOf(o.mtype) ? o.mtype : '', hm: window.CATQ && CATQ.typeOf(o.hm) ? o.hm : '',
     ref: o.ref && /^[A-Z0-9]{6}$/.test(o.ref.c) ? { c: o.ref.c, s: [0, 1, 2, 3].includes(o.ref.s) ? o.ref.s : 0 } : null, inv: clamp(Math.floor(num(o.inv, 0)), 0, 9999),
     // 每日簽到 (checkin.js): how many days signed in, and the real-world date of the last one
+    // seconds actually played (counted from 2026-10-31; older saves start at 0)
+    play: Math.max(0, num(o.play, 0)),
     sign: { n: clamp(Math.floor(num(o.sign?.n, 0)), 0, 99999), last: typeof o.sign?.last === 'string' && /^\d{4}-\d\d-\d\d$/.test(o.sign.last) ? o.sign.last : '' },
     letters: Array.isArray(o.letters) ? o.letters.filter(l => l && CAT_DEFS[l.id]).slice(-LETTER_KEEP).map(l => ({ id: l.id, nm: cleanName(l.nm, CAT_DEFS[l.id].name, 6), fam: cleanName(l.fam, '新家', 8), d: Math.max(1, Math.floor(num(l.d, 1))) })) : [],
     ig: Array.isArray(o.ig) ? o.ig.filter(p => p && typeof p.id === 'string').slice(0, IG_KEEP).map(p => ({ id: p.id.replace(/[^a-z0-9]/g, '').slice(0, 12), d: Math.max(1, Math.floor(num(p.d, 1))), t: clamp(num(p.t, 0), 0, 1440), f: clamp(Math.floor(num(p.f, 1)), 1, 3), cap: cleanName(p.cap, '', 40), likes: Math.max(0, Math.floor(num(p.likes, 0))), ...(num(p.sid, 0) > 0 ? { sid: Math.floor(p.sid), rl: Math.max(0, Math.floor(num(p.rl, 0))) } : {}), com: (Array.isArray(p.com) ? p.com : []).slice(0, 6).map(c => [cleanName(c?.[0], '路人', 12), cleanName(c?.[1], '', 40)]) })) : [],
@@ -5375,8 +5377,13 @@ initCloud();
 // ====================== boot ======================
 G = freshG(); startDay(); prerender();
 let last = performance.now();
+// play time (G.play): only while the tab is in front and the player touched something in the last 2 minutes
+let lastInput = -1e9, playSaved = 0;
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, () => { lastInput = performance.now(); }, { capture: true, passive: true });
+document.addEventListener('visibilitychange', () => { if (document.hidden && started && (G.play || 0) - playSaved >= 30) { playSaved = G.play; saveProgress(); } });
 function frame(now) {
   const rdt = Math.min(.05, (now - last) / 1000); last = now;
+  if (started && !document.hidden && now - lastInput < 120000) G.play = (G.play || 0) + rdt;
   if (S) {
     if (S.mini) { S.t += rdt; updMini(rdt); }
     else if (S.cook) { S.t += rdt; updCook(rdt); }
