@@ -967,7 +967,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0,
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [],
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
@@ -1324,10 +1324,27 @@ const BADGES = [
   { id: 'stray',   icon: '🐈', name: '庭院的新朋友', desc: '收編一隻庭院的流浪貓',     ok: () => G.stats.stray >= 1 },
   { id: 'harvest', icon: '🥕', name: '頂樓小農夫', desc: '在頂樓菜園收成 10 次',        ok: () => G.stats.harvest >= 10 },
 ];
+// Chuck 2026-10-31「獲得一個徽章可以領取相對的現金」: harder badges pay more; taken in the phone 徽章 app (G.bpaid).
+// Badges earned before this also wait there to be taken.
+const BADGE_TIER = {
+  4: ['seenall', 'gall', 'gSSR', 'catSSR', 'b9999', 'cat100', 'dressall', 'shop3', 'day100', 'fans1000', 'v1000'],
+  3: ['gourmet', 'land', 'cat30', 'seen150', 'catSR', 'b1000', 'b400', 'gSR', 'rev500', 'shop2', 'day30', 'chef50'],
+  2: ['chef', 'change', 'family', 'team', 'fans', 'promo', 'week', 'clowder', 'cat10', 'seen50', 'catR', 'soul', 'friends5', 'fed50', 'g10', 'gR', 'regular', 'v100',
+      'tips', 'rev100', 'fans200', 'lv3', 'lv5', 'expand2', 'rich2', 'change50', 'gamer', 'gamer60', 'dress3', 'harvest', 'fullhouse'],
+};
+const BADGE_CASH = { 1: 300, 2: 1000, 3: 3000, 4: 10000 };
+const badgeCash = id => BADGE_CASH[+Object.keys(BADGE_TIER).find(t => BADGE_TIER[t].includes(id)) || 1];
+const badgeUnpaid = () => G.badges.filter(id => !G.bpaid.includes(id));
+function payBadges(ids) {
+  ids = ids.filter(id => G.badges.includes(id) && !G.bpaid.includes(id)); if (!ids.length) return;
+  const sum = ids.reduce((a, id) => a + badgeCash(id), 0);
+  for (const g of [G, S.startG]) if (g) { g.cash += sum; g.bpaid = [...new Set([...(g.bpaid || []), ...ids])]; }
+  sfx('wallet'); toast(`領到徽章獎金 ${yen(sum)}！`); saveProgress();
+}
 function checkBadges() {
   for (const b of BADGES) if (!G.badges.includes(b.id) && b.ok()) {
     G.badges.push(b.id); gainExp(5); sfx('badge');
-    toast(`${b.icon} 獲得徽章「${b.name}」！經驗 +5`);
+    toast(`${b.icon} 獲得徽章「${b.name}」！經驗 +5，到手機「徽章」領 ${yen(badgeCash(b.id))}`);
   }
 }
 // ---- phone 小遊戲 app: four mini-games; the first play of each one every day pays pocket money, today's pick pays double
@@ -2448,14 +2465,19 @@ function drawCatAnim(k) {
 const CATK = 68 / 160; // painted cats: the walking pose is 160 px wide in the sprite, 68 px on screen
 function drawCat(k) {
   if (k.anim && !k._inAnim) { if (k.anim.kind !== 'hug') drawCatAnim(k); return; }
-  const x = k.x, y = k.y - (k.state === 'play' ? Math.abs(Math.sin(S.t * 7)) * 10 : 0), f = k.face;
-  if (!k.onBed && !k.jumpFrom) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
+  const act = k.state === 'fun' ? k.fun.spot.stages[k.fun.stage].act : null;
+  if (k.hide) { // inside the toy tunnel: only a wiggle and a rustle show
+    const p = (S.t * 1.3) % 1; g.globalAlpha = 1 - p; text('沙沙…', k.x + 20, k.y - 50 - p * 16, 12, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1; return;
+  }
+  const x = k.x + (act === 'scratch' ? Math.sin(S.t * 22) * 2.5 : 0), y = k.y - (k.state === 'play' || act === 'play' ? Math.abs(Math.sin(S.t * 7)) * 10 : 0), f = k.face;
+  if (!k.onBed && !k.jumpFrom && k.y > 480) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
   const out = k.fluffy ? '#BFAE96' : INK;
-  const pose = k.state === 'sleep' ? 2 : (k.jumpFrom || k.state === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
+  const pose = k.state === 'sleep' || act === 'nap' ? 2 : (k.jumpFrom || k.state === 'play' || act === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
+  if (act === 'scratch') text('抓抓', x + 30 * f, y - 40, 12, '#B07E52', 'center', DFONT, 700);
   const ci = catImg(k.def, pose);
   if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK * k.size.s, f < 0, ci.naturalWidth * CATK * k.size.sx);
   if (ci && pose !== 2 && CHARMS[G.acc.cats[k.id]]) drawCatWorn(G.acc.cats[k.id], k, ci, pose, x, y + 1, f);
-  if (k.state === 'sleep') {
+  if (pose === 2) {
     if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
     g.strokeStyle = k.dark; g.lineWidth = k.fluffy ? 7 : 5; g.lineCap = 'round'; g.stroke();
@@ -2516,6 +2538,7 @@ function moveAlong(e, dt) {
       if (e.waitT < p.wait) return false;
       e.waitT = 0; e.path.shift(); continue;
     }
+    if (p.warp) { e.x = p.x; e.y = p.y; e.path.shift(); continue; } // out the other end of the toy tunnel
     if (p.jump) {
       if (!e.jumpFrom) { e.jumpFrom = { x: e.x, y: e.y }; e.jumpT = 0; }
       e.jumpT += dt / .6; const t = Math.min(1, e.jumpT);
@@ -2708,13 +2731,13 @@ function bondAct(k, act) {
 function petTask(k, label, act = 'pet') {
   k.hold = true;
   const B = BOND.find(b => b.act === act);
-  return { label: label || (k.state === 'sleep' ? '叫醒' + k.name : act === 'pet' ? '摸摸' + k.name : `跟${k.name}${B.name}`), steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? k.bed.ground.x + 30 : k.x + (k.x > fw(k.floor) / 2 ? -36 : 36), 150, fw(k.floor) - 80), y: k.onBed ? k.bed.ground.y : clamp(k.y + 6, 490, 594) }), dur: .8,
+  return { label: label || (k.state === 'sleep' ? '叫醒' + k.name : act === 'pet' ? '摸摸' + k.name : `跟${k.name}${B.name}`), steps: [{ pos: () => { const p = catSpot(k), up = p !== k; return { f: k.floor, x: clamp(up ? p.x + 30 : k.x + (k.x > fw(k.floor) / 2 ? -36 : 36), 150, fw(k.floor) - 80), y: up ? p.y : clamp(k.y + 6, 490, 594) }; }, dur: .8,
     fn: w => {
       k.hearts = 1.2;
       if (k.state === 'sleep') { sfx('meow_happy', k.floor); wakeCat(k); if (isMgr(w)) toast(`${k.name}醒來了`); say(w, '起床囉～'); return; }
       if (isMgr(w) && act !== 'pet' && bondOf(k) >= B.at) {
         if (k.wantPet) { k.wantPet = 0; k.petCool = 45; k.sulk = 0; gainExp(2); }
-        endPlay(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? Infinity : 3.2, held: 0 };
+        endPlay(k); funDrop(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? Infinity : 3.2, held: 0 };
         k.face = S.mgr.x > k.x ? 1 : -1; S.mgr.face = -k.face;
         const lines = { rub: ['好癢喔～', '呼嚕呼嚕'], five: ['耶！擊掌！', '喵！'], belly: ['肚子好軟～', '呼嚕～'], hug: ['抱抱～好溫暖', '喵嗚～'], kiss: ['碰碰鼻子～', '啾～'],
           dance: ['一、二、轉圈圈～', '喵喵喵♪'], gift: ['這是要送我的嗎？', '喵！（叼）'], sing: ['啦啦啦～', '喵～喵～♪'], star: ['你在發光耶！', '喵✨'], rainbow: ['哇，是彩虹！', '喵嗚～♡'] }[act];
@@ -2757,7 +2780,7 @@ function putDown(k = heldCat()) {
   if (!k) return;
   const m = S.mgr;
   if (m.floor === 3 && !LAYOUT.LINKS) { toast(`休息室不能放貓，回到 1F 或 2F 再放下${k.name}`); return; } // 貓咪室內樂園's 5F is where tired cats sleep
-  k.anim = null; k.onBed = false; k.floor = m.floor; k.x = clamp(m.x + 36 * m.face, 160, fw(m.floor) - 60); k.y = clamp(m.y + 6, 490, 594);
+  k.anim = null; k.onBed = false; k.fun = null; k.hide = false; k.lift = null; k.floor = m.floor; k.x = clamp(m.x + 36 * m.face, 160, fw(m.floor) - 60); k.y = clamp(m.y + 6, 490, 594);
   if (behindCounter(k.floor, k.x, k.y)) { k.x = k.x < 540 ? KGATE_L.x - 40 : KGATE.x + 60; k.y = clamp(k.y, 540, 594); }
   k.state = 'idle'; k.t = rand(1, 3); k.hearts = 1.2;
   say(k, pick(['喵～', '還要抱抱', '呼嚕～'])); say(m, pick(['乖乖，去玩吧', `${k.name}好重喔～`, '下次再抱你']));
@@ -3128,9 +3151,63 @@ function wakeCat(k) {
 }
 function goBed(k) {
   const b = k.bed;
-  routeTo(k, b.f, b.ground.x, b.ground.y); k.path.push({ f: b.f, x: b.x, y: b.y, jump: true }); k.state = 'toBed';
+  const down = k.fun ? funExit(k) : k.state === 'funBack' ? k.path : null; // climb down from the cat tree (or the toy) first
+  if (down && down.length) { const last = down[down.length - 1], tmp = { floor: last.f, x: last.x, y: last.y, path: [] }; routeTo(tmp, b.f, b.ground.x, b.ground.y); k.path = down.concat(tmp.path); }
+  else routeTo(k, b.f, b.ground.x, b.ground.y);
+  k.path.push({ f: b.f, x: b.x, y: b.y, jump: true }); k.state = 'toBed';
 }
 const PLAY_STATES = ['petting', 'eating', 'waitFood'];
+// ---- cats use the furniture and toys you bought: climb the cat tree, cross the wall walk, nap in the pet bed, sit on the bookshelf,
+// and in 貓咪室內樂園 play with every toy in the 2F toy hall. A spot is a ground point, then stages: a path (jumps up / walks along) and what
+// the cat does there (sit, nap, play, scratch, hide) for t seconds. `back` is the way down (default: the path reversed, then a jump to the ground).
+// Heights were measured on the painted props (cattree.webp, wallwalk.webp, ...), so they match how propArt draws them.
+const TOY_PX = { toySpin: [180, 286], toyTunnel: [340, 354], toyBalls: [170, 152], toySofa: [300, 163], toyCastle: [300, 226], toyTower: [260, 427] }; // toy_*.webp sizes
+function funSpots() {
+  const L = [], st = (path, act, t, line, more) => ({ path, act, t, line, ...more });
+  if (hasF('cattree')) {
+    const { x, y } = PROP.cattree, s = 92 / 200, X = sx => x - 46 + sx * s, Y = sy => y - 181 + sy * s;
+    const box = { x: X(115), y: Y(280), jump: true }, low = { x: X(56), y: Y(212), jump: true }, mid = { x: X(125), y: Y(115), jump: true }, top = { x: X(75), y: Y(22), jump: true };
+    L.push({ id: 'cattree', f: 2, ground: { x: x + 40, y: 508 }, stages: Math.random() < .5
+      ? [st([box, low, mid, top], 'sit', [6, 9], pick(['爬到最高了！', '喵～看得好遠']))]
+      : [st([box, low, mid], 'nap', [10, 16], '在這裡睡一下…')] });
+  }
+  if (hasF('wallwalk')) {
+    const { x, y } = WALLWALK, s = 140 / 320, X = sx => x - 70 + sx * s, Y = sy => y - 69 + sy * s;
+    L.push({ id: 'wallwalk', f: 2, ground: { x: x + 72, y: 510 }, stages: [st([{ x: X(265), y: Y(112), jump: true }, { x: X(150), y: Y(76) }, { x: X(50), y: Y(10) }], 'sit', [6, 10], pick(['走過吊橋了！', '喵～好高喔']))] });
+  }
+  if (hasF('bed')) L.push({ id: 'bed', f: 2, ground: { x: 244, y: 512 }, stages: [st([{ x: 206, y: 457, jump: true }], 'nap', [12, 20], '暖呼呼的…')] });
+  if (hasF('books')) {
+    const { x, y } = PROP.books;
+    L.push({ id: 'books', f: 2, ground: { x: x + 44, y: 508 }, stages: [st([{ x: x + 17, y: y - 87, jump: true }], Math.random() < .5 ? 'sit' : 'nap', [8, 14], '書櫃上面視野最好')] });
+  }
+  for (const id of toysHere()) {
+    const T = TOYS[id], [iw, ih] = TOY_PX[id], sc = T.w / iw, X = sx => T.x - T.w / 2 + sx * sc, Y = sy => T.y - ih * sc + sy * sc, toy = { toy: id, lift: T.y - (T.y < 520 ? 20 : 0) + 1 };
+    if (id === 'toySpin') L.push({ id, f: 2, ground: { x: T.x - 46, y: 514 }, stages: [st([], 'play', [5, 8], '追羽毛！')] });
+    if (id === 'toyBalls') L.push({ id, f: 2, ground: { x: T.x - 48, y: 514 }, stages: [st([], 'play', [5, 8], '叮叮噹噹～')] });
+    if (id === 'toySofa') L.push({ id, f: 2, ground: { x: T.x - 84, y: 596 }, ...toy, stages: [st([], 'scratch', [3, 4], '抓抓抓！'), st([{ x: T.x, y: Y(88), jump: true }], 'nap', [10, 14])] });
+    if (id === 'toyTunnel') L.push({ id, f: 2, ground: { x: T.x - 92, y: 594 }, ...toy, stages: [st([{ x: X(40), y: Y(300) }], 'hide', [2.5, 4], '鑽進去囉！')],
+      back: [{ x: X(100), y: Y(55), warp: true }, { x: T.x + 54, y: 596, jump: true }] });
+    if (id === 'toyCastle') L.push({ id, f: 2, ground: { x: T.x - 92, y: 596 }, ...toy, stages: [st([{ x: X(55), y: Y(18), jump: true }], 'sit', [7, 11], '我是城堡的國王喵！')] });
+    if (id === 'toyTower') L.push({ id, f: 2, ground: { x: T.x - 62, y: 508 }, ...toy, stages: [st([{ x: X(52), y: Y(290), jump: true }, { x: X(43), y: Y(206), jump: true }, { x: X(218), y: Y(140), jump: true }], Math.random() < .4 ? 'nap' : 'sit', [8, 13], '皇宮最高的地方！')] });
+  }
+  return L.filter(sp => floorsHere().includes(sp.f) && !S.cats.some(o => o.fun && o.fun.spot.id === sp.id));
+}
+const catSpot = k => k.onBed ? k.bed.ground : k.fun ? k.fun.spot.ground : k;
+function startFun(k, sp) {
+  k.fun = { spot: sp, stage: 0 }; k.lift = sp.lift ?? null;
+  routeTo(k, sp.f, sp.ground.x, sp.ground.y); k.path.push(...sp.stages[0].path.map(p => ({ f: sp.f, ...p }))); k.state = 'toFun';
+}
+// the way back down from where the cat is now; clears the spot (k.lift stays until the cat is back on the floor)
+function funExit(k) {
+  const F = k.fun; if (!F) return [];
+  const sp = F.spot, pts = sp.stages.slice(0, F.stage + 1).flatMap(s => s.path);
+  let back = sp.back;
+  if (!back) { back = []; for (let i = pts.length - 1; i > 0; i--) back.push({ x: pts[i - 1].x, y: pts[i - 1].y, jump: pts[i].jump }); if (pts.length) back.push({ ...sp.ground, jump: pts[0].jump }); }
+  k.fun = null; k.hide = false;
+  return back.map(p => ({ f: sp.f, ...p }));
+}
+// picked up or hugged on a perch: straight down to the floor under it
+function funDrop(k) { if (!k.fun) return; const gp = k.fun.spot.ground; k.fun = null; k.hide = false; k.lift = null; k.x = gp.x; k.y = gp.y; k.path = []; }
 function endPlay(k) { if (k.target) { k.target.catBuddy = null; if (k.target.fed === 'calling') k.target.fed = false; } k.target = null; k.treat = false; }
 function wander(k) {
   // cats like company: walk over to a customer and play with them
@@ -3139,6 +3216,9 @@ function wander(k) {
     const c = pick(guests); c.catBuddy = k; k.target = c;
     routeTo(k, k.floor, clamp(c.x + (c.x > fw(k.floor) / 2 ? -50 : 50), 160, fw(k.floor) - 40), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; return;
   }
+  // the furniture and toys you bought: cats on that floor often go and use one, cats elsewhere sometimes come over for it
+  const spots = funSpots(), here = spots.filter(sp => sp.f === k.floor);
+  if (!k.sulk && (here.length && Math.random() < .45 || spots.length && Math.random() < .12)) { startFun(k, pick(here.length && Math.random() < .8 ? here : spots)); return; }
   // how far right a cat walks on floor f: not out into the courtyard (or up on the roof) in the rain
   const right = f => f === 1 ? (S.rain ? Math.min(OUT_X - 40, fw(1) - 80) : fw(1) - 80) : fw(f) - (f === 2 ? 60 : 40);
   if (OUT_X < 99999 && !S.rain && Math.random() < .35) { // a sunny courtyard draws the cats downstairs
@@ -3149,8 +3229,6 @@ function wander(k) {
   } else if (k.floor !== 1 && Math.random() < .6 && S.customers.some(c => c.state === 'petting' && c.floor === k.floor)) {
     const c = pick(S.customers.filter(c => c.state === 'petting' && c.floor === k.floor));
     routeTo(k, k.floor, clamp(c.x + (Math.random() < .5 ? -48 : 48), 160, fw(k.floor) - 40), clamp(c.y + rand(-6, 10), 500, 594));
-  } else if (k.floor === 2 && toysHere().length && Math.random() < .4) { // the toy hall: go and play with a toy
-    const T = TOYS[pick(toysHere())]; routeTo(k, 2, clamp(T.x + rand(-40, 40), 160, fw(2) - 60), clamp(T.y + (T.y < 520 ? 14 : -10), 500, 594)); k.hearts = .8;
   } else routeTo(k, k.floor, rand(160, right(k.floor)), rand(500, 594));
   k.state = 'walk';
 }
@@ -3173,6 +3251,7 @@ function updCat(k, dt) {
   if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
   if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * (S.buff.catnip ? .6 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
   const arrived = moveAlong(k, dt);
+  if (k.lift != null && arrived && !k.fun) k.lift = null;
   switch (k.state) {
     case 'toBed': if (arrived) { k.state = 'sleep'; k.onBed = true; } break;
     case 'toBowl': if (arrived) { k.face = -1; if (G.bowl > 0) { k.state = 'eat'; k.t = 2.5; } else { k.state = 'beg'; k.t = 2; } } break;
@@ -3181,6 +3260,24 @@ function updCat(k, dt) {
     case 'toLitter': if (arrived) { k.state = 'litter'; k.t = 1.5; } break;
     case 'litter': k.t -= dt; if (k.t <= 0) { G.litterDirt++; if (G.litterDirt === litterMax()) { sfx('alert'); toast('2F 的貓砂盆該清了'); } k.state = 'idle'; k.t = rand(1, 3); } break;
     case 'walk': if (arrived) { k.state = 'idle'; k.t = rand(2, 5); } break;
+    case 'toFun': if (arrived) {
+      const F = k.fun, s = F.spot.stages[F.stage];
+      k.state = 'fun'; k.t = rand(...s.t); k.hide = s.act === 'hide'; k.hearts = 1;
+      if (F.stage === 0) {
+        if (s.line) say(k, s.line);
+        sfx(s.act === 'nap' ? 'purr' : 'cat_play', k.floor);
+        const c = S.customers.find(c => c.floor === k.floor && c.state === 'petting' && !c.hidden && Math.abs(c.x - k.x) < 320);
+        if (c) { c.sawCat = true; c.catName = c.catName || k.name; later(1.2, () => { if (!c.gone) say(c, pick([`${k.name}好會玩！`, '快看快看，好可愛！', '我要拍下來～'])); }); }
+      }
+    } break;
+    case 'fun': {
+      const F = k.fun, s = F.spot.stages[F.stage];
+      k.t -= dt; if (s.act === 'nap' && open) k.energy = Math.min(100, k.energy + (F.spot.id === 'bed' ? 1.6 : 1) * dt);
+      if (k.t <= 0 && F.stage + 1 < F.spot.stages.length) { F.stage++; k.hide = false; k.path = F.spot.stages[F.stage].path.map(p => ({ f: F.spot.f, ...p })); k.state = 'toFun'; break; }
+      if (k.t <= 0 || (open && (k.hunger > 70 || (k.energy < 15 && s.act !== 'nap')))) { k.path = funExit(k); k.state = 'funBack'; }
+      break;
+    }
+    case 'funBack': if (arrived) { k.lift = null; k.state = 'idle'; k.t = rand(1, 3); } break;
     case 'toPlay': {
       const c = k.target;
       if (!c || c.gone || c.floor !== k.floor || !PLAY_STATES.includes(c.state)) { endPlay(k); k.state = 'idle'; k.t = 1; break; }
@@ -3811,7 +3908,7 @@ function drawWorld() {
   if (G.at === 3) drawPalace(f, items);
   if (S.mgr.floor === f && !S.out) items.push({ y: S.mgr.y, d: drawMgr });
   S.staff.forEach(s => { if (s.floor === f) items.push({ y: s.y, d: () => drawStaff(s) }); });
-  S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.y, d: () => drawCat(k) }); });
+  S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.lift ?? k.y, d: () => drawCat(k) }); });
   S.customers.forEach(c => { if (c.floor === f) items.push({ y: c.y + (c.table ? 1 : 0), d: () => drawCustomer(c) }); });
   items.sort((a, b) => a.y - b.y).forEach(i => i.d());
   for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
@@ -4126,7 +4223,7 @@ function nearbyActions() {
   }
   for (const s of S.staff) if (s.floor === f && !s.hidden && !s.away && !s.resting && !(s.chatting > 0)) add(s.x, s.y, `跟${s.name}聊天`, () => actChatStaff(s));
   for (const k of S.cats) if (k.floor === f && k !== hk) {
-    const p = k.onBed ? k.bed.ground : k;
+    const p = catSpot(k);
     add(p.x, p.y, k.state === 'sleep' ? (S.phase === 'closing' ? `跟${k.name}說晚安` : '叫醒' + k.name) : '摸摸' + k.name, () => actPet(k));
   }
   if (f === 1 || f === 2) add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
@@ -4325,19 +4422,19 @@ function renderPhone() {
   const hh = Math.floor(S.time / 60), mm = Math.floor(S.time % 60);
   let h = `<div class="sbar"><span>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span><span>遊戲暫停中</span><span>${yen(G.cash)}</span></div>`;
   if (phoneApp === 'home') {
-    const apps = [['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'], ['outing', '出去玩', window.OUTING ? OUTING.sub() : '出門走走', '#6E9B4E', '🚪'],
+    const apps = [['news', '公告', window.NEWS ? NEWS.sub() : '最新消息', '#D0654A', '告'], ['menu', '掌上菜單', '食譜・價格', '#8D6E63', '價'], ['shop', '商店', '食材・傢俱・衣服・道具', '#D9773E', '商'], ['hire', '喵才獵人', '雇用員工', '#7A9C68', '才'], ['outing', '出去玩', window.OUTING ? OUTING.sub() : '出門走走', '#6E9B4E', '🚪'],
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'], ['map', '分店地圖', G.owned.length > 1 ? `${G.owned.length} 家店` : G.landReady ? '可以開分店了！' : '開第二家店', '#5E9B7A', '分'],
-                  ['promo', '喵喵宣傳', '傳單・試吃', '#E08A5A', '宣'], ['ig', '喵IG', G.ig.length ? `${G.ig.length} 篇貼文` : '拍照・按讚', '#D9567A', '📷'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['sign', '每日簽到', window.CHECKIN ? CHECKIN.sub() : '', '#6FA35A', '簽'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
+                  ['promo', '喵喵宣傳', '傳單・試吃', '#E08A5A', '宣'], ['ig', '喵IG', G.ig.length ? `${G.ig.length} 篇貼文` : '拍照・按讚', '#D9567A', '📷'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['sign', '每日簽到', window.CHECKIN ? CHECKIN.sub() : '', '#6FA35A', '簽'], ['bank', '喵喵銀行', window.BANK ? BANK.sub() : '', '#4F8A8B', '銀'], ['record', '我的紀錄', window.RECORD ? RECORD.sub() : '', '#A0795A', '錄'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '誰最會賺', '#C9A03A', '榜']);
     if (CLOUD.sb && !CLOUD.db && window.FRIENDS) apps.splice(apps.length - 2, 0, ['friend', '好友', FRIENDS.sub(), '#D98AA0', '友']);
     if (window.MEOW) apps.splice(apps.length - 2, 0, ['quiz', '喵型測驗', MEOW.sub(), '#E0A040', '喵']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
-      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()">${(a[0] === 'report' && FB.unread) || (a[0] === 'sign' && window.CHECKIN && CHECKIN.can()) ? '<span class="badge sm">!</span>' : ''}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
+      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()">${(a[0] === 'report' && FB.unread) || (a[0] === 'sign' && window.CHECKIN && CHECKIN.can()) || (a[0] === 'news' && window.NEWS && NEWS.unread()) || (a[0] === 'bank' && window.BANK && BANK.can()) || (a[0] === 'badge' && badgeUnpaid().length) ? '<span class="badge sm">!</span>' : ''}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到' };
+    const titles = { quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到', news: '公告', bank: '喵喵銀行', record: '我的紀錄' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, baseOf(d)]).concat([['loft', '2F 吸貓入場費', baseOf('loft')], ['beans', '咖啡豆（一包）', baseOf('beans')], ['treat', '貓咪肉泥（一條）', baseOf('treat')]]);
@@ -4489,9 +4586,13 @@ function renderPhone() {
     } else if (phoneApp === 'ig') {
       h += igAppHtml();
     } else if (phoneApp === 'badge') {
-      h += `<p class="muted">已收集 ${G.badges.length}/${BADGES.length} 個徽章，每拿到一個經驗 +5。</p><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">` +
-        BADGES.map(b => { const has = G.badges.includes(b.id);
-          return `<div class="item" style="text-align:center;margin:0;padding:10px 6px;${has ? '' : 'opacity:.45'}"><div style="font-size:28px;${has ? '' : 'filter:grayscale(1)'}">${has ? b.icon : '🔒'}</div><div class="nm" style="font-size:13px">${b.name}</div><div class="sub" style="font-size:11px">${b.desc}</div></div>`; }).join('') + '</div>';
+      const unpaid = badgeUnpaid(), owe = unpaid.reduce((a, id) => a + badgeCash(id), 0);
+      h += `<p class="muted">已收集 ${G.badges.length}/${BADGES.length} 個徽章，每拿到一個經驗 +5，還可以領獎金，越難的徽章獎金越多。</p>` +
+        (unpaid.length ? `<div class="row" style="margin:0 0 8px;justify-content:center"><button class="primary" data-bpay="all">一次領完 ${unpaid.length} 個徽章的獎金 ${yen(owe)}</button></div>` : '') +
+        `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">` +
+        BADGES.map(b => { const has = G.badges.includes(b.id), paid = G.bpaid.includes(b.id), c = badgeCash(b.id);
+          return `<div class="item" style="text-align:center;margin:0;padding:10px 6px;${has ? '' : 'opacity:.45'}"><div style="font-size:28px;${has ? '' : 'filter:grayscale(1)'}">${has ? b.icon : '🔒'}</div><div class="nm" style="font-size:13px">${b.name}</div><div class="sub" style="font-size:11px">${b.desc}</div>` +
+            (has && !paid ? `<button class="primary" data-bpay="${b.id}" style="margin-top:6px;padding:4px 8px;font-size:12px">領 ${yen(c)}</button>` : `<div class="sub" style="font-size:11px;margin-top:4px">${has ? '✓ 已領' : '獎金'} ${yen(c)}</div>`) + `</div>`; }).join('') + '</div>';
     } else if (phoneApp === 'game') {
       const M = mgOf(PG.sel || mgToday()), paid = S.mgPaid || {};
       h += `<div class="row" style="margin:0 0 6px;gap:6px;flex-wrap:wrap">${MINIGAMES.map(m => `<button data-mg="${m.id}" ${m.id === M.id ? 'class="primary"' : ''}>${m.icon} ${m.name}${m.id === mgToday() ? ' ⭐' : ''}${paid[m.id] ? ' ✓' : ''}</button>`).join('')}</div>
@@ -4595,6 +4696,12 @@ function renderPhone() {
       h += OUTING.page();
     } else if (phoneApp === 'sign') {
       h += CHECKIN.page();
+    } else if (phoneApp === 'news') {
+      h += NEWS.page();
+    } else if (phoneApp === 'bank') {
+      h += BANK.page();
+    } else if (phoneApp === 'record') {
+      h += RECORD.page();
     } else if (phoneApp === 'save') {
       h += `<p>這組存檔碼記錄今天開店前的進度（第 ${S.day} 天）。複製起來，下次在標題畫面貼上就能接著玩。</p>
         <textarea id="codeOut" readonly>${encodeSave(S.startG || G)}</textarea><div class="row" style="margin:0"><button class="primary" id="copyCode">複製</button></div>`;
@@ -4607,6 +4714,8 @@ function renderPhone() {
   if (phoneApp === 'quiz') MEOW.bind(sc);
   if (phoneApp === 'outing') OUTING.bind(sc);
   if (phoneApp === 'sign') CHECKIN.bind(sc);
+  if (phoneApp === 'bank') BANK.bind(sc);
+  sc.querySelectorAll('[data-bpay]').forEach(b => b.onclick = () => { payBadges(b.dataset.bpay === 'all' ? badgeUnpaid() : [b.dataset.bpay]); renderPhone(); });
   sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { sfx('app_switch'); if (b.dataset.app === 'report') { openFeedback(); return; } if (b.dataset.app === 'quiz') MEOW.reset(); phoneApp = b.dataset.app; renderPhone(); });
   sc.querySelectorAll('[data-rank]').forEach(b => b.onclick = () => { BOARD.tab = b.dataset.rank; renderPhone(); });
   sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
@@ -4779,6 +4888,7 @@ function decodeSave(code) {
   const o = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
   const base = freshG();
   const num = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d);
+  const ymdOk = v => typeof v === 'string' && /^\d{4}-\d\d-\d\d$/.test(v) ? v : '';
   const owned = [1, ...(Array.isArray(o.owned) ? o.owned.filter(id => id !== 1 && SHOP_DEFS[id]) : [])].filter((v, i, a) => a.indexOf(v) === i);
   const at = owned.includes(o.at) ? o.at : 1;
   // one shop's own fields (PER_SHOP), checked against that shop's layout and prices
@@ -4835,6 +4945,10 @@ function decodeSave(code) {
     // 每日簽到 (checkin.js): how many days signed in, and the real-world date of the last one
     // seconds actually played (counted from 2026-10-31; older saves start at 0)
     play: Math.max(0, num(o.play, 0)),
+    // 我的紀錄 / 喵喵銀行 (bank.js): real-world dates like 每日簽到; bpaid = badges whose cash reward was already taken
+    streak: { n: clamp(Math.floor(num(o.streak?.n, 0)), 0, 99999), best: clamp(Math.floor(num(o.streak?.best, 0)), 0, 99999), last: ymdOk(o.streak?.last), days: clamp(Math.floor(num(o.streak?.days, 0)), 0, 99999) },
+    bank: { n: clamp(Math.floor(num(o.bank?.n, 0)), 0, 15), last: ymdOk(o.bank?.last), sum: clamp(Math.floor(num(o.bank?.sum, 0)), 0, 15000), won: clamp(Math.floor(num(o.bank?.won, 0)), 0, 99999) },
+    bpaid: Array.isArray(o.bpaid) ? [...new Set(o.bpaid.filter(id => BADGES.some(b => b.id === id)))] : [],
     sign: { n: clamp(Math.floor(num(o.sign?.n, 0)), 0, 99999), last: typeof o.sign?.last === 'string' && /^\d{4}-\d\d-\d\d$/.test(o.sign.last) ? o.sign.last : '' },
     letters: Array.isArray(o.letters) ? o.letters.filter(l => l && CAT_DEFS[l.id]).slice(-LETTER_KEEP).map(l => ({ id: l.id, nm: cleanName(l.nm, CAT_DEFS[l.id].name, 6), fam: cleanName(l.fam, '新家', 8), d: Math.max(1, Math.floor(num(l.d, 1))) })) : [],
     ig: Array.isArray(o.ig) ? o.ig.filter(p => p && typeof p.id === 'string').slice(0, IG_KEEP).map(p => ({ id: p.id.replace(/[^a-z0-9]/g, '').slice(0, 12), d: Math.max(1, Math.floor(num(p.d, 1))), t: clamp(num(p.t, 0), 0, 1440), f: clamp(Math.floor(num(p.f, 1)), 1, 3), cap: cleanName(p.cap, '', 40), likes: Math.max(0, Math.floor(num(p.likes, 0))), ...(num(p.sid, 0) > 0 ? { sid: Math.floor(p.sid), rl: Math.max(0, Math.floor(num(p.rl, 0))) } : {}), com: (Array.isArray(p.com) ? p.com : []).slice(0, 6).map(c => [cleanName(c?.[0], '路人', 12), cleanName(c?.[1], '', 40)]) })) : [],
@@ -5170,7 +5284,7 @@ function flipSign(w) {
 function goodnight(k) {
   if (S.close.night[k.id]) { say(S.mgr, `${k.name}已經睡熟了，噓～`); return; }
   k.hold = true;
-  queueTask({ label: `跟${k.name}說晚安`, steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? k.bed.ground.x + 30 : k.x + 36, 150, fw(k.floor) - 80), y: k.onBed ? k.bed.ground.y : clamp(k.y + 6, 490, 594) }), dur: 1,
+  queueTask({ label: `跟${k.name}說晚安`, steps: [{ pos: () => { const p = catSpot(k), up = p !== k; return { f: k.floor, x: clamp(up ? p.x + 30 : k.x + 36, 150, fw(k.floor) - 80), y: up ? p.y : clamp(k.y + 6, 490, 594) }; }, dur: 1,
     fn: w => {
       if (S.close.night[k.id]) return;
       S.close.night[k.id] = true; k.hearts = 1.4; addBond(k, 1);
@@ -5427,5 +5541,7 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 <script src="stats.js"></script>
 <script src="outing.js"></script>
 <script src="checkin.js"></script>
+<script src="news.js"></script>
+<script src="bank.js"></script>
 </body>
 </html>

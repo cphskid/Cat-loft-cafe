@@ -75,10 +75,18 @@ h3{margin:18px 0 6px;font-size:16px}
 
   <div id="main" hidden>
     <div class="top"><h1>🐾 暖陽貓閣 管理者</h1><span class="sp"></span><button id="reload">重新整理</button><button id="logout">登出</button></div>
-    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="stats">📈 統計</button><button data-tab="gifts">送過的東西</button><button data-tab="me">🛠️ 調整我的店</button></div>
+    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="news">📢 公告</button><button data-tab="fb">問題回報</button><button data-tab="stats">📈 統計</button><button data-tab="gifts">送過的東西</button><button data-tab="me">🛠️ 調整我的店</button></div>
     <div class="card" id="tab-players">
       <div class="top" style="margin-bottom:8px"><input id="q" placeholder="搜尋帳號、店名、好友碼" style="flex:1;max-width:320px"><span class="muted" id="pCount"></span></div>
       <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th title="從 2026/10/31 開始算，只算畫面開著、兩分鐘內有操作的時間">總遊玩時間</th><th title="從 2026/10/31 開始算">來過幾天</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
+    </div>
+    <div class="card" id="tab-news" hidden>
+      <p class="muted" style="margin:0 0 6px">打字發布，玩家的手機「公告」App 馬上看得到，開著遊戲的玩家一分鐘內會跳出公告卡片。時間到會自動消失。</p>
+      <label class="fld">標題（最多 30 字）<input id="nTitle" maxlength="30" placeholder="例如：聖誕節活動開始囉！"></label>
+      <label class="fld">內容（最多 300 字，可以不填）<textarea id="nBody" maxlength="300" rows="4" style="display:block;width:100%;margin-top:3px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:14px" placeholder="例如：完成活動任務拿代幣，換限定聖誕衣服和飾品！"></textarea></label>
+      <label class="fld" style="max-width:200px">幾天後自動消失<select id="nDays"><option value="1">1 天</option><option value="3">3 天</option><option value="7" selected>7 天</option><option value="14">14 天</option><option value="30">30 天</option></select></label>
+      <div class="row" style="justify-content:flex-start"><button class="primary" id="nGo">📢 發布公告</button></div>
+      <h3>最近的公告</h3><div id="nList"><p class="muted">讀取中…</p></div>
     </div>
     <div class="card" id="tab-fb" hidden><div id="fbList"></div></div>
     <div class="card" id="tab-me" hidden>
@@ -167,7 +175,7 @@ $('logout').onclick = async () => { await sb.auth.signOut(); location.reload(); 
 $('reload').onclick = () => loadAll();
 document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b));
-  for (const t of ['players', 'fb', 'stats', 'gifts', 'me']) $('tab-' + t).hidden = t !== b.dataset.tab;
+  for (const t of ['players', 'news', 'fb', 'stats', 'gifts', 'me']) $('tab-' + t).hidden = t !== b.dataset.tab;
 });
 $('q').oninput = renderPlayers;
 
@@ -183,9 +191,33 @@ async function loadAll() {
       rpc('catloft_admin_play_days', { p_from: dayAdd(twToday(), -89) }).catch(() => [])]);
     players = p || []; selfId = me; days = d || []; daysBy = {};
     for (const r of days) (daysBy[r.user_id] = daysBy[r.user_id] || []).push(r);
-    renderPlayers(); renderStats(); renderFb(f || []); renderGifts(g || []); renderMe();
+    renderPlayers(); renderStats(); renderFb(f || []); renderGifts(g || []); renderMe(); loadNews();
   } catch (e) { toast('讀取失敗：' + (e.message || e)); }
 }
+// 📢 公告（../news.js 在遊戲裡顯示，supabase/catloft_news.sql）
+async function loadNews() {
+  let list; try { list = await rpc('catloft_admin_news_list') || []; } catch (e) { $('nList').innerHTML = `<p style="color:var(--bad)">讀不到：${esc(e.message || e)}</p>`; return; }
+  const now = Date.now();
+  $('nList').innerHTML = list.map(n => {
+    const live = !n.deleted_at && new Date(n.expires_at) > now;
+    const st = n.deleted_at ? '已下架' : live ? `顯示中，${when(n.expires_at)} 消失` : '已過期';
+    return `<div class="fb"><div><span class="tag${live ? '' : ' bug'}">${st}</span><b>${esc(n.title)}</b></div>${n.body ? `<div class="msg">${esc(n.body)}</div>` : ''}
+      <div class="muted" style="font-size:13px">${esc(n.who || '管理者')}・${when(n.created_at)} 發布${live ? ` <button data-ndel="${n.id}" style="margin-left:8px">提早下架</button>` : ''}</div></div>`;
+  }).join('') || '<p class="muted">還沒有公告</p>';
+  $('nList').querySelectorAll('[data-ndel]').forEach(b => b.onclick = async () => {
+    if (!confirm('確定要把這則公告下架嗎？玩家就看不到了。')) return;
+    try { await rpc('catloft_admin_news_delete', { p_id: +b.dataset.ndel }); toast('下架了'); loadNews(); } catch (e) { toast('下架失敗：' + (e.message || e)); }
+  });
+}
+$('nGo').onclick = async () => {
+  const title = $('nTitle').value.trim(); if (!title) return toast('請輸入標題');
+  $('nGo').disabled = true;
+  try {
+    await rpc('catloft_admin_news_add', { p_title: title, p_body: $('nBody').value, p_days: +$('nDays').value });
+    $('nTitle').value = ''; $('nBody').value = ''; toast('發布了！玩家馬上看得到'); loadNews();
+  } catch (e) { toast('發布失敗：' + (e.message || e)); }
+  $('nGo').disabled = false;
+};
 function renderPlayers() {
   const q = $('q').value.trim().toLowerCase();
   const list = players.filter(p => !q || [p.account, p.shop_name, p.mgr_name, p.friend_code].some(v => v && String(v).toLowerCase().includes(q)));

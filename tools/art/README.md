@@ -16,3 +16,6 @@ Backgrounds were repainted from screenshots of the old canvas-drawn floors so th
 
 ## 每日簽到
 `acc_cat_clover` / `acc_clip_clover` (day-7 prizes) and `ic_sign` (phone icon) were painted with gen2.py using `acc_cat_sun` / `acc_clip_sun` / `ic_daily` on white as the style reference, cut with cut.py, then scaled to 120 px (collar) / 100 px (clip) tall like the other accessories and 144 px for the icon.
+
+## 公告、喵喵銀行、我的紀錄
+`ic_news` / `ic_bank` / `ic_record` (phone icons) were painted together in one gen2.py sheet using `ic_daily` / `ic_sign` / `ic_wallet` on white as the style reference, cropped by their tiles (white corners flood-filled to transparent) and scaled to 144 px.
