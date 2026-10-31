@@ -2448,14 +2448,19 @@ function drawCatAnim(k) {
 const CATK = 68 / 160; // painted cats: the walking pose is 160 px wide in the sprite, 68 px on screen
 function drawCat(k) {
   if (k.anim && !k._inAnim) { if (k.anim.kind !== 'hug') drawCatAnim(k); return; }
-  const x = k.x, y = k.y - (k.state === 'play' ? Math.abs(Math.sin(S.t * 7)) * 10 : 0), f = k.face;
-  if (!k.onBed && !k.jumpFrom) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
+  const act = k.state === 'fun' ? k.fun.spot.stages[k.fun.stage].act : null;
+  if (k.hide) { // inside the toy tunnel: only a wiggle and a rustle show
+    const p = (S.t * 1.3) % 1; g.globalAlpha = 1 - p; text('沙沙…', k.x + 20, k.y - 50 - p * 16, 12, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1; return;
+  }
+  const x = k.x + (act === 'scratch' ? Math.sin(S.t * 22) * 2.5 : 0), y = k.y - (k.state === 'play' || act === 'play' ? Math.abs(Math.sin(S.t * 7)) * 10 : 0), f = k.face;
+  if (!k.onBed && !k.jumpFrom && k.y > 480) ell(x, y, 22, 4, 'rgba(70,45,30,.16)');
   const out = k.fluffy ? '#BFAE96' : INK;
-  const pose = k.state === 'sleep' ? 2 : (k.jumpFrom || k.state === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
+  const pose = k.state === 'sleep' || act === 'nap' ? 2 : (k.jumpFrom || k.state === 'play' || act === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
+  if (act === 'scratch') text('抓抓', x + 30 * f, y - 40, 12, '#B07E52', 'center', DFONT, 700);
   const ci = catImg(k.def, pose);
   if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK * k.size.s, f < 0, ci.naturalWidth * CATK * k.size.sx);
   if (ci && pose !== 2 && CHARMS[G.acc.cats[k.id]]) drawCatWorn(G.acc.cats[k.id], k, ci, pose, x, y + 1, f);
-  if (k.state === 'sleep') {
+  if (pose === 2) {
     if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
     g.strokeStyle = k.dark; g.lineWidth = k.fluffy ? 7 : 5; g.lineCap = 'round'; g.stroke();
@@ -2516,6 +2521,7 @@ function moveAlong(e, dt) {
       if (e.waitT < p.wait) return false;
       e.waitT = 0; e.path.shift(); continue;
     }
+    if (p.warp) { e.x = p.x; e.y = p.y; e.path.shift(); continue; } // out the other end of the toy tunnel
     if (p.jump) {
       if (!e.jumpFrom) { e.jumpFrom = { x: e.x, y: e.y }; e.jumpT = 0; }
       e.jumpT += dt / .6; const t = Math.min(1, e.jumpT);
@@ -2708,13 +2714,13 @@ function bondAct(k, act) {
 function petTask(k, label, act = 'pet') {
   k.hold = true;
   const B = BOND.find(b => b.act === act);
-  return { label: label || (k.state === 'sleep' ? '叫醒' + k.name : act === 'pet' ? '摸摸' + k.name : `跟${k.name}${B.name}`), steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? k.bed.ground.x + 30 : k.x + (k.x > fw(k.floor) / 2 ? -36 : 36), 150, fw(k.floor) - 80), y: k.onBed ? k.bed.ground.y : clamp(k.y + 6, 490, 594) }), dur: .8,
+  return { label: label || (k.state === 'sleep' ? '叫醒' + k.name : act === 'pet' ? '摸摸' + k.name : `跟${k.name}${B.name}`), steps: [{ pos: () => { const p = catSpot(k), up = p !== k; return { f: k.floor, x: clamp(up ? p.x + 30 : k.x + (k.x > fw(k.floor) / 2 ? -36 : 36), 150, fw(k.floor) - 80), y: up ? p.y : clamp(k.y + 6, 490, 594) }; }, dur: .8,
     fn: w => {
       k.hearts = 1.2;
       if (k.state === 'sleep') { sfx('meow_happy', k.floor); wakeCat(k); if (isMgr(w)) toast(`${k.name}醒來了`); say(w, '起床囉～'); return; }
       if (isMgr(w) && act !== 'pet' && bondOf(k) >= B.at) {
         if (k.wantPet) { k.wantPet = 0; k.petCool = 45; k.sulk = 0; gainExp(2); }
-        endPlay(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? Infinity : 3.2, held: 0 };
+        endPlay(k); funDrop(k); k.path = []; k.state = 'idle'; k.anim = { kind: act, t: act === 'hug' ? Infinity : 3.2, held: 0 };
         k.face = S.mgr.x > k.x ? 1 : -1; S.mgr.face = -k.face;
         const lines = { rub: ['好癢喔～', '呼嚕呼嚕'], five: ['耶！擊掌！', '喵！'], belly: ['肚子好軟～', '呼嚕～'], hug: ['抱抱～好溫暖', '喵嗚～'], kiss: ['碰碰鼻子～', '啾～'],
           dance: ['一、二、轉圈圈～', '喵喵喵♪'], gift: ['這是要送我的嗎？', '喵！（叼）'], sing: ['啦啦啦～', '喵～喵～♪'], star: ['你在發光耶！', '喵✨'], rainbow: ['哇，是彩虹！', '喵嗚～♡'] }[act];
@@ -2757,7 +2763,7 @@ function putDown(k = heldCat()) {
   if (!k) return;
   const m = S.mgr;
   if (m.floor === 3 && !LAYOUT.LINKS) { toast(`休息室不能放貓，回到 1F 或 2F 再放下${k.name}`); return; } // 貓咪室內樂園's 5F is where tired cats sleep
-  k.anim = null; k.onBed = false; k.floor = m.floor; k.x = clamp(m.x + 36 * m.face, 160, fw(m.floor) - 60); k.y = clamp(m.y + 6, 490, 594);
+  k.anim = null; k.onBed = false; k.fun = null; k.hide = false; k.lift = null; k.floor = m.floor; k.x = clamp(m.x + 36 * m.face, 160, fw(m.floor) - 60); k.y = clamp(m.y + 6, 490, 594);
   if (behindCounter(k.floor, k.x, k.y)) { k.x = k.x < 540 ? KGATE_L.x - 40 : KGATE.x + 60; k.y = clamp(k.y, 540, 594); }
   k.state = 'idle'; k.t = rand(1, 3); k.hearts = 1.2;
   say(k, pick(['喵～', '還要抱抱', '呼嚕～'])); say(m, pick(['乖乖，去玩吧', `${k.name}好重喔～`, '下次再抱你']));
@@ -3128,9 +3134,63 @@ function wakeCat(k) {
 }
 function goBed(k) {
   const b = k.bed;
-  routeTo(k, b.f, b.ground.x, b.ground.y); k.path.push({ f: b.f, x: b.x, y: b.y, jump: true }); k.state = 'toBed';
+  const down = k.fun ? funExit(k) : k.state === 'funBack' ? k.path : null; // climb down from the cat tree (or the toy) first
+  if (down && down.length) { const last = down[down.length - 1], tmp = { floor: last.f, x: last.x, y: last.y, path: [] }; routeTo(tmp, b.f, b.ground.x, b.ground.y); k.path = down.concat(tmp.path); }
+  else routeTo(k, b.f, b.ground.x, b.ground.y);
+  k.path.push({ f: b.f, x: b.x, y: b.y, jump: true }); k.state = 'toBed';
 }
 const PLAY_STATES = ['petting', 'eating', 'waitFood'];
+// ---- cats use the furniture and toys you bought: climb the cat tree, cross the wall walk, nap in the pet bed, sit on the bookshelf,
+// and in 貓咪室內樂園 play with every toy in the 2F toy hall. A spot is a ground point, then stages: a path (jumps up / walks along) and what
+// the cat does there (sit, nap, play, scratch, hide) for t seconds. `back` is the way down (default: the path reversed, then a jump to the ground).
+// Heights were measured on the painted props (cattree.webp, wallwalk.webp, ...), so they match how propArt draws them.
+const TOY_PX = { toySpin: [180, 286], toyTunnel: [340, 354], toyBalls: [170, 152], toySofa: [300, 163], toyCastle: [300, 226], toyTower: [260, 427] }; // toy_*.webp sizes
+function funSpots() {
+  const L = [], st = (path, act, t, line, more) => ({ path, act, t, line, ...more });
+  if (hasF('cattree')) {
+    const { x, y } = PROP.cattree, s = 92 / 200, X = sx => x - 46 + sx * s, Y = sy => y - 181 + sy * s;
+    const box = { x: X(115), y: Y(280), jump: true }, low = { x: X(56), y: Y(212), jump: true }, mid = { x: X(125), y: Y(115), jump: true }, top = { x: X(75), y: Y(22), jump: true };
+    L.push({ id: 'cattree', f: 2, ground: { x: x + 40, y: 508 }, stages: Math.random() < .5
+      ? [st([box, low, mid, top], 'sit', [6, 9], pick(['爬到最高了！', '喵～看得好遠']))]
+      : [st([box, low, mid], 'nap', [10, 16], '在這裡睡一下…')] });
+  }
+  if (hasF('wallwalk')) {
+    const { x, y } = WALLWALK, s = 140 / 320, X = sx => x - 70 + sx * s, Y = sy => y - 69 + sy * s;
+    L.push({ id: 'wallwalk', f: 2, ground: { x: x + 72, y: 510 }, stages: [st([{ x: X(265), y: Y(112), jump: true }, { x: X(150), y: Y(76) }, { x: X(50), y: Y(10) }], 'sit', [6, 10], pick(['走過吊橋了！', '喵～好高喔']))] });
+  }
+  if (hasF('bed')) L.push({ id: 'bed', f: 2, ground: { x: 244, y: 512 }, stages: [st([{ x: 206, y: 457, jump: true }], 'nap', [12, 20], '暖呼呼的…')] });
+  if (hasF('books')) {
+    const { x, y } = PROP.books;
+    L.push({ id: 'books', f: 2, ground: { x: x + 44, y: 508 }, stages: [st([{ x: x + 17, y: y - 87, jump: true }], Math.random() < .5 ? 'sit' : 'nap', [8, 14], '書櫃上面視野最好')] });
+  }
+  for (const id of toysHere()) {
+    const T = TOYS[id], [iw, ih] = TOY_PX[id], sc = T.w / iw, X = sx => T.x - T.w / 2 + sx * sc, Y = sy => T.y - ih * sc + sy * sc, toy = { toy: id, lift: T.y - (T.y < 520 ? 20 : 0) + 1 };
+    if (id === 'toySpin') L.push({ id, f: 2, ground: { x: T.x - 46, y: 514 }, stages: [st([], 'play', [5, 8], '追羽毛！')] });
+    if (id === 'toyBalls') L.push({ id, f: 2, ground: { x: T.x - 48, y: 514 }, stages: [st([], 'play', [5, 8], '叮叮噹噹～')] });
+    if (id === 'toySofa') L.push({ id, f: 2, ground: { x: T.x - 84, y: 596 }, ...toy, stages: [st([], 'scratch', [3, 4], '抓抓抓！'), st([{ x: T.x, y: Y(88), jump: true }], 'nap', [10, 14])] });
+    if (id === 'toyTunnel') L.push({ id, f: 2, ground: { x: T.x - 92, y: 594 }, ...toy, stages: [st([{ x: X(40), y: Y(300) }], 'hide', [2.5, 4], '鑽進去囉！')],
+      back: [{ x: X(100), y: Y(55), warp: true }, { x: T.x + 54, y: 596, jump: true }] });
+    if (id === 'toyCastle') L.push({ id, f: 2, ground: { x: T.x - 92, y: 596 }, ...toy, stages: [st([{ x: X(55), y: Y(18), jump: true }], 'sit', [7, 11], '我是城堡的國王喵！')] });
+    if (id === 'toyTower') L.push({ id, f: 2, ground: { x: T.x - 62, y: 508 }, ...toy, stages: [st([{ x: X(52), y: Y(290), jump: true }, { x: X(43), y: Y(206), jump: true }, { x: X(218), y: Y(140), jump: true }], Math.random() < .4 ? 'nap' : 'sit', [8, 13], '皇宮最高的地方！')] });
+  }
+  return L.filter(sp => floorsHere().includes(sp.f) && !S.cats.some(o => o.fun && o.fun.spot.id === sp.id));
+}
+const catSpot = k => k.onBed ? k.bed.ground : k.fun ? k.fun.spot.ground : k;
+function startFun(k, sp) {
+  k.fun = { spot: sp, stage: 0 }; k.lift = sp.lift ?? null;
+  routeTo(k, sp.f, sp.ground.x, sp.ground.y); k.path.push(...sp.stages[0].path.map(p => ({ f: sp.f, ...p }))); k.state = 'toFun';
+}
+// the way back down from where the cat is now; clears the spot (k.lift stays until the cat is back on the floor)
+function funExit(k) {
+  const F = k.fun; if (!F) return [];
+  const sp = F.spot, pts = sp.stages.slice(0, F.stage + 1).flatMap(s => s.path);
+  let back = sp.back;
+  if (!back) { back = []; for (let i = pts.length - 1; i > 0; i--) back.push({ x: pts[i - 1].x, y: pts[i - 1].y, jump: pts[i].jump }); if (pts.length) back.push({ ...sp.ground, jump: pts[0].jump }); }
+  k.fun = null; k.hide = false;
+  return back.map(p => ({ f: sp.f, ...p }));
+}
+// picked up or hugged on a perch: straight down to the floor under it
+function funDrop(k) { if (!k.fun) return; const gp = k.fun.spot.ground; k.fun = null; k.hide = false; k.lift = null; k.x = gp.x; k.y = gp.y; k.path = []; }
 function endPlay(k) { if (k.target) { k.target.catBuddy = null; if (k.target.fed === 'calling') k.target.fed = false; } k.target = null; k.treat = false; }
 function wander(k) {
   // cats like company: walk over to a customer and play with them
@@ -3139,6 +3199,9 @@ function wander(k) {
     const c = pick(guests); c.catBuddy = k; k.target = c;
     routeTo(k, k.floor, clamp(c.x + (c.x > fw(k.floor) / 2 ? -50 : 50), 160, fw(k.floor) - 40), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; return;
   }
+  // the furniture and toys you bought: cats on that floor often go and use one, cats elsewhere sometimes come over for it
+  const spots = funSpots(), here = spots.filter(sp => sp.f === k.floor);
+  if (!k.sulk && (here.length && Math.random() < .45 || spots.length && Math.random() < .12)) { startFun(k, pick(here.length && Math.random() < .8 ? here : spots)); return; }
   // how far right a cat walks on floor f: not out into the courtyard (or up on the roof) in the rain
   const right = f => f === 1 ? (S.rain ? Math.min(OUT_X - 40, fw(1) - 80) : fw(1) - 80) : fw(f) - (f === 2 ? 60 : 40);
   if (OUT_X < 99999 && !S.rain && Math.random() < .35) { // a sunny courtyard draws the cats downstairs
@@ -3149,8 +3212,6 @@ function wander(k) {
   } else if (k.floor !== 1 && Math.random() < .6 && S.customers.some(c => c.state === 'petting' && c.floor === k.floor)) {
     const c = pick(S.customers.filter(c => c.state === 'petting' && c.floor === k.floor));
     routeTo(k, k.floor, clamp(c.x + (Math.random() < .5 ? -48 : 48), 160, fw(k.floor) - 40), clamp(c.y + rand(-6, 10), 500, 594));
-  } else if (k.floor === 2 && toysHere().length && Math.random() < .4) { // the toy hall: go and play with a toy
-    const T = TOYS[pick(toysHere())]; routeTo(k, 2, clamp(T.x + rand(-40, 40), 160, fw(2) - 60), clamp(T.y + (T.y < 520 ? 14 : -10), 500, 594)); k.hearts = .8;
   } else routeTo(k, k.floor, rand(160, right(k.floor)), rand(500, 594));
   k.state = 'walk';
 }
@@ -3173,6 +3234,7 @@ function updCat(k, dt) {
   if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
   if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * (S.buff.catnip ? .6 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
   const arrived = moveAlong(k, dt);
+  if (k.lift != null && arrived && !k.fun) k.lift = null;
   switch (k.state) {
     case 'toBed': if (arrived) { k.state = 'sleep'; k.onBed = true; } break;
     case 'toBowl': if (arrived) { k.face = -1; if (G.bowl > 0) { k.state = 'eat'; k.t = 2.5; } else { k.state = 'beg'; k.t = 2; } } break;
@@ -3181,6 +3243,24 @@ function updCat(k, dt) {
     case 'toLitter': if (arrived) { k.state = 'litter'; k.t = 1.5; } break;
     case 'litter': k.t -= dt; if (k.t <= 0) { G.litterDirt++; if (G.litterDirt === litterMax()) { sfx('alert'); toast('2F 的貓砂盆該清了'); } k.state = 'idle'; k.t = rand(1, 3); } break;
     case 'walk': if (arrived) { k.state = 'idle'; k.t = rand(2, 5); } break;
+    case 'toFun': if (arrived) {
+      const F = k.fun, s = F.spot.stages[F.stage];
+      k.state = 'fun'; k.t = rand(...s.t); k.hide = s.act === 'hide'; k.hearts = 1;
+      if (F.stage === 0) {
+        if (s.line) say(k, s.line);
+        sfx(s.act === 'nap' ? 'purr' : 'cat_play', k.floor);
+        const c = S.customers.find(c => c.floor === k.floor && c.state === 'petting' && !c.hidden && Math.abs(c.x - k.x) < 320);
+        if (c) { c.sawCat = true; c.catName = c.catName || k.name; later(1.2, () => { if (!c.gone) say(c, pick([`${k.name}好會玩！`, '快看快看，好可愛！', '我要拍下來～'])); }); }
+      }
+    } break;
+    case 'fun': {
+      const F = k.fun, s = F.spot.stages[F.stage];
+      k.t -= dt; if (s.act === 'nap' && open) k.energy = Math.min(100, k.energy + (F.spot.id === 'bed' ? 1.6 : 1) * dt);
+      if (k.t <= 0 && F.stage + 1 < F.spot.stages.length) { F.stage++; k.hide = false; k.path = F.spot.stages[F.stage].path.map(p => ({ f: F.spot.f, ...p })); k.state = 'toFun'; break; }
+      if (k.t <= 0 || (open && (k.hunger > 70 || (k.energy < 15 && s.act !== 'nap')))) { k.path = funExit(k); k.state = 'funBack'; }
+      break;
+    }
+    case 'funBack': if (arrived) { k.lift = null; k.state = 'idle'; k.t = rand(1, 3); } break;
     case 'toPlay': {
       const c = k.target;
       if (!c || c.gone || c.floor !== k.floor || !PLAY_STATES.includes(c.state)) { endPlay(k); k.state = 'idle'; k.t = 1; break; }
@@ -3811,7 +3891,7 @@ function drawWorld() {
   if (G.at === 3) drawPalace(f, items);
   if (S.mgr.floor === f && !S.out) items.push({ y: S.mgr.y, d: drawMgr });
   S.staff.forEach(s => { if (s.floor === f) items.push({ y: s.y, d: () => drawStaff(s) }); });
-  S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.y, d: () => drawCat(k) }); });
+  S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.lift ?? k.y, d: () => drawCat(k) }); });
   S.customers.forEach(c => { if (c.floor === f) items.push({ y: c.y + (c.table ? 1 : 0), d: () => drawCustomer(c) }); });
   items.sort((a, b) => a.y - b.y).forEach(i => i.d());
   for (const e of S.effects) if (e.f === f) { g.globalAlpha = 1 - e.age / e.life; text(e.t, e.x, e.y - e.age * 30, 16, e.c, 'center', FONT, 700); g.globalAlpha = 1; }
@@ -4126,7 +4206,7 @@ function nearbyActions() {
   }
   for (const s of S.staff) if (s.floor === f && !s.hidden && !s.away && !s.resting && !(s.chatting > 0)) add(s.x, s.y, `跟${s.name}聊天`, () => actChatStaff(s));
   for (const k of S.cats) if (k.floor === f && k !== hk) {
-    const p = k.onBed ? k.bed.ground : k;
+    const p = catSpot(k);
     add(p.x, p.y, k.state === 'sleep' ? (S.phase === 'closing' ? `跟${k.name}說晚安` : '叫醒' + k.name) : '摸摸' + k.name, () => actPet(k));
   }
   if (f === 1 || f === 2) add(STAIRS[f].x, STAIRS[f].y, f === 1 ? '上 2F' : '下 1F', climbStairs);
@@ -5160,7 +5240,7 @@ function flipSign(w) {
 function goodnight(k) {
   if (S.close.night[k.id]) { say(S.mgr, `${k.name}已經睡熟了，噓～`); return; }
   k.hold = true;
-  queueTask({ label: `跟${k.name}說晚安`, steps: [{ pos: () => ({ f: k.floor, x: clamp(k.onBed ? k.bed.ground.x + 30 : k.x + 36, 150, fw(k.floor) - 80), y: k.onBed ? k.bed.ground.y : clamp(k.y + 6, 490, 594) }), dur: 1,
+  queueTask({ label: `跟${k.name}說晚安`, steps: [{ pos: () => { const p = catSpot(k), up = p !== k; return { f: k.floor, x: clamp(up ? p.x + 30 : k.x + 36, 150, fw(k.floor) - 80), y: up ? p.y : clamp(k.y + 6, 490, 594) }; }, dur: 1,
     fn: w => {
       if (S.close.night[k.id]) return;
       S.close.night[k.id] = true; k.hearts = 1.4; addBond(k, 1);
