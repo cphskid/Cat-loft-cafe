@@ -24,9 +24,12 @@ begin
 exception when others then return null;
 end $$;
 
+-- 回傳欄位有變（2026-10-31 加 play = 總遊玩秒數）時要先 drop 才能重建
+drop function if exists public.catloft_admin_players();
 create or replace function public.catloft_admin_players()
 returns table (user_id uuid, account text, shop_name text, mgr_name text, day integer, cash numeric, debt numeric, fans numeric,
-               earned numeric, cats integer, shops integer, friend_code text, lv integer, created_at timestamptz, updated_at timestamptz)
+               earned numeric, cats integer, shops integer, friend_code text, lv integer, created_at timestamptz, updated_at timestamptz,
+               play numeric)
 language plpgsql stable security definer set search_path to 'public', 'pg_temp'
 as $$
 begin
@@ -38,7 +41,7 @@ begin
            (j ->> 'cash')::numeric, (j ->> 'debt')::numeric, (j ->> 'fans')::numeric, (j ->> 'earned')::numeric,
            case when jsonb_typeof(j -> 'cats') = 'array' then jsonb_array_length(j -> 'cats') end,
            case when jsonb_typeof(j -> 'owned') = 'array' then jsonb_array_length(j -> 'owned') else 1 end,
-           p.code, p.lv, u.created_at, s.updated_at
+           p.code, p.lv, u.created_at, s.updated_at, (j ->> 'play')::numeric
       from public.catloft_saves s
       join auth.users u on u.id = s.user_id
       left join public.catloft_players p on p.user_id = s.user_id
