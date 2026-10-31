@@ -4329,7 +4329,7 @@ function renderPhone() {
                   ['wallet', '喵錢包', '借錢・還款', '#B8925A', '¥'], ['music', '喵音樂', '選背景音樂', '#C77B8B', '♪'], ['myshop', '我的店', '等級・擴建', '#6F9A9A', '店'], ['map', '分店地圖', G.owned.length > 1 ? `${G.owned.length} 家店` : G.landReady ? '可以開分店了！' : '開第二家店', '#5E9B7A', '分'],
                   ['promo', '喵喵宣傳', '傳單・試吃', '#E08A5A', '宣'], ['ig', '喵IG', G.ig.length ? `${G.ig.length} 篇貼文` : '拍照・按讚', '#D9567A', '📷'], ['badge', '徽章', `${G.badges.length}/${BADGES.length}`, '#D9A23A', '徽'], ['game', '小遊戲', `${MINIGAMES.length} 款`, '#7FA06C', '玩'], ['phone', '電話', '打給阿嬤・外送', '#6FA57E', '☎'], ['cats', '喵喵家族', `${G.cats.length} 隻貓`, '#B07A5A', '貓'], ['guests', '客人圖鑑', `${Object.keys(G.guests).length}/${GUEST_DEX.length} 種`, '#8A7FB0', '客'], ['closet', '衣櫃', '店長換衣服', '#C98FA0', '衣'], ['daily', '每日任務', `${S.daily.filter(q => q.got).length}/3`, '#5E8C9A', '任'], ['sign', '每日簽到', window.CHECKIN ? CHECKIN.sub() : '', '#6FA35A', '簽'], ['review', '喵評論', `${G.revTotal} 則留言`, '#C9897A', '評'], ['collab', '聯名合作', collabNow() ? collabNow().co : '跟公司合作', '#5B8DB8', '聯'],
                   ['save', '存檔碼', '複製進度', '#7A8DA6', '存'], ['settings', '設定', '搖桿・動作鍵', '#8A8A8A', '⚙']];
-    if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '今天誰最會賺', '#C9A03A', '榜']);
+    if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '誰最會賺', '#C9A03A', '榜']);
     if (CLOUD.sb && !CLOUD.db && window.FRIENDS) apps.splice(apps.length - 2, 0, ['friend', '好友', FRIENDS.sub(), '#D98AA0', '友']);
     if (window.MEOW) apps.splice(apps.length - 2, 0, ['quiz', '喵型測驗', MEOW.sub(), '#E0A040', '喵']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
@@ -4337,7 +4337,7 @@ function renderPhone() {
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()">${(a[0] === 'report' && FB.unread) || (a[0] === 'sign' && window.CHECKIN && CHECKIN.can()) ? '<span class="badge sm">!</span>' : ''}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '今日排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到' };
+    const titles = { quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, baseOf(d)]).concat([['loft', '2F 吸貓入場費', baseOf('loft')], ['beans', '咖啡豆（一包）', baseOf('beans')], ['treat', '貓咪肉泥（一條）', baseOf('treat')]]);
@@ -4608,6 +4608,7 @@ function renderPhone() {
   if (phoneApp === 'outing') OUTING.bind(sc);
   if (phoneApp === 'sign') CHECKIN.bind(sc);
   sc.querySelectorAll('[data-app]').forEach(b => b.onclick = () => { sfx('app_switch'); if (b.dataset.app === 'report') { openFeedback(); return; } if (b.dataset.app === 'quiz') MEOW.reset(); phoneApp = b.dataset.app; renderPhone(); });
+  sc.querySelectorAll('[data-rank]').forEach(b => b.onclick = () => { BOARD.tab = b.dataset.rank; renderPhone(); });
   sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
   const q = s => sc.querySelector(s);
   q('#pClose') && (q('#pClose').onclick = closePhone);
@@ -5080,33 +5081,42 @@ async function initCloud() {
   if (CLOUD.uid && !CLOUD.db) window.FRIENDS?.load(true); // cooperation boost and pending knocks
   mountFeedback();
 }
-// ---- 🏆 今日排行榜 (supabase/catloft_board.sql) ----
-// Every close sends that day's revenue; the board keeps each player's best day for today's Taiwan date.
-const BOARD = { rows: null, err: false, at: 0, busy: false };
+// ---- 🏆 排行榜 (supabase/catloft_board.sql) ----
+// 全部玩家: everyone who has finished at least one day, ranked by 累計營收 from their save (catloft_board_all).
+// 今天: every close sends that day's revenue; keeps each player's best day for today's Taiwan date (catloft_board_today).
+const BOARD = { tab: 'all', all: { rows: null, err: false, at: 0, busy: false }, today: { rows: null, err: false, at: 0, busy: false } };
 function boardSubmit(revenue, day) {
   if (!CLOUD.sb || CLOUD.db) return;
   (sbSaving || Promise.resolve()).then(() => CLOUD.uid && CLOUD.sb.rpc('catloft_board_submit', { p_revenue: Math.round(revenue), p_day: day, p_lv: shopLv(), p_shop: G.shopName }))
-    .then(() => { BOARD.at = 0; }).catch(() => {});
+    .then(() => { BOARD.all.at = BOARD.today.at = 0; }).catch(() => {});
 }
-async function boardLoad() {
-  if (BOARD.busy) return;
-  BOARD.busy = true;
+async function boardLoad(tab) {
+  const B = BOARD[tab];
+  if (B.busy) return;
+  B.busy = true;
   try {
-    const { data, error } = await CLOUD.sb.rpc('catloft_board_today');
+    const { data, error } = await CLOUD.sb.rpc(tab === 'all' ? 'catloft_board_all' : 'catloft_board_today');
     if (error) throw error;
-    BOARD.rows = data || []; BOARD.err = false;
-  } catch { BOARD.err = true; }
-  BOARD.busy = false; BOARD.at = Date.now();
+    B.rows = data || []; B.err = false;
+  } catch { B.err = true; }
+  B.busy = false; B.at = Date.now();
   if (!$('phoneOv').hidden && phoneApp === 'rank') renderPhone();
 }
 function boardHtml() {
-  if (Date.now() - BOARD.at > 30000) boardLoad();
-  let h = `<p class="muted" style="margin:0">今天所有玩家的店，比一比誰的一天營業額最高。每天打烊時會自動登記，同一天只算你最好的那一天，每天半夜 12 點重新開始。</p>`;
-  if (!BOARD.rows) return h + `<p class="muted">${BOARD.err ? '連不上排行榜，等一下再試試' : '排行榜載入中…'}</p>`;
-  if (!BOARD.rows.length) return h + `<p class="muted">今天還沒有店打烊，第一名就是你的！</p>`;
+  const tab = BOARD.tab, B = BOARD[tab];
+  if (Date.now() - B.at > 30000) boardLoad(tab);
+  let h = `<div class="seg">${[['all', '全部玩家'], ['today', '今天']].map(([v, t]) => `<button data-rank="${v}" class="${tab === v ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+  h += tab === 'all'
+    ? `<p class="muted" style="margin:0">所有玩家的店，比一比誰開店以來賺最多（累計營收）。至少營業完一天就會上榜，今天沒上線也一樣看得到。</p>`
+    : `<p class="muted" style="margin:0">今天所有玩家的店，比一比誰的一天營業額最高。每天打烊時會自動登記，同一天只算你最好的那一天，每天半夜 12 點重新開始。</p>`;
+  if (!B.rows) return h + `<p class="muted">${B.err ? '連不上排行榜，等一下再試試' : '排行榜載入中…'}</p>`;
+  if (!B.rows.length) return h + `<p class="muted">${tab === 'all' ? '還沒有店上榜，營業完一天第一名就是你的！' : '今天還沒有店打烊，第一名就是你的！'}</p>`;
   const medal = ['🥇', '🥈', '🥉'];
-  h += BOARD.rows.map(r => `<div class="item"${r.is_me ? ' style="border-color:#D9A23A;background:#FFF6E0"' : ''}><div class="top"><span class="nm">${medal[r.rank - 1] || Number(r.rank) + '.'} ${cleanName(r.shop_name, '貓咪咖啡廳', 12)}${r.is_me ? '（你的店）' : ''}</span><b>${yen(Number(r.revenue) || 0)}</b></div><div class="sub">店鋪 Lv.${Number(r.lv) || 1}・第 ${Number(r.day) || 1} 天${r.partner ? `・🤝 跟「${cleanName(r.partner, '朋友的店', 12)}」合作中` : ''}</div></div>`).join('');
-  if (!BOARD.rows.some(r => r.is_me)) h += `<p class="muted">你今天還沒打烊過，營業完一天就會上榜。</p>`;
+  h += B.rows.map(r => {
+    const today = tab === 'all' && r.today != null ? `・今天 ${yen(Number(r.today) || 0)}` : '';
+    return `<div class="item"${r.is_me ? ' style="border-color:#D9A23A;background:#FFF6E0"' : ''}><div class="top"><span class="nm">${medal[r.rank - 1] || Number(r.rank) + '.'} ${cleanName(r.shop_name, '貓咪咖啡廳', 12)}${r.is_me ? '（你的店）' : ''}</span><b>${yen(Number(tab === 'all' ? r.earned : r.revenue) || 0)}</b></div><div class="sub">店鋪 Lv.${Number(r.lv) || 1}・第 ${Number(r.day) || 1} 天${today}${r.partner ? `・🤝 跟「${cleanName(r.partner, '朋友的店', 12)}」合作中` : ''}</div></div>`;
+  }).join('');
+  if (!B.rows.some(r => r.is_me)) h += `<p class="muted">${tab === 'all' ? '你還沒營業完一天，打烊之後就會上榜。' : '你今天還沒打烊過，營業完一天就會上榜。'}</p>`;
   return h;
 }
 // ---- 💬 問題回報 (feedback.js; same inbox as 時光冒險樂園, see supabase/catloft_feedback.sql) ----
