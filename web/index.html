@@ -5383,7 +5383,7 @@ for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, 
 document.addEventListener('visibilitychange', () => { if (document.hidden && started && (G.play || 0) - playSaved >= 30) { playSaved = G.play; saveProgress(); } });
 function frame(now) {
   const rdt = Math.min(.05, (now - last) / 1000); last = now;
-  if (started && !document.hidden && now - lastInput < 120000) G.play = (G.play || 0) + rdt;
+  if (started && !document.hidden && now - lastInput < 120000) { G.play = (G.play || 0) + rdt; if (window.STATS && S) STATS.tick(rdt); }
   if (S) {
     if (S.mini) { S.t += rdt; updMini(rdt); }
     else if (S.cook) { S.t += rdt; updCook(rdt); }
@@ -5414,6 +5414,7 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 <script src="invite.js"></script>
 <script src="igpub.js"></script>
 <script src="gifts.js"></script>
+<script src="stats.js"></script>
 <script src="outing.js"></script>
 <script src="checkin.js"></script>
 </body>

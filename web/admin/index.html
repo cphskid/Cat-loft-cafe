@@ -48,6 +48,9 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .ans{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;margin-top:8px}
 .ans textarea{flex:1 1 260px;min-height:38px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:14px;resize:vertical}
 .tag{display:inline-block;border-radius:8px;padding:0 7px;font-size:12px;background:var(--sun);color:var(--wood-d);margin-right:6px}
+.kpi{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}.kpi div{flex:1 1 140px;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:10px}.kpi b{display:block;font-size:22px}
+.bar{height:10px;border-radius:5px;background:var(--accent);min-width:2px}.bar.b2{background:var(--good)}
+h3{margin:18px 0 6px;font-size:16px}
 .tag.bug{background:#F6D9D3;color:var(--bad)}.tag.idea{background:#DDEBD2;color:#4E7436}
 .ov{position:fixed;inset:0;background:rgba(46,34,27,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
 .ov .card{width:min(440px,100%);max-height:90vh;overflow:auto}
@@ -72,10 +75,10 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 
   <div id="main" hidden>
     <div class="top"><h1>🐾 暖陽貓閣 管理者</h1><span class="sp"></span><button id="reload">重新整理</button><button id="logout">登出</button></div>
-    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="gifts">送過的東西</button><button data-tab="me">🛠️ 調整我的店</button></div>
+    <div class="tabs"><button data-tab="players" class="on">玩家</button><button data-tab="fb">問題回報</button><button data-tab="stats">📈 統計</button><button data-tab="gifts">送過的東西</button><button data-tab="me">🛠️ 調整我的店</button></div>
     <div class="card" id="tab-players">
       <div class="top" style="margin-bottom:8px"><input id="q" placeholder="搜尋帳號、店名、好友碼" style="flex:1;max-width:320px"><span class="muted" id="pCount"></span></div>
-      <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th title="從 2026/10/31 開始算，只算畫面開著、兩分鐘內有操作的時間">總遊玩時間</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
+      <div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>店長</th><th>天數</th><th>Lv</th><th>現金</th><th>欠款</th><th>粉絲</th><th>累計營收</th><th>貓</th><th>分店</th><th>好友碼</th><th title="從 2026/10/31 開始算，只算畫面開著、兩分鐘內有操作的時間">總遊玩時間</th><th title="從 2026/10/31 開始算">來過幾天</th><th>最後遊玩</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>
     </div>
     <div class="card" id="tab-fb" hidden><div id="fbList"></div></div>
     <div class="card" id="tab-me" hidden>
@@ -99,6 +102,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
       </div>
       <div class="row"><button class="primary" id="mGo">套用</button></div>
     </div>
+    <div class="card" id="tab-stats" hidden><div id="statsBody"><p class="muted">讀取中…</p></div></div>
     <div class="card" id="tab-gifts" hidden><div class="tbl"><table><thead><tr><th>送出時間</th><th>給誰</th><th>送了什麼</th><th>留言／訊息</th><th>玩家收了嗎</th></tr></thead><tbody id="gBody"></tbody></table></div></div>
   </div>
 </div>
@@ -147,7 +151,7 @@ const who = p => p ? (p.account || `（訪客）${p.shop_name || ''}`) : '？';
 let toastT; function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
 const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw error; return data; };
 
-let players = [], giftTo = null, selfId = null;
+let players = [], giftTo = null, selfId = null, days = [], daysBy = {};
 
 $('loginForm').onsubmit = async e => {
   e.preventDefault();
@@ -163,7 +167,7 @@ $('logout').onclick = async () => { await sb.auth.signOut(); location.reload(); 
 $('reload').onclick = () => loadAll();
 document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b));
-  for (const t of ['players', 'fb', 'gifts', 'me']) $('tab-' + t).hidden = t !== b.dataset.tab;
+  for (const t of ['players', 'fb', 'stats', 'gifts', 'me']) $('tab-' + t).hidden = t !== b.dataset.tab;
 });
 $('q').oninput = renderPlayers;
 
@@ -175,8 +179,11 @@ async function start() {
 }
 async function loadAll() {
   try {
-    const [p, f, g, me] = await Promise.all([rpc('catloft_admin_players'), rpc('catloft_admin_feedback'), rpc('catloft_admin_gifts'), rpc('catloft_admin_self')]);
-    players = p || []; selfId = me; renderPlayers(); renderFb(f || []); renderGifts(g || []); renderMe();
+    const [p, f, g, me, d] = await Promise.all([rpc('catloft_admin_players'), rpc('catloft_admin_feedback'), rpc('catloft_admin_gifts'), rpc('catloft_admin_self'),
+      rpc('catloft_admin_play_days', { p_from: dayAdd(twToday(), -89) }).catch(() => [])]);
+    players = p || []; selfId = me; days = d || []; daysBy = {};
+    for (const r of days) (daysBy[r.user_id] = daysBy[r.user_id] || []).push(r);
+    renderPlayers(); renderStats(); renderFb(f || []); renderGifts(g || []); renderMe();
   } catch (e) { toast('讀取失敗：' + (e.message || e)); }
 }
 function renderPlayers() {
@@ -185,8 +192,8 @@ function renderPlayers() {
   $('pCount').textContent = `共 ${players.length} 位玩家` + (q ? `，符合 ${list.length} 位` : '');
   $('pBody').innerHTML = list.map(p => `<tr><td>${p.account ? esc(p.account) : '<span class="muted">訪客</span>'}</td><td>${esc(p.shop_name)}</td><td>${esc(p.mgr_name)}</td>
     <td class="n">${num(p.day)}</td><td class="n">${num(p.lv)}</td><td class="n">${yen(p.cash)}</td><td class="n">${p.debt ? yen(p.debt) : ''}</td><td class="n">${num(p.fans)}</td>
-    <td class="n">${yen(p.earned)}</td><td class="n">${num(p.cats)}</td><td class="n">${num(p.shops)}</td><td>${esc(p.friend_code)}</td><td class="n">${playTime(p.play)}</td><td>${when(p.updated_at)}</td>
-    <td><button data-prog="${p.user_id}">📊 進度</button> <button data-gift="${p.user_id}">🎁 送東西</button></td></tr>`).join('') || '<tr><td colspan="15" class="muted">沒有玩家</td></tr>';
+    <td class="n">${yen(p.earned)}</td><td class="n">${num(p.cats)}</td><td class="n">${num(p.shops)}</td><td>${esc(p.friend_code)}</td><td class="n">${playTime(p.play)}</td><td class="n">${(daysBy[p.user_id] || []).length || ''}</td><td>${when(p.updated_at)}</td>
+    <td><button data-prog="${p.user_id}">📊 進度</button> <button data-gift="${p.user_id}">🎁 送東西</button></td></tr>`).join('') || '<tr><td colspan="16" class="muted">沒有玩家</td></tr>';
   $('pBody').querySelectorAll('[data-gift]').forEach(b => b.onclick = () => openGift(players.find(p => p.user_id === b.dataset.gift)));
   $('pBody').querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProg(players.find(p => p.user_id === b.dataset.prog)));
 }
@@ -271,7 +278,78 @@ async function openProg(p) {
     ${line('貓咪', `${num((g.cats || []).length)} 隻`)}${line('客人圖鑑', `${num(Object.keys(g.guests || {}).length)} 種`)}${line('徽章', `${num((g.badges || []).length)} 個`)}
     ${line('衣服', `${num((g.wardrobe || []).length)} / ${OUTFITS.length} 件，穿著「${esc(outfitName(g.outfit))}」`)}
     ${line('累計客人', `${num(st.guests)} 位`)}${line('總遊玩時間', playTime(g.play) + '<span class="muted">（從 2026/10/31 開始算）</span>')}
-    ${line('最後存檔', when(p.updated_at))}</table></div>`;
+    ${line('最後存檔', when(p.updated_at))}
+    ${line('哪幾天來玩', (daysBy[p.user_id] || []).slice().reverse().map(r => `${md(r.d)} ${playTime(r.secs)}`).join('<br>') || '<span class="muted">10/31 之後還沒來過</span>')}</table></div>`;
+}
+// ---- 📈 統計（catloft_play_days，supabase/catloft_stats.sql；2026-10-31 起才有資料）----
+const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+const dayAdd = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const twDay = t => new Date(Date.parse(t) + 8 * 3600e3).toISOString().slice(0, 10);
+const md = d => +d.slice(5, 7) + '/' + +d.slice(8, 10);
+const mins = s => Math.round((s || 0) / 60).toLocaleString() + ' 分';
+const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '';
+const STATS_FROM = '2026-10-31';
+// 遊戲送來的活動代號 → 看得懂的名字（web/stats.js 的 what()）
+const APP_NAME = { home: '主畫面', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', outing: '出去玩', wallet: '喵錢包', music: '喵音樂', myshop: '我的店', map: '分店地圖', promo: '喵喵宣傳',
+  ig: '喵IG', badge: '徽章', game: '小遊戲', phone: '電話', cats: '喵喵家族', guests: '客人圖鑑', closet: '衣櫃', save: '存檔碼', settings: '設定', rank: '排行榜', friend: '好友', quiz: '喵型測驗', sign: '每日簽到' };
+const FLOOR_NAME = { 1: { 1: '1F', 2: '2F 貓閣', 3: '休息室' }, 2: { 1: '1F 庭院', 2: '2F', 3: '休息室', 4: '3F 菜園' }, 3: { 1: '1F', 2: '2F 玩具', 5: '3F', 6: '4F', 3: '5F 休息區' } };
+function actName(k) {
+  const fixed = { cook: '廚房做正餐', dessert: '做甜點', reg: '收銀找錢', out: '出門走走', close: '打烊收尾・結算', prep: '開店前準備' };
+  if (fixed[k]) return fixed[k];
+  if (k.startsWith('app_')) return '手機：' + (APP_NAME[k.slice(4)] || k.slice(4));
+  const m = k.match(/^s(\d)f(\d)$/);
+  if (m) return '在店裡：' + (SHOP[m[1]] || '分店 ' + m[1]) + ' ' + ((FLOOR_NAME[m[1]] || {})[m[2]] || m[2] + 'F');
+  return k;
+}
+function renderStats() {
+  const today = twToday(), byDay = {}, born = {}, total = {};
+  for (const r of days) { (byDay[r.d] = byDay[r.d] || []).push(r); total[r.user_id] = (total[r.user_id] || 0) + +r.secs; }
+  for (const p of players) born[p.user_id] = twDay(p.created_at);
+  if (!days.length) { $('statsBody').innerHTML = '<p class="muted">還沒有資料。玩家打開新版遊戲玩一分鐘後就會開始有紀錄（2026/10/31 起）。</p>'; return; }
+  // 上面的數字
+  const last7 = days.filter(r => r.d > dayAdd(today, -7)), who7 = new Set(last7.map(r => r.user_id));
+  const sec7 = last7.reduce((a, r) => a + +r.secs, 0);
+  const kpi = `<div class="kpi"><div>今天來玩<b>${(byDay[today] || []).length} 人</b></div><div>近 7 天來玩<b>${who7.size} 人</b></div>
+    <div>近 7 天平均每人每天<b>${last7.length ? mins(sec7 / last7.length) : '—'}</b></div><div>近 7 天來 2 天以上<b>${[...who7].filter(u => new Set(last7.filter(r => r.user_id === u).map(r => r.d)).size >= 2).length} 人</b></div></div>`;
+  // 每天
+  const rows = [];
+  for (let d = today; d >= STATS_FROM && rows.length < 30; d = dayAdd(d, -1)) {
+    const l = byDay[d] || [], sec = l.reduce((a, r) => a + +r.secs, 0), nw = l.filter(r => born[r.user_id] === d).length;
+    rows.push(`<tr><td>${md(d)}</td><td class="n">${l.length}</td><td class="n">${nw || ''}</td><td class="n">${l.length - nw || ''}</td><td class="n">${mins(sec)}</td><td class="n">${l.length ? mins(sec / l.length) : ''}</td></tr>`);
+  }
+  const daily = `<h3>每天</h3><div class="tbl"><table><thead><tr><th>日期</th><th>來玩人數</th><th>新玩家</th><th>老玩家</th><th>總共玩了</th><th>平均每人</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  // 回流：某天加入的新玩家，隔天／7 天內有沒有回來
+  const played = new Set(days.map(r => r.user_id + r.d)), coh = {};
+  for (const p of players) { const b = born[p.user_id]; if (b >= STATS_FROM && b <= today) (coh[b] = coh[b] || []).push(p.user_id); }
+  const back = (ids, b, n) => ids.filter(u => { for (let i = 1; i <= n; i++) if (played.has(u + dayAdd(b, i))) return true; return false; }).length;
+  const cohRows = Object.keys(coh).sort().reverse().map(b => { const ids = coh[b], d1 = dayAdd(b, 1) <= today, d7 = dayAdd(b, 7) <= today;
+    return `<tr><td>${md(b)}</td><td class="n">${ids.length}</td><td class="n">${d1 ? `${back(ids, b, 1)}（${pct(back(ids, b, 1), ids.length)}）` : '<span class="muted">還沒到</span>'}</td>
+      <td class="n">${dayAdd(b, 1) <= today ? `${back(ids, b, 7)}（${pct(back(ids, b, 7), ids.length)}）${d7 ? '' : '<span class="muted"> 還在算</span>'}` : '<span class="muted">還沒到</span>'}</td></tr>`; }).join('');
+  const ret = `<h3>新玩家有沒有回來</h3><p class="muted" style="margin:0 0 6px">某天開始玩的新玩家裡，隔天又來玩、7 天內又來玩的有幾位。</p>
+    <div class="tbl"><table><thead><tr><th>開始玩的日期</th><th>新玩家</th><th>隔天回來</th><th>7 天內回來</th></tr></thead><tbody>${cohRows || '<tr><td colspan="4" class="muted">還沒有新玩家</td></tr>'}</tbody></table></div>`;
+  // 時間花在哪裡：全部玩家 vs 玩得最久的 1/4
+  const ranked = Object.keys(total).sort((a, b) => total[b] - total[a]), heavy = new Set(ranked.slice(0, Math.max(1, Math.ceil(ranked.length / 4))));
+  const actAll = {}, actHeavy = {};
+  for (const r of days) for (const [k, v] of Object.entries(r.act || {})) { actAll[k] = (actAll[k] || 0) + +v; if (heavy.has(r.user_id)) actHeavy[k] = (actHeavy[k] || 0) + +v; }
+  // 店裡各樓層合成一行「在店裡走動・招呼客人」，細的放在下面
+  const group = k => /^s\d+f\d+$/.test(k) ? 'shop' : k, gAll = {}, gHeavy = {};
+  for (const [k, v] of Object.entries(actAll)) gAll[group(k)] = (gAll[group(k)] || 0) + v;
+  for (const [k, v] of Object.entries(actHeavy)) gHeavy[group(k)] = (gHeavy[group(k)] || 0) + v;
+  const sumA = Object.values(gAll).reduce((a, v) => a + v, 0) || 1, sumH = Object.values(gHeavy).reduce((a, v) => a + v, 0) || 1;
+  const nm = k => k === 'shop' ? '在店裡走動・招呼客人・摸貓' : actName(k);
+  const actRows = Object.keys(gAll).sort((a, b) => gAll[b] - gAll[a]).map(k => `<tr><td>${esc(nm(k))}</td>
+    <td style="min-width:120px"><div class="bar" style="width:${gAll[k] / sumA * 100}%"></div></td><td class="n">${pct(gAll[k], sumA)}</td>
+    <td style="min-width:120px"><div class="bar b2" style="width:${(gHeavy[k] || 0) / sumH * 100}%"></div></td><td class="n">${pct(gHeavy[k] || 0, sumH)}</td></tr>`).join('');
+  const floorRows = Object.keys(actAll).filter(k => group(k) === 'shop').sort((a, b) => actAll[b] - actAll[a]).map(k => `${esc(actName(k).replace('在店裡：', ''))} ${pct(actAll[k], sumA)}`).join('・');
+  const act = `<h3>時間花在哪裡（近 90 天）</h3><p class="muted" style="margin:0 0 6px">橘色是全部玩家，綠色是玩最久的前 1/4（${heavy.size} 位）。綠色比橘色多的，就是玩很久的人特別喜歡的。</p>
+    <div class="tbl"><table><thead><tr><th>在做什麼</th><th colspan="2">全部玩家</th><th colspan="2">玩最久的玩家</th></tr></thead><tbody>${actRows}</tbody></table></div>
+    ${floorRows ? `<p class="muted" style="margin:6px 0 0">店裡各樓層：${floorRows}</p>` : ''}`;
+  // 玩最久的玩家
+  const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
+  const topRows = ranked.slice(0, 15).map(u => { const p = byId[u] || {}, l = daysBy[u] || [];
+    return `<tr><td>${p.account ? esc(p.account) : '<span class="muted">訪客</span>'}</td><td>${esc(p.shop_name || '')}</td><td class="n">${playTime(total[u])}</td><td class="n">${l.length}</td><td>${l.length ? md(l[l.length - 1].d) : ''}</td></tr>`; }).join('');
+  const top = `<h3>玩最久的玩家（近 90 天）</h3><div class="tbl"><table><thead><tr><th>帳號</th><th>店名</th><th>玩了多久</th><th>來過幾天</th><th>最後一次</th></tr></thead><tbody>${topRows}</tbody></table></div>`;
+  $('statsBody').innerHTML = `<p class="muted" style="margin:0 0 10px">2026/10/31 開始記錄。只算畫面開著、兩分鐘內有操作的時間。</p>` + kpi + daily + ret + act + top;
 }
 $('progClose').onclick = () => { $('progOv').hidden = true; };
 $('progGift').onclick = () => { $('progOv').hidden = true; openGift(giftTo); };
