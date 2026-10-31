@@ -55,3 +55,34 @@ revoke all on function public.catloft_board_submit(integer, integer, integer, te
 grant execute on function public.catloft_board_submit(integer, integer, integer, text) to authenticated;
 revoke all on function public.catloft_board_today() from public;
 grant execute on function public.catloft_board_today() to anon, authenticated;
+
+-- 2026-10-31 Chuck：「排行榜不是只有當天有上線的玩家，是所有玩家都會出現」。
+-- catloft_board_all：所有玩過至少一天（累計營收 > 0）的玩家，依存檔裡的累計營收 earned 排名，
+-- 今天有打烊的話也一起帶出今天最好的營業額（today）。今日排行 catloft_board_today 保留不動。
+-- 依賴 catloft_admin.sql 的 catloft_save_json，以及 catloft_friends.sql 的 catloft_players。
+create or replace function public.catloft_board_all()
+returns table (rank bigint, shop_name text, earned numeric, day integer, lv integer, today integer, is_me boolean, partner text)
+language sql
+stable
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+  with s as (
+    select s.user_id, s.shop_name, s.day, s.updated_at, (public.catloft_save_json(s.code) ->> 'earned')::numeric as earned
+    from public.catloft_saves s
+  ), r as (
+    select row_number() over (order by s.earned desc, s.updated_at) as rank,
+           coalesce(nullif(btrim(s.shop_name), ''), '貓咪咖啡廳') as shop_name, s.earned, s.day,
+           coalesce((select b.lv from public.catloft_board b where b.user_id = s.user_id order by b.play_date desc limit 1), p.lv, 1) as lv,
+           (select b.revenue from public.catloft_board b where b.user_id = s.user_id and b.play_date = (now() at time zone 'Asia/Taipei')::date) as today,
+           coalesce(s.user_id = auth.uid(), false) as is_me,
+           (select q.shop_name from public.catloft_players q where q.user_id = p.coop_with and q.coop_with = p.user_id) as partner
+    from s
+    left join public.catloft_players p on p.user_id = s.user_id
+    where s.earned > 0
+  )
+  select * from r where r.rank <= 300 or r.is_me order by r.rank;
+$$;
+
+revoke all on function public.catloft_board_all() from public;
+grant execute on function public.catloft_board_all() to anon, authenticated;
