@@ -225,9 +225,18 @@ function renderPlayers() {
   $('pBody').innerHTML = list.map(p => `<tr><td>${p.account ? esc(p.account) : '<span class="muted">訪客</span>'}</td><td>${esc(p.shop_name)}</td><td>${esc(p.mgr_name)}</td>
     <td class="n">${num(p.day)}</td><td class="n">${num(p.lv)}</td><td class="n">${yen(p.cash)}</td><td class="n">${p.debt ? yen(p.debt) : ''}</td><td class="n">${num(p.fans)}</td>
     <td class="n">${yen(p.earned)}</td><td class="n">${num(p.cats)}</td><td class="n">${num(p.shops)}</td><td>${esc(p.friend_code)}</td><td class="n">${playTime(p.play)}</td><td class="n">${(daysBy[p.user_id] || []).length || ''}</td><td>${when(p.updated_at)}</td>
-    <td><button data-prog="${p.user_id}">📊 進度</button> <button data-gift="${p.user_id}">🎁 送東西</button></td></tr>`).join('') || '<tr><td colspan="16" class="muted">沒有玩家</td></tr>';
+    <td><button data-prog="${p.user_id}">📊 進度</button> <button data-gift="${p.user_id}">🎁 送東西</button>${p.account ? ` <button data-pass="${p.user_id}">🔑 重設密碼</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="16" class="muted">沒有玩家</td></tr>';
   $('pBody').querySelectorAll('[data-gift]').forEach(b => b.onclick = () => openGift(players.find(p => p.user_id === b.dataset.gift)));
   $('pBody').querySelectorAll('[data-prog]').forEach(b => b.onclick = () => openProg(players.find(p => p.user_id === b.dataset.prog)));
+  // 玩家忘記密碼又沒綁 email 時，由管理者設一個新密碼再告訴他（supabase/catloft_account.sql catloft_admin_set_password）
+  $('pBody').querySelectorAll('[data-pass]').forEach(b => b.onclick = async () => {
+    const p = players.find(x => x.user_id === b.dataset.pass);
+    const pass = prompt(`幫「${p.account}」設新密碼（至少 6 個字），設好後請告訴他：`);
+    if (pass == null) return;
+    if (pass.length < 6) return toast('密碼至少要 6 個字');
+    try { const r = await rpc('catloft_admin_set_password', { p_user: p.user_id, p_pass: pass }); toast(r === 'ok' ? `「${p.account}」的新密碼設好了` : '設定失敗：' + r); }
+    catch (e) { toast('設定失敗：' + (e.message || e)); }
+  });
 }
 function renderFb(list) {
   const byId = Object.fromEntries(players.map(p => [p.user_id, p]));
