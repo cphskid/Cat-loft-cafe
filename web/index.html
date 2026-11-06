@@ -4793,8 +4793,11 @@ function renderPhone() {
   q('#repay50') && (q('#repay50').onclick = () => { sfx('wallet'); const r = Math.min(50, G.debt, G.cash); G.cash -= r; G.debt -= r; renderPhone(); });
   q('#repayAll') && (q('#repayAll').onclick = () => { sfx('wallet'); G.cash -= G.debt; G.debt = 0; toast('負債還清了'); renderPhone(); });
   q('#copyCode') && (q('#copyCode').onclick = () => copyText(q('#codeOut')));
-  q('#acctMake') && (q('#acctMake').onclick = () => makeAccount(q('#acctName').value, q('#acctPass').value));
+  q('#acctMake') && (q('#acctMake').onclick = () => makeAccount(q('#acctName').value, q('#acctPass').value, q('#acctMail').value));
   q('#acctOut') && (q('#acctOut').onclick = logOut);
+  q('#acctMailGo') && (q('#acctMailGo').onclick = async () => { if (await setEmail(q('#acctMailIn').value)) renderPhone(); });
+  q('#acctRelog') && (q('#acctRelog').onclick = () => { closePhone(true); lostCard(); });
+  if (q('#acctMailState') && CLOUD.name && CLOUD.email === undefined) loadEmail().then(() => { if (!$('phoneOv').hidden && q('#acctMailState')) renderPhone(); });
 }
 // cats work in one shop at a time (or rest in the dorm, to = 0); 暖陽貓閣 always keeps at least one
 // 送養 (once 貓咪室內樂園 is open): a cat goes to a new family, who write back a thank-you letter; fans and experience come with it
@@ -4968,18 +4971,42 @@ function decodeSave(code) {
   return out;
 }
 function cleanName(v, d, n) { return String(typeof v === 'string' ? v : '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n) || d; }
-// catloft-save-uid = which cloud account the device's save belongs to ('' = unknown, from before 2026-10-18)
-function storeLocal() { try { localStorage.setItem('catloft-save', encodeSave(G)); localStorage.setItem('catloft-save-uid', CLOUD.uid || CLOUD.lost?.uid || ''); } catch {} }
-// the device's save, when it isn't another account's
+// Local saves: one slot per account, catloft-save@<uid>, so logging in to another account on this device never writes over
+// someone's progress (2026-11-06: a player's days 100-160 lived only on her device and were lost when her daughter logged in there).
+// catloft-save (+ catloft-save-uid = '') is only a game that has no account yet; older pages kept every save there.
+const saveKey = uid => 'catloft-save@' + uid;
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function storeLocal() {
+  try {
+    const uid = CLOUD.uid || CLOUD.lost?.uid, code = encodeSave(G);
+    if (!uid) { localStorage.setItem('catloft-save', code); localStorage.setItem('catloft-save-uid', ''); return; }
+    localStorage.setItem(saveKey(uid), code);
+    if (CLOUD.claim) { CLOUD.claim = false; localStorage.removeItem('catloft-save'); localStorage.removeItem('catloft-save-uid'); } // that guest game now belongs to this account
+  } catch {}
+}
+// a save from an older page that names its account moves into that account's slot (kept if the slot is already further along)
+function migrateLocal() {
+  try {
+    const code = localStorage.getItem('catloft-save'), owner = localStorage.getItem('catloft-save-uid') || '';
+    if (!code || !owner) return;
+    const cur = localStorage.getItem(saveKey(owner));
+    if (!cur || ahead(decodeSafe(code), decodeSafe(cur))) localStorage.setItem(saveKey(owner), code);
+    localStorage.removeItem('catloft-save'); localStorage.removeItem('catloft-save-uid');
+  } catch {}
+}
+// the device's save for the account now logged in (or a guest game with no account yet, which this account may take)
 function localMine() {
-  let code = null, owner = ''; try { code = localStorage.getItem('catloft-save'); owner = localStorage.getItem('catloft-save-uid') || ''; } catch {}
-  if (!code || (owner && owner !== CLOUD.uid)) return null;
-  try { return decodeSave(code); } catch { return null; }
+  const code = CLOUD.uid && lsGet(saveKey(CLOUD.uid));
+  if (code) { try { return decodeSave(code); } catch {} }
+  const guest = lsGet('catloft-save');
+  if (!guest || lsGet('catloft-save-uid')) return null;
+  try { const g = decodeSave(guest); g._guest = true; return g; } catch { return null; }
 }
 const ahead = (a, b) => a.day !== b.day ? a.day > b.day : (a.earned || 0) > (b.earned || 0);
 // the named account this device was last logged in to, so a lost login is noticed instead of starting a new anonymous account
 function lastAcct() { try { return JSON.parse(localStorage.getItem('catloft-acct') || 'null'); } catch { return null; } }
-function rememberAcct() { try { if (CLOUD.uid && CLOUD.name) localStorage.setItem('catloft-acct', JSON.stringify({ uid: CLOUD.uid, name: CLOUD.name })); } catch {} }
+// (an anonymous account is remembered too, with name '', so its local slot is found again on the next visit)
+function rememberAcct() { try { if (CLOUD.uid) localStorage.setItem('catloft-acct', JSON.stringify({ uid: CLOUD.uid, name: CLOUD.name || '' })); } catch {} }
 // ---- account save ----
 // Inside claude.ai the viewer's account keeps one private save (data/users/<id>/save).
 // On the live site the save goes to Supabase (table catloft_saves, one row per auth user, RLS = own row only).
@@ -4987,7 +5014,8 @@ function rememberAcct() { try { if (CLOUD.uid && CLOUD.name) localStorage.setIte
 const SB_URL = 'https://bxrppdsbhuhjluprohkf.supabase.co', SB_KEY = 'sb_publishable_a99TJ4CiEW14ToPcoyn4KQ_NdoqXg2A';
 // known = updated_at (ms) of the cloud row as this page last read or wrote it (undefined = not read yet, null = no row);
 // lost = {uid, name} of a named account whose login disappeared; conflict = a newer row from another device
-const CLOUD = { db: null, sb: null, uid: null, name: '', ready: false, known: undefined, lost: null, conflict: null };
+// claim = the game was opened from the guest slot, so the first save moves it into the account's slot; email = bound recovery email (undefined = not read)
+const CLOUD = { db: null, sb: null, uid: null, name: '', ready: false, known: undefined, lost: null, conflict: null, claim: false, email: undefined };
 let sbSaving = null, sbAgain = false;
 function saveProgress() {
   storeLocal();
@@ -5013,7 +5041,7 @@ async function sbUpload() {
     if (CLOUD.lost) return; // keep it on this device until they log back in to their account
     const { data, error } = await CLOUD.sb.auth.signInAnonymously();
     if (error) throw error;
-    CLOUD.uid = data.user.id; CLOUD.known = null;
+    CLOUD.uid = data.user.id; CLOUD.known = null; rememberAcct(); storeLocal();
   }
   // a row this page hasn't seen that is further along was saved by another device (or an old tab is still open here): never overwrite it
   const { data: row, error: rerr } = await CLOUD.sb.from('catloft_saves').select('day,updated_at').eq('user_id', CLOUD.uid).maybeSingle();
@@ -5036,16 +5064,38 @@ function showConflict(row) {
 }
 // account names can be any text (Chinese too); Supabase wants an email, so the name is hex-encoded into one
 function acctEmail(name) { return 'u' + [...new TextEncoder().encode(name.trim().toLowerCase())].map(b => b.toString(16).padStart(2, '0')).join('') + '@catloft.player'; }
+const EMAIL_WARN = '沒有綁定 email 的話，忘記密碼就沒辦法重新設定，進度也拿不回來。';
 function acctAppHtml() {
-  if (CLOUD.lost && !CLOUD.uid) return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span><b>${CLOUD.lost.name}（已登出）</b></div><div class="sub">這台裝置原本登入的帳號「${CLOUD.lost.name}」已經登出了，進度現在只存在這台裝置。回到標題畫面按「用帳號登入」再登入一次，就會接著存回帳號裡。</div></div>`;
-  if (CLOUD.name) return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span><b>${CLOUD.name}</b></div><div class="sub">進度會自動存到雲端。換手機時在標題畫面按「用帳號登入」就能接著玩。</div><div class="row" style="margin:6px 0 0"><button id="acctOut">登出</button></div></div>`;
+  if (CLOUD.lost && !CLOUD.uid) return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span><b>${CLOUD.lost.name}（已登出）</b></div><div class="sub" style="color:var(--bad)">這台裝置原本登入的帳號「${CLOUD.lost.name}」已經登出了，進度現在只存在這台裝置。再登入一次，就會存回帳號裡。</div><div class="row" style="margin:6px 0 0"><button class="primary" id="acctRelog">登入，存回帳號</button></div></div>`;
+  if (CLOUD.name) {
+    const mail = CLOUD.email === undefined ? '讀取中…' : CLOUD.email ? `已綁定 <b>${CLOUD.email}</b>` : `<span style="color:var(--bad)">還沒綁定。${EMAIL_WARN}</span>`;
+    return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span><b>${CLOUD.name}</b></div><div class="sub">進度會自動存到雲端。換手機時在標題畫面按「用帳號登入」就能接著玩。</div>
+    <div class="sub" id="acctMailState" style="margin-top:6px">找回密碼用的 email：${mail}</div>
+    <label class="fld">${CLOUD.email ? '換一個 email' : '綁定 email'}<input id="acctMailIn" type="email" maxlength="120" autocomplete="email" placeholder="爸爸媽媽的 email 也可以"></label>
+    <div class="row" style="margin:0"><button class="primary" id="acctMailGo">綁定</button><button id="acctOut">登出</button></div></div>`;
+  }
   return `<div class="item" style="margin-top:12px"><div class="top"><span class="nm">雲端帳號</span></div>
-    <div class="sub">進度已經自動存到雲端了，但只認得這台裝置。設定帳號名稱和密碼，換手機或清掉瀏覽器也能用帳號登入接著玩。</div>
+    <div class="sub" style="color:var(--bad)">進度已經自動存到雲端了，但只認得這台裝置。設定帳號名稱和密碼，換手機、清掉瀏覽器或別人在這台登入，都能用帳號登入接著玩。</div>
     <label class="fld">帳號名稱（2–10 個字）<input id="acctName" maxlength="10" autocomplete="username"></label>
     <label class="fld">密碼（至少 6 個字）<input id="acctPass" type="password" autocomplete="new-password"></label>
+    <label class="fld">email（忘記密碼時用）<input id="acctMail" type="email" maxlength="120" autocomplete="email"></label>
+    <p class="muted" style="margin:0 0 6px;font-size:12px">${EMAIL_WARN}</p>
     <div class="row" style="margin:0"><button class="primary" id="acctMake">建立帳號</button></div></div>`;
 }
-async function makeAccount(name, pass) {
+// ---- recovery email (supabase/catloft_account.sql): kept beside the account, not as the login email ----
+async function loadEmail() {
+  if (!CLOUD.sb || !CLOUD.name) return;
+  const { data, error } = await CLOUD.sb.rpc('catloft_my_email');
+  if (!error) CLOUD.email = data || '';
+}
+async function setEmail(v) {
+  v = String(v || '').trim();
+  if (!/^[^@\s<>"']+@[^@\s<>"']+\.[^@\s<>"']+$/.test(v)) { toast('email 格式不太對，再檢查一下'); return false; }
+  const { data, error } = await CLOUD.sb.rpc('catloft_set_email', { p_email: v });
+  if (error || data !== 'ok') { toast(data === 'bad' ? 'email 格式不太對，再檢查一下' : '綁定失敗，請稍後再試'); return false; }
+  CLOUD.email = v.toLowerCase(); toast('email 綁定好了！忘記密碼時可以用它重設'); return true;
+}
+async function makeAccount(name, pass, mail) {
   name = cleanName(name, '', 10);
   if (name.length < 2) return toast('帳號名稱至少要 2 個字');
   if (!pass || pass.length < 6) return toast('密碼至少要 6 個字');
@@ -5054,37 +5104,35 @@ async function makeAccount(name, pass) {
     if (!CLOUD.uid) return;
     const { error } = await CLOUD.sb.auth.updateUser({ email: acctEmail(name), password: pass, data: { name } });
     if (error) return toast(/already|registered|exists/i.test(error.message) ? '這個帳號名稱有人用了，換一個吧' : '建立帳號失敗：' + error.message);
-    CLOUD.name = name; rememberAcct(); showAcct(); toast(`帳號「${name}」建好了！記得密碼喔`); renderPhone();
+    CLOUD.name = name; CLOUD.email = ''; rememberAcct(); showAcct(); toast(`帳號「${name}」建好了！記得密碼喔`);
+    if (String(mail || '').trim()) await setEmail(mail);
+    if (!$('phoneOv').hidden) renderPhone();
+    return true;
   } catch (e) { toast('建立帳號失敗，請稍後再試'); }
 }
 async function logOut() {
   if (started) await sbSave(); // on the title screen G is only the demo game, never upload it
-  await CLOUD.sb.auth.signOut();
-  try { for (const k of ['catloft-save', 'catloft-save-uid', 'catloft-acct']) localStorage.removeItem(k); } catch {}
+  // scope local: only this device logs out. The default ('global') also logged the account out on every other device,
+  // which then quietly kept their progress only on that device. The account's local slot stays, so nothing is lost.
+  await CLOUD.sb.auth.signOut({ scope: 'local' });
+  try { localStorage.removeItem('catloft-acct'); } catch {}
   location.reload();
 }
-function openLogin() {
+function openLogin(prefill) {
   const card = $('chooseCard');
-  card.innerHTML = `<h2>用帳號登入</h2><p class="muted">輸入在遊戲手機「存檔碼」裡建立的帳號，就能接著玩雲端上的進度。</p>
+  card.innerHTML = `<h2>用帳號登入</h2><p class="muted">輸入你的帳號名稱和密碼，就能接著玩雲端上的進度。</p>
     <label class="fld">帳號名稱<input id="inUser" maxlength="10" autocomplete="username"></label>
     <label class="fld">密碼<input id="inPass" type="password" autocomplete="current-password"></label>
     <div class="row"><button id="loginBack">返回</button><button class="primary" id="loginGo">登入</button></div>
-    <p class="muted" style="margin-top:12px">還沒有帳號？填好想要的帳號名稱（2–10 個字）和密碼（至少 6 個字），按下面就能開一個新帳號，從第 1 天開始玩。</p>
+    <p class="muted" style="margin:10px 0 0"><a href="#" id="forgotGo" style="color:inherit">忘記密碼？</a></p>
+    <p class="muted" style="margin-top:12px">還沒有帳號？</p>
     <div class="row"><button id="signupGo">建立新帳號並開新遊戲</button></div>`;
-  $('chooseOv').hidden = false; $('inUser').focus();
+  $('chooseOv').hidden = false;
+  if (prefill) $('inUser').value = prefill;
+  (prefill ? $('inPass') : $('inUser')).focus();
   $('loginBack').onclick = () => { $('chooseOv').hidden = true; };
-  $('signupGo').onclick = async () => {
-    const name = cleanName($('inUser').value, '', 10), pass = $('inPass').value;
-    if (name.length < 2) return toast('帳號名稱至少要 2 個字');
-    if (!pass || pass.length < 6) return toast('密碼至少要 6 個字');
-    $('signupGo').disabled = true;
-    const { data, error } = await CLOUD.sb.auth.signUp({ email: acctEmail(name), password: pass, options: { data: { name } } });
-    $('signupGo').disabled = false;
-    if (error || !data.session) return toast(error && /already|registered|exists/i.test(error.message) ? '這個帳號名稱有人用了，換一個吧' : '建立帳號失敗，請稍後再試');
-    CLOUD.uid = data.user.id; CLOUD.name = name; CLOUD.lost = null; CLOUD.known = null; rememberAcct(); showAcct();
-    $('contBtn').hidden = true; $('newBtn').textContent = '開始新遊戲'; confirmNew = false;
-    toast(`帳號「${name}」建好了！記得密碼喔`); openSetup();
-  };
+  $('forgotGo').onclick = e => { e.preventDefault(); openForgot($('inUser').value.trim()); };
+  $('signupGo').onclick = () => openSignup();
   $('loginGo').onclick = async () => {
     const name = $('inUser').value.trim(), pass = $('inPass').value;
     if (!name || !pass) return toast('請輸入帳號名稱和密碼');
@@ -5103,6 +5151,151 @@ function openLogin() {
     if (loc && (!g || ahead(loc, g))) return pickSave(g, loc);
     if (g) { begin(g); toast(`歡迎回來，${CLOUD.name}！第 ${g.day} 天`); }
     else toast(`已登入「${CLOUD.name}」，這個帳號還沒有存檔，開始新遊戲吧`);
+  };
+}
+// a new game always starts with an account (2026-11-06), so the progress is never only on one device
+function openSignup() {
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>先建立你的帳號</h2><p class="muted">有了帳號，進度會存在雲端，換手機、清掉瀏覽器或家人在這台登入都不會不見。</p>
+    <label class="fld">帳號名稱（2–10 個字）<input id="suUser" maxlength="10" autocomplete="username"></label>
+    <label class="fld">密碼（至少 6 個字）<input id="suPass" type="password" autocomplete="new-password"></label>
+    <label class="fld">再輸入一次密碼<input id="suPass2" type="password" autocomplete="new-password"></label>
+    <label class="fld">email（忘記密碼時用）<input id="suMail" type="email" maxlength="120" autocomplete="email" placeholder="爸爸媽媽的 email 也可以"></label>
+    <p class="muted" style="margin:0 0 6px;font-size:12px">${EMAIL_WARN}</p>
+    <div class="row"><button id="suBack">返回</button><button class="primary" id="suGo">建立帳號，開新遊戲</button></div>
+    <p class="muted" style="margin:10px 0 0">已經有帳號了？<a href="#" id="suLogin" style="color:inherit">用帳號登入</a></p>`;
+  $('chooseOv').hidden = false; $('suUser').focus();
+  $('suBack').onclick = () => { $('chooseOv').hidden = true; };
+  $('suLogin').onclick = e => { e.preventDefault(); openLogin(); };
+  $('suGo').onclick = async () => {
+    const name = cleanName($('suUser').value, '', 10), pass = $('suPass').value, mail = $('suMail').value.trim();
+    if (name.length < 2) return toast('帳號名稱至少要 2 個字');
+    if (!pass || pass.length < 6) return toast('密碼至少要 6 個字');
+    if (pass !== $('suPass2').value) return toast('兩次密碼不一樣，再輸入一次');
+    if (mail && !/^[^@\s<>"']+@[^@\s<>"']+\.[^@\s<>"']+$/.test(mail)) return toast('email 格式不太對，再檢查一下');
+    $('suGo').disabled = true;
+    const { data, error } = await CLOUD.sb.auth.signUp({ email: acctEmail(name), password: pass, options: { data: { name } } });
+    $('suGo').disabled = false;
+    if (error || !data.session) return toast(error && /already|registered|exists/i.test(error.message) ? '這個帳號名稱有人用了，換一個吧' : '建立帳號失敗，請稍後再試');
+    CLOUD.uid = data.user.id; CLOUD.name = name; CLOUD.email = ''; CLOUD.lost = null; CLOUD.known = null; CLOUD.conflict = null; rememberAcct(); showAcct();
+    if (mail) await setEmail(mail);
+    $('contBtn').hidden = true; $('newBtn').textContent = '開始新遊戲'; confirmNew = false;
+    toast(`帳號「${name}」建好了！記得密碼喔`); openSetup();
+  };
+}
+// 忘記密碼: the account name + the bound email → a reset link mailed from catloftcafe@ciyulab.com (supabase/functions/catloft-reset)
+function openForgot(name) {
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>忘記密碼</h2><p class="muted">填帳號名稱和綁定的 email，我們會寄一封重設密碼的信過去（30 分鐘內有效）。</p>
+    <label class="fld">帳號名稱<input id="fgUser" maxlength="10" autocomplete="username"></label>
+    <label class="fld">綁定的 email<input id="fgMail" type="email" maxlength="120" autocomplete="email"></label>
+    <div class="row"><button id="fgBack">返回</button><button class="primary" id="fgGo">寄重設信</button></div>
+    <p class="muted" style="font-size:12px">沒有綁定 email 的帳號沒辦法自己重設，可以用「💬 問題回報」跟我們說。</p>`;
+  $('chooseOv').hidden = false;
+  if (name) $('fgUser').value = name;
+  (name ? $('fgMail') : $('fgUser')).focus();
+  $('fgBack').onclick = () => openLogin($('fgUser').value.trim());
+  $('fgGo').onclick = async () => {
+    const n = $('fgUser').value.trim(), m = $('fgMail').value.trim();
+    if (!n || !m) return toast('請填帳號名稱和 email');
+    $('fgGo').disabled = true;
+    let st = 'error';
+    try { const { data, error } = await CLOUD.sb.functions.invoke('catloft-reset', { body: { name: n, email: m } }); if (!error) st = data?.status || 'error'; } catch {}
+    $('fgGo').disabled = false;
+    if (st === 'ok') { card.innerHTML = `<h2>信寄出去了 📮</h2><p>請到 <b>${cleanName(m, '', 120)}</b> 收信，點信裡的「設定新密碼」。30 分鐘內有效。</p><p class="muted">沒看到的話，看一下垃圾郵件匣。</p><div class="row"><button class="primary" id="fgOk">好</button></div>`; $('fgOk').onclick = () => openLogin(n); }
+    else toast(st === 'nomatch' ? '帳號名稱和綁定的 email 對不起來（或這個帳號沒有綁定 email）' : st === 'wait' ? '一小時內寄太多次了，等一下再試' : '寄信失敗，請稍後再試');
+  };
+}
+// the link in that mail opens /?reset=<code>
+function openReset(token) {
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>設定新密碼</h2>
+    <label class="fld">新密碼（至少 6 個字）<input id="rsPass" type="password" autocomplete="new-password"></label>
+    <label class="fld">再輸入一次<input id="rsPass2" type="password" autocomplete="new-password"></label>
+    <div class="row"><button id="rsBack">取消</button><button class="primary" id="rsGo">設定</button></div>`;
+  $('chooseOv').hidden = false; $('rsPass').focus();
+  $('rsBack').onclick = () => { $('chooseOv').hidden = true; };
+  $('rsGo').onclick = async () => {
+    const pass = $('rsPass').value;
+    if (!pass || pass.length < 6) return toast('密碼至少要 6 個字');
+    if (pass !== $('rsPass2').value) return toast('兩次密碼不一樣，再輸入一次');
+    $('rsGo').disabled = true;
+    const { data, error } = await CLOUD.sb.rpc('catloft_reset_password', { p_token: token, p_pass: pass });
+    $('rsGo').disabled = false;
+    if (error) return toast('設定失敗，請稍後再試');
+    if (data === 'bad') { card.innerHTML = `<h2>連結過期了</h2><p>這個連結已經用過或超過 30 分鐘了，請再按一次「忘記密碼」重寄。</p><div class="row"><button class="primary" id="rsAgain">重寄</button></div>`; $('rsAgain').onclick = () => openForgot(''); return; }
+    if (!String(data).startsWith('ok')) return toast('密碼至少要 6 個字');
+    toast('新密碼設定好了！用新密碼登入吧'); openLogin(String(data).slice(3));
+  };
+}
+// ---- account reminders once the shop is open ----
+// lost login: every time (the progress is only on this device); anonymous account / no recovery email: once a day
+const nagToday = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+function nagged(kind) { return lsGet('catloft-nag-' + kind) === nagToday(); }
+function markNag(kind) { try { localStorage.setItem('catloft-nag-' + kind, nagToday()); } catch {} }
+const nagFree = () => started && S && $('chooseOv').hidden && $('phoneOv').hidden && $('settleOv').hidden && !S.cook && !S.reg && !S.mini && !S.out;
+async function acctNag() {
+  if (!CLOUD.sb || CLOUD.db) return;
+  await CLOUD.checked; if (sbSaving) await sbSaving;
+  if (CLOUD.name && CLOUD.email === undefined) await loadEmail();
+  const kind = CLOUD.lost && !CLOUD.uid ? 'lost' : CLOUD.uid && !CLOUD.name ? 'anon' : CLOUD.name && CLOUD.email === '' ? 'email' : null;
+  if (!kind || (kind !== 'lost' && nagged(kind))) return;
+  for (let i = 0; i < 60 && !nagFree(); i++) await new Promise(r => setTimeout(r, 3000)); // wait for the check-in card, tutorial etc.
+  if (!nagFree()) return;
+  if (kind === 'lost') return lostCard();
+  markNag(kind);
+  const card = $('chooseCard');
+  if (kind === 'anon') {
+    card.innerHTML = `<h2>幫你的店取個帳號吧</h2><p>「${G.shopName}」第 ${G.day} 天的進度現在只認得這台裝置。換手機、清掉瀏覽器，或家人在這台登入別的帳號，進度就可能找不回來。</p>
+      <p class="muted">取帳號名稱和密碼，現在的店、貓咪和錢都會原封不動留著。</p>
+      <label class="fld">帳號名稱（2–10 個字）<input id="ngName" maxlength="10" autocomplete="username"></label>
+      <label class="fld">密碼（至少 6 個字）<input id="ngPass" type="password" autocomplete="new-password"></label>
+      <label class="fld">email（忘記密碼時用）<input id="ngMail" type="email" maxlength="120" autocomplete="email" placeholder="爸爸媽媽的 email 也可以"></label>
+      <p class="muted" style="margin:0 0 6px;font-size:12px">${EMAIL_WARN}</p>
+      <div class="row"><button id="ngLater">之後再說</button><button class="primary" id="ngGo">建立帳號</button></div>`;
+    $('ngGo').onclick = async () => { $('ngGo').disabled = true; const ok = await makeAccount($('ngName').value, $('ngPass').value, $('ngMail').value); $('ngGo').disabled = false; if (ok) closeChoose(); };
+  } else {
+    card.innerHTML = `<h2>綁定 email</h2><p>帳號「${CLOUD.name}」還沒有綁定 email。</p><p style="color:var(--bad)">${EMAIL_WARN}</p>
+      <label class="fld">email<input id="ngMail" type="email" maxlength="120" autocomplete="email" placeholder="爸爸媽媽的 email 也可以"></label>
+      <div class="row"><button id="ngLater">之後再說</button><button class="primary" id="ngGo">綁定</button></div>
+      <p class="muted" style="font-size:12px">之後也可以在手機「存檔碼」裡綁定。</p>`;
+    $('ngGo').onclick = async () => { $('ngGo').disabled = true; const ok = await setEmail($('ngMail').value); $('ngGo').disabled = false; if (ok) closeChoose(); };
+  }
+  $('ngLater').onclick = closeChoose;
+  $('chooseOv').hidden = false; S.uiPause = true;
+}
+// the device's login to a named account is gone: log back in right here and the progress goes up to the account
+function lostCard() {
+  const la = CLOUD.lost; if (!la || CLOUD.uid || !started) return;
+  const card = $('chooseCard');
+  card.innerHTML = `<h2>☁️ 進度還沒存進帳號</h2><p>這台裝置原本登入的帳號「${la.name}」已經登出了，「${G.shopName}」第 ${G.day} 天的進度現在<b>只存在這台裝置</b>。</p>
+    <p class="muted">輸入密碼再登入一次，就會存回帳號。</p>
+    <label class="fld">帳號「${la.name}」的密碼<input id="lsPass" type="password" autocomplete="current-password"></label>
+    <div class="row"><button id="lsLater">先不要</button><button class="primary" id="lsGo">登入，存回帳號</button></div>
+    <p class="muted" style="margin:10px 0 0"><a href="#" id="lsForgot" style="color:inherit">忘記密碼？</a></p>`;
+  $('chooseOv').hidden = false; S.uiPause = true; $('lsPass').focus();
+  $('lsLater').onclick = closeChoose;
+  $('lsForgot').onclick = e => { e.preventDefault(); openForgot(la.name); };
+  $('lsGo').onclick = async () => {
+    const pass = $('lsPass').value; if (!pass) return toast('請輸入密碼');
+    $('lsGo').disabled = true;
+    const { data, error } = await CLOUD.sb.auth.signInWithPassword({ email: acctEmail(la.name), password: pass });
+    $('lsGo').disabled = false;
+    if (error) return toast('密碼不對');
+    if (data.user.id !== la.uid) { await CLOUD.sb.auth.signOut({ scope: 'local' }); return toast('這不是原本那個帳號，請到標題畫面切換帳號'); }
+    const { data: row, error: rerr } = await CLOUD.sb.from('catloft_saves').select('day,updated_at').eq('user_id', la.uid).maybeSingle();
+    if (rerr) { await CLOUD.sb.auth.signOut({ scope: 'local' }); return toast('讀不到雲端存檔，請稍後再試'); }
+    CLOUD.uid = la.uid; CLOUD.name = cleanName(data.user.user_metadata?.name, la.name, 10); CLOUD.lost = null; CLOUD.conflict = null; CLOUD.email = undefined; rememberAcct(); showAcct();
+    window.FRIENDS?.load(true);
+    if (row && (row.day || 0) > G.day) {
+      card.innerHTML = `<h2>要留哪一份？</h2><p>帳號雲端上是第 ${row.day} 天，比這台的第 ${G.day} 天還前面。</p>
+        <div class="row" style="flex-direction:column;align-items:stretch"><button class="primary" id="lsCloud">載入雲端第 ${row.day} 天</button><button id="lsHere">用這台的第 ${G.day} 天蓋過去</button></div>`;
+      $('lsCloud').onclick = () => location.reload();
+      $('lsHere').onclick = () => { CLOUD.known = +new Date(row.updated_at); closeChoose(); sbSave(); toast('存回帳號了'); };
+      return;
+    }
+    CLOUD.known = row ? +new Date(row.updated_at) : null;
+    closeChoose(); await sbSave(); toast(`登入了！第 ${G.day} 天已經存回帳號「${CLOUD.name}」`);
   };
 }
 // this device has a save further along than the account's: let the player choose instead of loading the older one
@@ -5139,10 +5332,10 @@ async function checkSession(sb) {
   // if a game was already opened from this device's save and the cloud is further along, leave known unset so that save is stopped
   if (!started || !row || (row.day || 0) <= G.day) CLOUD.known = row ? +new Date(row.updated_at) : null;
   if (started) return;
-  let owner = ''; try { owner = localStorage.getItem('catloft-save-uid') || ''; } catch {}
   const loc = localMine();
   if (row && (!loc || !ahead(loc, decodeSafe(row.code)))) offerContinue(row.code, CLOUD.name ? '帳號 ' + CLOUD.name : '雲端存檔');
-  else if (!row && localCode && owner && owner !== CLOUD.uid) { $('contBtn').hidden = true; $('newBtn').textContent = '開始新遊戲'; } // another account's save: don't continue it into this one
+  else if (loc) offerContinue(encodeSave(loc), '這台裝置', loc._guest);
+  else if (localCode) { $('contBtn').hidden = true; $('newBtn').textContent = '開始新遊戲'; } // another account's save: don't continue it into this one
 }
 function decodeSafe(code) { try { return decodeSave(code); } catch { return { day: 0 }; } }
 function showAcct() {
@@ -5158,7 +5351,7 @@ function showAcct() {
     line.textContent = `已用帳號「${CLOUD.name}」登入，進度會自動存到雲端，換裝置也能接著玩。`;
     chip.textContent = `・${CLOUD.name}・雲端存檔`;
   } else if (CLOUD.sb) {
-    line.textContent = '進度會自動存到雲端。想換手機玩，可以在遊戲手機的「存檔碼」建立帳號。';
+    line.textContent = CLOUD.uid ? '進度存在雲端，但還沒有帳號名稱，只認得這台裝置。請到遊戲手機的「存檔碼」建立帳號。' : '開新遊戲時會先建立帳號；已經有帳號的話按「用帳號登入」。';
     chip.textContent = '・雲端存檔';
   } else {
     line.textContent = '沒有登入帳號，進度會自動存在這台裝置的瀏覽器裡。';
@@ -5166,8 +5359,9 @@ function showAcct() {
   }
   if (CLOUD.sb && !CLOUD.db) { $('loginBtn').hidden = !!CLOUD.name; $('logoutBtn').hidden = !CLOUD.name; }
 }
-function offerContinue(code, src) {
+function offerContinue(code, src, guest) {
   let g; try { g = decodeSave(code); } catch { return; }
+  if (guest) g._guest = true;
   const b = $('contBtn');
   b.hidden = false; b.textContent = `繼續「${g.shopName}」第 ${g.day} 天（${src}）`;
   b.onclick = () => begin(g);
@@ -5450,6 +5644,7 @@ function closeDay() {
 let opening = false;
 async function begin(newG) {
   if (opening) return; opening = true;
+  CLOUD.claim = !!newG._guest; delete newG._guest; // a guest game opened now: its first save moves it into the account's slot
   const outfit = [0, 1, 2].map(i => (OUTFITS.find(o => o.id === newG.outfit) || OUTFITS[0]).spr + (newG.mgrSex === 'm' ? 'm' : '') + '_' + i);
   if (newG.at === 2) outfit.push('s2bg1', 's2bg2', 's2bg4');
   if (newG.at === 3) outfit.push('s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6');
@@ -5464,7 +5659,7 @@ async function begin(newG) {
   opening = false;
   openShop(newG);
 }
-function openShop(newG) { G = newG; S = null; applyLayout(G.at); startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; renderTutorial(); setMusic(G.music); sfx('morning'); saveProgress(); if (window.MEOW) MEOW.onOpen(); }
+function openShop(newG) { G = newG; S = null; applyLayout(G.at); startDay(); S.startG = snapshotG(G); started = true; $('titleOv').hidden = true; CAM.snap = true; renderTutorial(); setMusic(G.music); sfx('morning'); saveProgress(); if (window.MEOW) MEOW.onOpen(); setTimeout(acctNag, 3000); }
 function openSetup() {
   const card = $('chooseCard');
   let sex = 'f';
@@ -5489,13 +5684,19 @@ function showPopup(html) {
 let confirmNew = false;
 $('newBtn').onclick = () => {
   if (!$('contBtn').hidden && !confirmNew) { confirmNew = true; $('newBtn').textContent = CLOUD.name ? `確定重新開始？帳號「${CLOUD.name}」的進度會被蓋掉` : '確定重新開始？舊進度會被蓋掉'; return; }
+  if (CLOUD.sb && !CLOUD.db && !CLOUD.name) return openSignup(); // without the cloud (script failed to load) the game still runs on this device
   openSetup();
 };
 $('loginBtn').onclick = () => { if (CLOUD.sb) openLogin(); };
 $('logoutBtn').onclick = () => { if (CLOUD.sb) { $('logoutBtn').disabled = true; logOut(); } };
 $('loadBtn').onclick = () => { try { const g = decodeSave($('loadCode').value); begin(g); toast('讀取成功，第 ' + g.day + ' 天'); } catch (e) { toast('讀不到存檔碼：' + e.message); } };
-let localCode = null; try { localCode = localStorage.getItem('catloft-save'); } catch {}
-if (localCode) offerContinue(localCode, '這台裝置');
+migrateLocal();
+// the slot of the account this device was last on, else a guest game that has no account yet
+const localGuest = !lsGet('catloft-save-uid') && lsGet('catloft-save');
+const localCode = (lastAcct()?.uid && lsGet(saveKey(lastAcct().uid))) || localGuest || null;
+if (localCode) offerContinue(localCode, '這台裝置', localCode === localGuest);
+const resetToken = new URLSearchParams(location.search).get('reset');
+if (resetToken) { history.replaceState(null, '', location.pathname); (async () => { while (!CLOUD.ready) await new Promise(r => setTimeout(r, 200)); if (CLOUD.sb) openReset(resetToken); })(); }
 initCloud();
 
 // ====================== boot ======================

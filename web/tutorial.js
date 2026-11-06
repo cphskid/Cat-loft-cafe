@@ -92,7 +92,7 @@
 
   // only the very first time on this device: a finished or skipped guide, or any save past day 1, means it has been seen
   let seen = false;
-  try { const c = localStorage.getItem('catloft-save'); seen = !!localStorage.getItem('catloft-tut') || (!!c && decodeSave(c).day > 1); } catch {}
+  try { seen = !!localStorage.getItem('catloft-tut') || Object.keys(localStorage).some(k => /^catloft-save(@|$)/.test(k) && decodeSave(localStorage.getItem(k)).day > 1); } catch {}
   const markSeen = () => { seen = true; try { localStorage.setItem('catloft-tut', '1'); } catch {} };
   const active = () => started && S && S.day === 1 && !seen && !G.tutDone && !S.tutOff;
   function state() {
