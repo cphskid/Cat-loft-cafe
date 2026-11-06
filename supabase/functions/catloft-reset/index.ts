@@ -6,6 +6,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
 const FROM = '暖陽貓閣 <catloftcafe@ciyulab.com>';
+const REPLY_TO = 'timepark@ciyulab.com'; // catloftcafe@ 沒有收信箱；Chuck 2026-11-06：玩家回信先收到 timepark 的信箱
 const SITE = 'https://catloftcafe.ciyulab.com/';
 const ORIGINS = ['https://catloftcafe.ciyulab.com', 'https://cphskid.github.io', 'http://localhost:8000', 'http://127.0.0.1:8000'];
 
@@ -38,13 +39,13 @@ Deno.serve(async req => {
   <h2 style="color:#8a5a3b">暖陽貓閣・重設密碼</h2>
   <p>有人（希望是你）幫帳號「<b>${acct}</b>」申請重設密碼。</p>
   <p><a href="${link}" style="display:inline-block;background:#e0894f;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none">設定新密碼</a></p>
-  <p style="font-size:13px;color:#8a7766">這個連結 30 分鐘內有效，只能用一次。如果不是你申請的，不用理這封信，密碼不會改變。<br>這封信由系統寄出，不用回覆。</p></div>`;
-  const text = `暖陽貓閣・重設密碼\n\n帳號「${data.account || name}」申請重設密碼，請在 30 分鐘內打開下面的連結設定新密碼：\n${link}\n\n如果不是你申請的，不用理這封信，密碼不會改變。這封信由系統寄出，不用回覆。`;
+  <p style="font-size:13px;color:#8a7766">這個連結 30 分鐘內有效，只能用一次。如果不是你申請的，不用理這封信，密碼不會改變。<br>有問題可以直接回覆這封信。</p></div>`;
+  const text = `暖陽貓閣・重設密碼\n\n帳號「${data.account || name}」申請重設密碼，請在 30 分鐘內打開下面的連結設定新密碼：\n${link}\n\n如果不是你申請的，不用理這封信，密碼不會改變。有問題可以直接回覆這封信。`;
 
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM, to: [email.trim().toLowerCase()], subject: '暖陽貓閣：重設密碼的連結', html, text }),
+    body: JSON.stringify({ from: FROM, to: [email.trim().toLowerCase()], subject: '暖陽貓閣：重設密碼的連結', html, text, reply_to: REPLY_TO }),
   });
   return reply(r.ok ? 'ok' : 'mailfail', r.ok ? 200 : 502);
 });
