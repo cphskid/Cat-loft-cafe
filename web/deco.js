@@ -4,6 +4,7 @@
 // 收起來的傢俱沒有效果，擺出來才有。每件傢俱也可以左右翻轉（座位不行）、收起來、放回原位、換顏色（原色免費，其他顏色每次 ¥100 或 ¥200）。
 // 三家店各自記在 G.place（每家店的存檔欄位），格式 { 傢俱: { dx, dy, flip, col, hide } }，位置是跟原本擺法差多少。
 // 客人坐著的位子、還沒收的桌子不能搬；貓咪正在爬的傢俱一搬，貓就跳下來。
+// 商店買的新傢俱（DECOR）每件各自一筆 G.place[d_<款式>_<第幾件>] = { dx, dy, f }（dx/dy 就是位置），買了自動找空位，沒空位就先收起來；收起來再拿出來會放在正在看的樓層。
 // 用到 index.html 的全域：G、S、W、V、CAM、DRAG、g、ctx、art、propArt、toast、sfx、yen、hasF、hid、flipped、plantSpot、seatSync、applyPlace、
 // ownF、saveProgress、toCanvas、closeDrawer、setHudMore、floorsHere、fname、fw、PROP、SHOWCASE、MURAL、WALLWALK、BAR_SEATS、BEANBAG_SEATS、HAMMOCK_SEATS、
 // CUSHION_EXTRA、CUSHION_POS、EXPANSIONS、TABLE_POS、TOYS、toysHere、LAYOUT、STAIRS、STAIR_BOTTOM、WELL_2F、QUEUE、COUNTER、MGR_COUNTER、
@@ -51,16 +52,21 @@
     if (G.at === 3) CUSHION_POS.forEach((p, i) => seat(p, 'c' + i, '坐墊', 'cushion', 7, 62, p.f || 2));
     for (const t of toysHere()) { const T = TOYS[t];
       add({ key: t, f: 2, name: T.name, ref: T, refs: [T, T.seat], mode: T.by > 500 ? 'floor' : 'wall', price: BIG, fun: true, calls: () => [{ n: T.img, x: T.x, y: T.y, w: T.w }] }); }
+    // the newer furniture (bought from the shop's categories): each piece on its own, any floor; never placed = put away
+    for (const d of DECO_PIECES) { const { P, D, seats } = d;
+      L.push({ key: d.key, get f() { return P.f; }, name: D.name, ref: P, refs: [P, ...seats], bx: 0, by: 0, deco: true, mode: D.mode, seat: !!seats.length, flip: !seats.length,
+        price: D.price >= 200 ? BIG : SMALL, fun: !!D.perch, calls: () => [{ n: 'fx_' + d.id, x: P.x, y: P.y + (seats.length ? 6 : 0), w: D.w, h: D.h }] }); }
     return L;
   }
   let ITEMS = [];
   const rec = k => G.place[k] || {};
-  const here = () => ITEMS.filter(it => it.f === S.view);
+  const here = (f = S.view) => ITEMS.filter(it => it.f === f);
+  const decoFloors = it => it.seat ? (G.at === 3 ? [2, 5, 6] : [2]) : floorsHere().filter(f => f !== 4); // seats only where guests sit on cushions
 
   // the painted box of a piece (from its images), for tapping and outlines
   function box(it, dx = 0, dy = 0) {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-    for (const c of it.calls()) { const im = art(c.n), h = im ? c.w * im.naturalHeight / im.naturalWidth : c.w * .8;
+    for (const c of it.calls()) { const im = art(c.n), h = im ? c.w * im.naturalHeight / im.naturalWidth : c.h || c.w * .8;
       x0 = Math.min(x0, c.x - c.w / 2); x1 = Math.max(x1, c.x + c.w / 2); y0 = Math.min(y0, c.y - h); y1 = Math.max(y1, c.y); }
     return { x0: x0 + dx, x1: x1 + dx, y0: y0 + dy, y1: y1 + dy };
   }
@@ -86,16 +92,41 @@
     }
     return P;
   }
+  // the stairs painted into each floor's background (x ranges, negative = counted from the floor's right end):
+  // nothing stands or hangs on the 1F staircase; on the upper floors nothing stands by the stairwell (wall hangings are fine)
+  const STAIR_ZONES = { 1: { 1: [[0, 262]], 2: [[0, 140]] }, 2: { 1: [[0, 255]], 2: [[0, 140], [-235, 0]] }, 3: { 1: [[0, 290]], 2: [[0, 80], [-180, 0]], 5: [[0, 190], [-100, 0]], 6: [[0, 100], [-170, 0]] } };
+  function onStairs(it, b, f) {
+    if (it.mode === 'hang' && f !== 1) return false;
+    return ((STAIR_ZONES[G.at] || {})[f] || []).some(([a, z]) => { const x0 = a < 0 ? fw(f) + a : a, x1 = z <= 0 && a < 0 ? fw(f) + z : z; return b.x0 < x1 && b.x1 > x0; });
+  }
+  // what is painted on the walls (oven cabinet, menu board, doors, windows...): the newer pieces don't stand in front of or hang over these
+  const PAINTED = {
+    1: { 1: { wall: [[296, 425], [765, 856], [905, 960]], hang: [[0, 262], [300, 420], [452, 668], [686, 742], [765, 860], [898, 960]] },
+         2: { wall: [[140, 270], [512, 602]], hang: [[32, 112], [140, 270], [512, 602], [652, 882], [888, 960]] } },
+    2: { 1: { wall: [[296, 422], [762, 844], [1095, 1440]], hang: [[0, 255], [302, 412], [450, 654], [684, 725], [762, 844], [912, 1078], [1095, 1440]] },
+         2: { wall: [[140, 270], [515, 598]], hang: [[140, 270], [515, 598], [654, 876], [1074, 1214], [1205, 1440]] } },
+    3: { 1: { wall: [[296, 422], [460, 652], [763, 844], [1085, 1440]], hang: [[0, 290], [302, 412], [460, 652], [684, 725], [763, 844], [922, 1012], [1085, 1440]] },
+         2: { wall: [[140, 270], [502, 594]], hang: [[140, 270], [502, 594], [732, 1000], [1104, 1440]] } },
+  };
+  function onPaint(it, b, f) {
+    const z = ((PAINTED[G.at] || {})[f] || {})[it.mode === 'hang' ? 'hang' : it.mode === 'wall' ? 'wall' : ''] || [];
+    if (it.mode === 'hang' && LAYOUT.ELEV && LAYOUT.ELEV[f] && b.x0 < LAYOUT.ELEV[f].x + 64 && b.x1 > LAYOUT.ELEV[f].x - 64) return true;
+    return z.some(([a, c]) => b.x0 < c && b.x1 > a);
+  }
   // can `it` stand at (x, y)? returns '' or why not
-  function why(it, x, y) {
+  function why(it, x, y, f = it.f) {
     const dx = x - it.ref.x, dy = y - it.ref.y, b = box(it, dx, dy);
-    if (b.x0 < 4 || b.x1 > fw(it.f) - 4) return '超出店外了';
+    if (b.x0 < 4 || b.x1 > fw(f) - 4) return '超出店外了';
+    if (onStairs(it, b, f)) return '這裡是樓梯，不能擋住';
+    if (it.deco && onPaint(it, b, f)) return it.mode === 'hang' ? '這面牆已經有東西了' : '會擋到牆上的門窗或櫃子';
     if (it.mode !== 'hang') {
-      for (const p of blockers(it.f)) { const ex = Math.max(0, b.x0 - p.x, p.x - b.x1); if (ex < p.r * .6 && Math.abs(p.y - y) < (it.mode === 'wall' ? 60 : 44)) return '這裡是' + p.why + '，不能擋住'; }
-      if (it.f === 1 && y < COUNTER.front + 30 && b.x1 > COUNTER.x - 10 && b.x0 < COUNTER.x + COUNTER.w + 10) return '這裡是櫃台，不能擋住';
+      for (const p of blockers(f)) { const ex = Math.max(0, b.x0 - p.x, p.x - b.x1); if (ex < p.r * .6 && Math.abs(p.y - y) < (it.mode === 'wall' ? 60 : 44)) return '這裡是' + p.why + '，不能擋住'; }
+      if (f === 1 && y < COUNTER.front + 30 && b.x1 > COUNTER.x - 10 && b.x0 < COUNTER.x + COUNTER.w + 10) return '這裡是櫃台，不能擋住';
     }
-    for (const o of here()) {
-      if (o === it || o.f !== it.f || hid(o.refs[0]) || (o.mode === 'hang') !== (it.mode === 'hang')) continue;
+    for (const o of here(f)) {
+      if (o !== it && it.deco && it.mode === 'hang' && o.mode !== 'hang' && !hid(o.refs[0])) { const ob = box(o); // a new wall hanging doesn't cover a tall piece
+        if (b.x0 < ob.x1 && b.x1 > ob.x0 && b.y0 < ob.y1 && b.y1 > ob.y0) return '會擋到「' + o.name + '」'; }
+      if (o === it || hid(o.refs[0]) || (o.mode === 'hang') !== (it.mode === 'hang')) continue;
       const ob = box(o), w = Math.min(b.x1 - b.x0, ob.x1 - ob.x0), over = Math.min(b.x1, ob.x1) - Math.max(b.x0, ob.x0);
       const near = it.mode === 'hang' ? Math.min(b.y1, ob.y1) - Math.max(b.y0, ob.y0) > 10 : Math.abs(o.ref.y - y) < 26;
       if (near && over > w * .3) return '會疊到「' + o.name + '」';
@@ -114,6 +145,27 @@
     for (const k of S.cats) if ((k.fun && k.fun.spot.id === it.key) || (k.state === 'funBack' && k.floor === it.f)) {
       k.fun = null; k.lift = null; k.hide = false; k.path = []; k.state = 'idle'; k.t = 1; if (k.y < 505) k.y = 520;
     }
+  }
+  // when it picks a spot by itself, keep a little gap from the other pieces (dragging by hand may go closer)
+  function roomy(it, x, y, f) {
+    const b = box(it, x - it.ref.x, y - it.ref.y);
+    return !here(f).some(o => o !== it && !hid(o.refs[0]) && (o.mode === 'hang') === (it.mode === 'hang') && (() => { const ob = box(o);
+      return b.x0 < ob.x1 + 8 && b.x1 > ob.x0 - 8 && (it.mode === 'hang' ? b.y0 < ob.y1 + 8 && b.y1 > ob.y0 - 8 : Math.abs(o.ref.y - y) < 40); })());
+  }
+  // a free spot for a newer piece on floor f (scans along the wall / floor), or null
+  function spotOn(it, f) {
+    if (!decoFloors(it).includes(f)) return null;
+    const ys = it.mode === 'hang' ? [340, 400, 300] : it.mode === 'floor' ? [560, 590, 530, 604] : [G.at === 3 && f >= 5 ? 494 : 480];
+    for (const y of ys) for (let x = 80; x <= fw(f) - 80; x += 16) if (!why(it, x, y, f) && roomy(it, x, y, f)) return { x, y };
+    return null;
+  }
+  // a piece just bought: its own floor first, then the others; returns the floor it went to (or null = put away for now)
+  function autoPlace(key) {
+    if (!G.place) G.place = {};
+    ITEMS = items(); const it = ITEMS.find(o => o.key === key); if (!it) return null;
+    const D = DECOR[key.split('_')[1]] || {}, fl = decoFloors(it), order = [D.f, S && S.view, ...fl].filter((f, i, a) => fl.includes(f) && a.indexOf(f) === i);
+    for (const f of order) { const sp = spotOn(it, f); if (sp) { G.place[key] = { dx: sp.x, dy: sp.y, f }; applyPlace(); return f; } }
+    return null;
   }
   function moved(it) { applyPlace(); seatSync(); catsOff(it); }
   function clean(k) { const r = G.place[k]; if (r) { for (const f of ['dx', 'dy']) if (!r[f]) delete r[f]; if (!r.flip) delete r.flip; if (!r.hide) delete r.hide; if (!r.col) delete r.col; if (!Object.keys(r).length) delete G.place[k]; } }
@@ -195,6 +247,7 @@
     if (kind === 'flip') { if (!it.flip) { clean(it.key); return toast('座位不能翻轉'); } r.flip = !r.flip; clean(it.key); moved(it); }
     if (kind === 'hide') { const b = busy(it); if (b) { clean(it.key); return toast(b); } r.hide = true; clean(it.key); moved(it); S.edit.sel = null; toast(`「${it.name}」收起來了，收著的時候沒有效果，下面點它可以再拿出來`); }
     if (kind === 'reset') {
+      if (it.deco) return;
       const b = busy(it); if (b) { clean(it.key); return toast(b); }
       const old = { dx: r.dx, dy: r.dy, flip: r.flip }; delete r.dx; delete r.dy; delete r.flip; clean(it.key); applyPlace();
       const it2 = ITEMS.find(o => o.key === it.key), w = it2 && why(it2, it2.ref.x, it2.ref.y);
@@ -205,6 +258,16 @@
     sfx('ui_click'); render();
   }
   function unhide(key) {
+    const di = ITEMS.find(o => o.key === key);
+    if (di && di.deco) { // newer pieces come out on the floor you're looking at
+      const fl = decoFloors(di); if (!fl.includes(S.view)) return toast(`「${di.name}」只能擺在 ${fl.map(fname).join('、')}`);
+      const r = G.place[key] || {}, keep = r.dx != null && (r.f || di.f) === S.view && !why(di, r.dx, r.dy, S.view);
+      const sp = keep ? { x: r.dx, y: r.dy } : spotOn(di, S.view);
+      if (!sp) return toast(`${fname(S.view)} 沒有空位了，先挪開一點再拿出來`);
+      G.place[key] = { ...r, dx: sp.x, dy: sp.y, f: S.view }; delete G.place[key].hide; applyPlace();
+      if (!keep) CAM.x = sp.x - cv.clientWidth / V.s / 2;
+      moved(ITEMS.find(o => o.key === key) || di); S.edit.sel = key; sfx('build'); render(); return;
+    }
     const r = G.place[key]; if (!r) return;
     delete r.hide; clean(key); applyPlace();
     const it = ITEMS.find(o => o.key === key);
@@ -234,7 +297,7 @@
   function render() {
     const ui = $('decoUi'); if (!ui || !S.edit) return;
     const it = sel(), fl = floorsHere().filter(f => f !== 4), i = fl.indexOf(S.view), r = it ? rec(it.key) : {};
-    const away = here().filter(o => hid(o.refs[0]));
+    const away = ITEMS.filter(o => hid(o.refs[0]) && (o.deco || o.f === S.view));
     $('decoTip').innerHTML = it ? `<b>${it.name}</b>　按住拖到綠色的地方` : `<b>佈置</b>　點一下傢俱選它，按住拖到想放的地方${S.phase === 'open' || S.phase === 'closing' ? '<small>遊戲暫停中</small>' : ''}`;
     $('decoBar').innerHTML = `
       <div class="dfl"><button data-d="up" ${fl[i + 1] ? '' : 'disabled'}>▲</button><b>${fname(S.view)}</b><button data-d="down" ${fl[i - 1] ? '' : 'disabled'}>▼</button></div>
@@ -243,7 +306,7 @@
         <button data-d="colors" ${it ? '' : 'disabled'} class="${S.edit.colors ? 'on' : ''}"><i>🎨</i>換顏色</button>
         <button data-d="flip" ${it && it.flip ? '' : 'disabled'}><i>↔️</i>翻轉</button>
         <button data-d="hide" ${it ? '' : 'disabled'}><i>📦</i>收起來</button>
-        <button data-d="reset" ${it && (r.dx || r.dy || r.flip) ? '' : 'disabled'}><i>↩️</i>放回原位</button>
+        <button data-d="reset" ${it && !it.deco && (r.dx || r.dy || r.flip) ? '' : 'disabled'}><i>↩️</i>放回原位</button>
       </div>
       <button class="primary ddone" data-d="done">完成</button>`;
     const pal = $('decoPal');
@@ -309,5 +372,5 @@
   $('decoBtn').onclick = open;
 
   const barH = () => { const b = $('decoBar'); return b ? b.offsetHeight + 12 : 0; };
-  window.DECO = { barH, fx, tinted, refresh, draw, down, move, up, open, close, COLORS };
+  window.DECO = { barH, fx, tinted, refresh, render, draw, down, move, up, open, close, autoPlace, COLORS };
 })();

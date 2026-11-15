@@ -25,3 +25,6 @@ Backgrounds were repainted from screenshots of the old canvas-drawn floors so th
 
 ## 喵喵寫真館（貓咪頭飾、拍照背景、抓拍時刻）
 `acc_h_*` (cat headwear) were painted in one gen2.py sheet on white, using in-game cat sprites wearing each item as the reference, cut with cut.py (threshold 215) and scaled to 100-150 px wide. Where each one sits on each cat and pose is the `HEAD` table in `web/photo.js`. `pb_*` (photo backdrops, 900x500) are one 2x2 gen2.py sheet of empty photo corners with a stool in the middle, cropped. `mo_*` (抓拍時刻 photos, 800x470) are three 2x2 gen2.py sheets of candid cat moments painted from the cat sprites, cropped.
+
+## 更多傢俱（fx_*）
+`web/assets/fx_<id>.webp` (the 20 pieces in `DECOR`, index.html) were painted in three gen2.py sheets on white, with existing props (lamp, cattree, petbed, beanbag, plant, bookshelf) as the style reference, cut with cut.py and packed at 2.2× their scene width (`DECOR[id].w`). The cloud cat tree is mostly white, so it was painted again on a mint backdrop and cut with threshold -40 to keep its edges. Where each one stands, the floors it may go on, and the stairs and painted walls it keeps clear of are in `web/deco.js` (`STAIR_ZONES`, `PAINTED`).

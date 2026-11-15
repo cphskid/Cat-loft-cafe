@@ -95,6 +95,11 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .stabs button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
 .item .tg{font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:6px}
 .item .thumb{width:54px;height:40px;object-fit:contain;float:left;margin:0 10px 0 0}
+.fcgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.fcat{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:14px;background:#fff;border:2px solid var(--line,#E2CFB3)}
+.fcat img{height:48px;max-width:70px;object-fit:contain}.fcat b{font-size:14px}.fcat small{color:#8A6A52;font-size:11px}
+.fchead{display:flex;align-items:center;gap:10px;margin:2px 0 8px}.fchead button{padding:4px 10px;font-size:13px}.fchead b{font-size:16px}
+.newtag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:8px;background:#E8735A;color:#fff;font-size:11px;line-height:17px;vertical-align:2px}
 .item{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .item .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .item .nm{font-weight:700}
@@ -423,6 +428,35 @@ const FURN = {
   sign:    { name: '招牌燈箱',     price: 300, lv: 6, desc: '店門口的招牌亮起來，上門的客人多 20%' },
   books:   { name: '貓咪漫畫書櫃', price: 240, lv: 6, desc: '2F 客人可以翻漫畫等貓，就算沒摸到貓也不會扣星' },
   mural:   { name: '貓咪主題壁畫', price: 500, lv: 7, desc: '2F 牆上的貓咪壁畫，客人更容易給 5 星' },
+};
+// 商店「傢俱」 is browsed by category first (Chuck 2026-11-15); every old piece belongs to one
+const FURN_CATS = { lamp: '燈', tree: '貓跳台', seat: '座位', table: '桌子', cab: '櫃子', plant: '植物', bed: '貓窩', wall: '牆面裝飾', etc: '其他' };
+const FURN_CAT_OF = { plant: 'plant', lamp: 'lamp', record: 'cab', bar: 'seat', beanbag: 'seat', cushion: 'seat', hammock: 'seat', wallwalk: 'tree', cattree: 'tree', deodor: 'etc', warmer: 'cab', chalk: 'wall', showcase: 'cab', bed: 'bed', sign: 'wall', books: 'cab', mural: 'wall' };
+// More furniture (Chuck 2026-11-15): placed with 佈置, up to DECO_MAX of each (each piece has its own colour), and the effects stack.
+// Art: assets/fx_<id>.webp (tools/art/README). w/h = size in the scene; mode = wall (stands by the wall: left/right only) / floor / hang (on the wall);
+// f = the floor a new one goes to; fx = effect; seats = loft seats it adds ([dx, lift]); perch = where a cat sits (fraction of h up, px = fraction of w across)
+const DECO_MAX = 3;
+const DECOR = {
+  lantern:   { name: '紙燈籠立燈',     cat: 'lamp',  lv: 2, price: 150, w: 41, h: 130, mode: 'wall', f: 1, fx: 'lamp',   desc: '跟暖光立燈一樣：客人給 4 星以上，經驗 +1' },
+  lily:      { name: '鈴蘭花立燈',     cat: 'lamp',  lv: 3, price: 180, w: 47, h: 125, mode: 'wall', f: 1,                desc: '彎彎的花莖掛著三朵鈴蘭燈，純裝飾' },
+  earlamp:   { name: '貓耳立燈',       cat: 'lamp',  lv: 4, price: 220, w: 35, h: 130, mode: 'wall', f: 1, fx: 'pat',    desc: '燈罩上有兩隻貓耳朵，客人排隊和等餐的耐心 +10%' },
+  treehouse: { name: '小樹屋貓跳台',   cat: 'tree',  lv: 2, price: 160, w: 55, h: 100, mode: 'wall', f: 2, fx: 'energy15', perch: [.93, 0], desc: '矮矮的樹屋，貓咪醒著時體力消耗慢 15%' },
+  logtower:  { name: '原木高塔貓跳台', cat: 'tree',  lv: 4, price: 340, w: 84, h: 190, mode: 'wall', f: 2, fx: 'energy30', perch: [.74, -.24], desc: '跟豪華貓跳台一樣：貓咪醒著時體力消耗慢 30%' },
+  cloudtree: { name: '雲朵貓跳台',     cat: 'tree',  lv: 6, price: 420, w: 89, h: 170, mode: 'wall', f: 2, fx: 'play',   perch: [.84, 0], desc: '軟綿綿的雲朵平台，貓咪醒著時更愛找客人玩' },
+  pawseat:   { name: '貓掌坐墊',       cat: 'seat',  lv: 2, price: 120, w: 59, h: 58, mode: 'floor', f: 2, seats: [[0, 6]],               desc: '粉紅肉球的大坐墊，2F 多 1 個座位' },
+  catbag:    { name: '貓咪懶骨頭',     cat: 'seat',  lv: 4, price: 200, w: 65, h: 62, mode: 'floor', f: 2, seats: [[0, 14]],              desc: '貓咪臉的懶骨頭，2F 多 1 個座位' },
+  cloudsofa: { name: '雲朵沙發',       cat: 'seat',  lv: 3, price: 260, w: 89, h: 62, mode: 'floor', f: 2, seats: [[-20, 12], [22, 12]],  desc: '像雲一樣的矮沙發，2F 多 2 個座位' },
+  lowcab:    { name: '木頭矮櫃',       cat: 'cab',   lv: 2, price: 160, w: 85, h: 62, mode: 'wall', f: 1,                desc: '擺著幾個茶杯的拉門矮櫃，純裝飾' },
+  dishcab:   { name: '玻璃餐具櫃',     cat: 'cab',   lv: 3, price: 240, w: 80, h: 122, mode: 'wall', f: 1, fx: 'reorder', desc: '整齊的盤子和碗，客人吃完再加點的機會高一點' },
+  figcab:    { name: '貓咪公仔展示櫃', cat: 'cab',   lv: 5, price: 300, w: 70, h: 118, mode: 'wall', f: 1, fx: 'star',   desc: '滿滿的貓咪公仔，客人比較容易給 5 星' },
+  monstera:  { name: '龜背芋',         cat: 'plant', lv: 1, price: 80,  w: 55, h: 84, mode: 'wall', f: 1, fx: 'pat',     desc: '跟綠意盆栽一樣：客人排隊和等餐的耐心 +10%' },
+  succul:    { name: '多肉植物架',     cat: 'plant', lv: 2, price: 100, w: 56, h: 84, mode: 'wall', f: 1,                desc: '三層木架擺滿小多肉，純裝飾' },
+  olive:     { name: '小橄欖樹',       cat: 'plant', lv: 3, price: 120, w: 59, h: 96, mode: 'wall', f: 1,                desc: '陶盆裡的小橄欖樹，純裝飾' },
+  boxbed:    { name: '紙箱貓窩',       cat: 'bed',   lv: 1, price: 60,  w: 52, h: 34, mode: 'floor', f: 2, fx: 'sleep20', perch: [.4, 0], desc: '鋪了毯子的紙箱，貓咪睡覺回復體力快 20%' },
+  yarnbed:   { name: '毛線球貓窩',     cat: 'bed',   lv: 4, price: 220, w: 54, h: 50, mode: 'floor', f: 2, fx: 'sleep50', perch: [.3, 0], desc: '跟暖暖貓窩一樣：貓咪睡覺回復體力快 50%' },
+  wreath:    { name: '乾燥花圈',       cat: 'wall',  lv: 1, price: 90,  w: 45, h: 52, mode: 'hang', f: 1,                desc: '掛在牆上的乾燥花圈，純裝飾' },
+  catclock:  { name: '貓咪掛鐘',       cat: 'wall',  lv: 2, price: 150, w: 41, h: 72, mode: 'hang', f: 1,                desc: '貓咪臉的掛鐘，尾巴是鐘擺，純裝飾' },
+  catpaint:  { name: '睡貓水彩畫',     cat: 'wall',  lv: 3, price: 180, w: 51, h: 40, mode: 'hang', f: 1, fx: 'star2',  desc: '小小的睡貓畫，客人比較容易給 5 星（效果小一點）' },
 };
 // where the furniture without a fixed role in the layout stands (floor y = the prop's bottom)
 let PROP = { plant: { x: 880, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 720, y: 480 }, plantAlt: { x: 24, y: 482 }, record: { x: 721, y: 480 }, bed: { x: 206, y: 466 } }; // plantAlt: where the plant goes once the window counter takes its spot
@@ -884,13 +918,27 @@ function tagPlaces(id) {
   EXPANSIONS.forEach((e, i) => e.cushions.forEach((p, j) => tag(p, 'xc' + i + '_' + j)));
   CUSHION_POS.forEach((p, i) => tag(p, id === 3 ? 'c' + i : null, 'c' + i));
   for (const t of TOY_IDS) { tag(TOYS[t], t); tag(TOYS[t].seat, t, 'seat_' + t); }
+  // the newer furniture: one position per piece bought (its G.place record holds where it is, as dx/dy from 0,0, and which floor)
+  DECO_PIECES = [];
+  for (const [d, n] of Object.entries((G && G.decos) || {})) for (let i = 0; i < n && DECOR[d]; i++) {
+    const key = 'd_' + d + '_' + i, D = DECOR[d], P = { x: 0, y: 0, f0: D.f, deco: d }; tag(P, key);
+    const seats = (D.seats || []).map(([dx, lift], j) => { const st = { x: dx, y: 0, lift, kind: 'deco', f0: D.f, deco: d }; tag(st, key, key + 's' + j); return st; });
+    DECO_PIECES.push({ key, id: d, D, P, seats });
+  }
 }
+let DECO_PIECES = [];
+const decoOn = () => DECO_PIECES.filter(d => !hid(d.P));
+const decoN = fx => decoOn().filter(d => d.D.fx === fx).length; // how many of the newer pieces with this effect are out in the shop
+const decoSeats = () => DECO_PIECES.flatMap(d => d.seats);
 function applyPlace() {
   const P = (G && G.place) || {};
-  for (const o of PLACED) { const r = o.ik && P[o.ik]; o.x = o.bx + (r ? r.dx || 0 : 0); o.y = o.by + (r ? r.dy || 0 : 0); }
+  for (const o of PLACED) { const r = o.ik && P[o.ik]; o.x = o.bx + (r ? r.dx || 0 : 0); o.y = o.by + (r ? r.dy || 0 : 0); if (o.deco) o.f = (r && r.f) || o.f0; }
   if (window.DECO) DECO.refresh();
 }
-const hid = p => !!(p && p.ik && G.place && G.place[p.ik] && G.place[p.ik].hide); // put away in 佈置
+const hid = p => { // put away in 佈置 (a newer piece that was never placed counts as put away)
+  if (!p || !p.ik || !G || !G.place) return false; const r = G.place[p.ik];
+  return p.deco ? !r || !!r.hide || r.dx == null : !!(r && r.hide);
+};
 const flipped = p => !!(p && p.ik && G.place && G.place[p.ik] && G.place[p.ik].flip);
 const onF = (id, p) => ownF(id) && !hid(p);
 // after 佈置 moves, hides or brings back a seat: update today's tables and cushions in place (the same objects, so guests keep theirs)
@@ -899,7 +947,8 @@ function seatSync() {
   const keep = (list, src, fresh) => src.filter(p => !hid(p)).map(p => { const o = list.find(t => t.pk && t.pk === p.pk) || fresh(p); o.x = p.x; o.y = p.y; return o; });
   S.tables = keep(S.tables, TABLE_POS.slice(0, G.tables).concat(hasF('bar') ? BAR_SEATS.map(p => ({ ...p, bar: true })) : []), p => ({ ...p, cust: null, dirty: false, busy: false }));
   S.tables.forEach(t => t.out = isOut(t) && !t.bar);
-  S.cushions = keep(S.cushions, CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()), p => ({ ...p, cust: null }));
+  S.cushions = keep(S.cushions, CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats(), decoSeats()), p => ({ ...p, cust: null }));
+  S.cushions.forEach(c => { const src = c.pk && PLACED.find(o => o.pk === c.pk); if (src && src.deco) c.f = src.f; });
 }
 const shopArt = id => id === 2 ? ['s2bg1', 's2bg2', 's2bg4'] : id === 3 ? ['s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6', ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's3' + r + '_0')] : [];
 const fw = f => LAYOUT.FW[f] || 960; // width of floor f in the current shop
@@ -1082,17 +1131,17 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], place: {}, keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {}, head: {} }, album: { m: {}, p: [], got: [], pd: [0, 0] }, collab: null, ig: [], letters: [], mtype: '', hm: '', real: {}, ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0, guard: 1 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [], diary: { r: {}, l: {} },
+           exp: 0, earned: 0, furn: [], place: {}, decos: {}, keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {}, head: {} }, album: { m: {}, p: [], got: [], pd: [0, 0] }, collab: null, ig: [], letters: [], mtype: '', hm: '', real: {}, ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0, guard: 1 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [], diary: { r: {}, l: {} },
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
 // The shop you are working in today has those fields right on G, so the rest of the game never needs to know
 // which shop it is; the other shops wait in G.shops until you go there (loadShop).
-const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden', 'toys', 'elev', 'place'];
+const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden', 'toys', 'elev', 'place', 'decos'];
 function freshShop(id) {
   const prices = {}; for (const k of ['loft', 'beans', 'treat', ...DISHES]) prices[k] = baseOf(k, id);
   return { exp: 0, furn: [], tables: 4, expand: 0, staff: [], hired: {}, sched: {}, duty: [], prices, stock: { flour: 10, food: 6, catfood: 3, litter: 3, beans: 0, treat: 10, garden: 10 },
-           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [], toys: [], elev: false, place: {} };
+           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [], toys: [], elev: false, place: {}, decos: {} };
 }
 const shopRec = id => id === G.at ? G : G.shops[id];
 function loadShop(id) {
@@ -1122,7 +1171,7 @@ const markMade = d => { if (G.made) G.made[d] = 1; };
 const EASY = { 1: { gap: 1.5, max: 3, pat: 1.4, exact: .5 }, 2: { gap: 1.45, max: 4, pat: 1.25, exact: .35 }, 3: { gap: 1.2, max: 6, pat: 1.1, exact: .2 } };
 const easy = () => EASY[G.day] || null;
 const dispTotal = () => DISHES.reduce((a, d) => a + (S.display[d] || 0), 0);
-const patMul = () => (hasF('record') ? 1.2 : 1) * (hasF('plant') ? 1.1 : 1);
+const patMul = () => (hasF('record') ? 1.2 : 1) * (hasF('plant') ? 1.1 : 1) * Math.pow(1.1, decoN('pat'));
 const litterMax = () => hasF('deodor') ? 5 : 3;
 const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv && dishHere(d)).map(d => (MENU[d].meal ? '正餐「' : '甜點「') + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
 // ---- bond between the manager and each cat ----
@@ -1700,7 +1749,7 @@ function startDay(carry) {
     mgr: { floor: 1, x: MGR_COUNTER.x, y: MGR_COUNTER.y, path: [], speed: 270, face: 1, task: null, carry: null, mode: 'idle', actT: 0, si: 0 },
     tasks: [], customers: [], queue: [], cid: 0,
     tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []).filter(p => !hid(p)),
-    cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()).filter(p => !hid(p)).map(p => ({ ...p, cust: null })),
+    cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats(), decoSeats()).filter(p => !hid(p)).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     lv0: shopLv(), // dishes unlocked by a level-up today are only ordered from tomorrow
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
@@ -1842,7 +1891,7 @@ window.addEventListener('online', retryMissingArt);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
-const LAZY_ART = /^((c(9|1\d|2\d)|mo\d+m?|s[23]\w+)_\d|acc_\w+|s[23]bg\d|toy_\w+)$/;
+const LAZY_ART = /^((c(9|1\d|2\d)|mo\d+m?|s[23]\w+)_\d|acc_\w+|s[23]bg\d|toy_\w+|fx_\w+)$/;
 const artOk = n => { const im = ART[n]; return !!(im && im.complete && im.naturalWidth); };
 // Wait (at most ARTWAIT ms) until every core sprite, plus the given extra ones, has arrived; onTick(done, total) shows progress.
 const ARTWAIT = 10000;
@@ -3253,7 +3302,7 @@ function takeOrder(quiet, w) {
 }
 function sayFor(c, t) { c.say = { text: t, t: 2.2 }; }
 function goLoft(c) {
-  const cu = S.cushions.find(k => !k.cust);
+  const free = S.cushions.filter(k => !k.cust), cu = free[Math.floor(Math.random() * free.length)]; // any free seat, so the newer ones get used too
   if (cu) { cu.cust = c; c.cushion = cu; routeTo(c, cu.f || 2, cu.x, cu.y + 4); }
   else routeTo(c, 2, rand(fw(2) * .625, fw(2) * .94), rand(540, 594));
   c.state = 'toLoft';
@@ -3261,7 +3310,7 @@ function goLoft(c) {
 function afterEat(c) {
   // customers linger: some order a second dessert at the same table
   const hadMeal = MENU[c.order.dish].meal; // after a meal, half of them want dessert
-  if (!c.reordered && S.phase === 'open' && Math.random() < (hadMeal ? .5 : .35) + (hasF('showcase') ? .15 : 0)) {
+  if (!c.reordered && S.phase === 'open' && Math.random() < (hadMeal ? .5 : .35) + (hasF('showcase') ? .15 : 0) + .05 * decoN('reorder')) {
     const p = pickDish(c, hadMeal);
     if (p.dish) {
       c.reordered = true; c.order.dish = p.dish; c.state = 'waitFood'; c.pat = c.maxPat = 55 * patMul(); c.wait = 0;
@@ -3287,8 +3336,9 @@ function leave(c) {
   if (c.state === 'leaving') return;
   if (c.played && !c.angry) c.stars++; // a cat came over to play: best part of the visit
   if (hasF('mural') && c.order?.loft && !c.angry && Math.random() < .5) c.stars++; // the cat mural on 2F
+  if (!c.angry && Math.random() < 1 - Math.pow(.75, decoN('star')) * Math.pow(.88, decoN('star2'))) c.stars++; // figurine cabinets, cat paintings
   const s = clamp(c.stars, 1, 5); c.final = s;
-  S.today.ratings.push(s); gainExp(s + (s >= 4 && hasF('lamp') ? 1 : 0));
+  S.today.ratings.push(s); gainExp(s + (s >= 4 ? (hasF('lamp') ? 1 : 0) + decoN('lamp') : 0));
   // fans never drop: an unhappy guest just doesn't become one
   let df = [0, 0, 0, 1, 2][s - 1];
   if (!c.order || (!c.order.dish && !c.order.loft && !c.order.beans)) df = 0; // walked out without buying anything
@@ -3384,9 +3434,14 @@ function funSpots() {
     if (id === 'toyCastle') L.push({ id, f: 2, ground: { x: T.x - 92, y: 596 }, ...toy, stages: [st([{ x: X(55), y: Y(18), jump: true }], 'sit', [7, 11], '我是城堡的國王喵！')] });
     if (id === 'toyTower') L.push({ id, f: 2, ground: { x: T.x - 62, y: 508 }, ...toy, stages: [st([{ x: X(52), y: Y(290), jump: true }, { x: X(43), y: Y(206), jump: true }, { x: X(218), y: Y(140), jump: true }], Math.random() < .4 ? 'nap' : 'sit', [8, 13], '皇宮最高的地方！')] });
   }
+  for (const d of decoOn()) if (d.D.perch) { // the newer cat trees and beds: one jump up (or in)
+    const { x, y, f } = d.P, D = d.D, bed = D.cat === 'bed';
+    L.push({ id: d.key, f, ground: { x: x + D.w / 2 + 12, y: Math.max(y + (D.mode === 'floor' ? 4 : 26), 508) },
+      stages: [st([{ x: x + D.perch[1] * D.w, y: y - D.perch[0] * D.h, jump: true }], bed || Math.random() < .4 ? 'nap' : 'sit', bed ? [12, 20] : [7, 12], bed ? pick(['暖呼呼的…', '這裡好好睡']) : pick(['爬上去囉！', '喵～這裡好舒服']))] });
+  }
   // 佈置 can flip a piece left-right: mirror its perches around the piece's middle
   for (const sp of L) {
-    const ref = { cattree: PROP.cattree, wallwalk: WALLWALK, bed: PROP.bed, books: PROP.books }[sp.id] || TOYS[sp.id];
+    const ref = { cattree: PROP.cattree, wallwalk: WALLWALK, bed: PROP.bed, books: PROP.books }[sp.id] || TOYS[sp.id] || (DECO_PIECES.find(d => d.key === sp.id) || {}).P;
     if (!flipped(ref)) continue;
     const m = p => { if (p) p.x = 2 * ref.x - p.x; };
     m(sp.ground); sp.stages.forEach(s => s.path.forEach(m)); (sp.back || []).forEach(m);
@@ -3413,7 +3468,7 @@ function endPlay(k) { if (k.target) { k.target.catBuddy = null; if (k.target.fed
 function wander(k) {
   // cats like company: walk over to a customer and play with them
   const guests = S.customers.filter(c => c.floor === k.floor && !c.catBuddy && !c.hidden && PLAY_STATES.includes(c.state));
-  if (guests.length && !k.sulk && Math.random() < Math.min(.95, (k.happy ? .8 : k.P.play || .5) * (hasF('wallwalk') ? 1.3 : 1))) {
+  if (guests.length && !k.sulk && Math.random() < Math.min(.95, (k.happy ? .8 : k.P.play || .5) * (hasF('wallwalk') ? 1.3 : 1) * Math.pow(1.3, decoN('play')))) {
     const c = pick(guests); c.catBuddy = k; k.target = c;
     routeTo(k, k.floor, clamp(c.x + (c.x > fw(k.floor) / 2 ? -50 : 50), 160, fw(k.floor) - 40), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; return;
   }
@@ -3449,8 +3504,8 @@ function updCat(k, dt) {
   const open = S.phase === 'open';
   for (const key of ['happy', 'sulk', 'petCool']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
   if (k.wantPet) { k.wantPet -= dt; if (k.wantPet <= 0 || k.state === 'sleep') { k.wantPet = 0; if (k.state !== 'sleep') { k.sulk = 30; say(k, '哼…'); sfx('cat_grumpy', k.floor); } } }
-  if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
-  if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * (S.buff.catnip ? .6 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
+  if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * (1 + .2 * decoN('sleep20') + .5 * decoN('sleep50')) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
+  if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * Math.max(.4, 1 - .15 * decoN('energy15') - .3 * decoN('energy30')) * (S.buff.catnip ? .6 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
   const arrived = moveAlong(k, dt);
   if (k.lift != null && arrived && !k.fun) k.lift = null;
   switch (k.state) {
@@ -3473,7 +3528,7 @@ function updCat(k, dt) {
     } break;
     case 'fun': {
       const F = k.fun, s = F.spot.stages[F.stage];
-      k.t -= dt; if (s.act === 'nap' && open) k.energy = Math.min(100, k.energy + (F.spot.id === 'bed' ? 1.6 : 1) * dt);
+      k.t -= dt; if (s.act === 'nap' && open) k.energy = Math.min(100, k.energy + (F.spot.id === 'bed' || String(F.spot.id).startsWith('d_yarnbed') ? 1.6 : String(F.spot.id).startsWith('d_boxbed') ? 1.2 : 1) * dt);
       if (k.t <= 0 && F.stage + 1 < F.spot.stages.length) { F.stage++; k.hide = false; k.path = F.spot.stages[F.stage].path.map(p => ({ f: F.spot.f, ...p })); k.state = 'toFun'; break; }
       if (k.t <= 0 || (open && (k.hunger > 70 || (k.energy < 15 && s.act !== 'nap')))) { k.path = funExit(k); k.state = 'funBack'; }
       break;
@@ -4128,6 +4183,8 @@ function drawWorld() {
   if (f === 4) G.garden.forEach((p, i) => items.push({ y: PLOTS[i].y, d: () => drawPlot(p, i) }));
   if (f === 4) items.push({ y: VEG_STALL.y - 20, d: drawVegCrate });
   if (G.at === 3) drawPalace(f, items);
+  for (const d of DECO_PIECES) if (d.P.f === f && !hid(d.P)) { const { x, y } = d.P, D = d.D, oy = D.seats ? 6 : 0;
+    items.push({ y: D.mode === 'hang' ? -1 : y - 1, d: () => { if (!propArt('fx_' + d.id, x, y + oy, D.w)) rrect(x - D.w / 2, y + oy - D.h, D.w, D.h, 8, '#F1D9B5', INK, 1.2); } }); }
   if (S.mgr.floor === f && !S.out) items.push({ y: S.mgr.y, d: drawMgr });
   S.staff.forEach(s => { if (s.floor === f) items.push({ y: s.y, d: () => drawStaff(s) }); });
   S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.lift ?? k.y, d: () => drawCat(k) }); });
@@ -4653,7 +4710,7 @@ function charmItem(id, wear) {
   return `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${CHARM_WHO[C.slot]}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
     <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
 }
-let phoneApp = 'home', storeTab = 'stock', ivRole = null, ivSeen = {}, ivAsk = null;
+let phoneApp = 'home', storeTab = 'stock', furnCat = '', ivRole = null, ivSeen = {}, ivAsk = null;
 function openPhone(app) { sfx('phone_open'); phoneApp = app; if (window.DIARY) DIARY.cur = null; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
 function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; if (PG.run) playMusic(G.music); if (!$('phoneOv').hidden) sfx('phone_close'); PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
 $('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
@@ -4701,15 +4758,31 @@ function renderPhone() {
         for (const it of SHOP) if (!it.shop || it.shop === G.at) h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(cost(it.price))}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div><div class="row" style="margin:0">${btn(it.id, cost(it.price))}</div></div>`;
         if (G.owned.includes(2) && !vegTop) h += vegSellItem();
       } else if (storeTab === 'furn') {
-        h += `<p class="muted">傢俱買了會一直擺在店裡。錢不夠時可以先賒帳。</p>`;
-        const full = G.tables >= maxTables();
-        h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(cost(TABLE_PRICE))}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < EXPANSIONS.length ? `（擴大店面後可以放 ${TABLE_CAPS[G.expand + 1]} 張）` : ''}${G.at === 2 ? '・第 3、4、7、8 張在庭院，下雨天不能坐' : ''}</div>
-          <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', cost(TABLE_PRICE))}</div></div>`;
-        for (const [id, F] of Object.entries(FURN)) {
-          const own = ownF(id), locked = F.lv > shopLv();
-          const th = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf', bar: 'winbar', beanbag: 'beanbag', wallwalk: 'wallwalk', showcase: 'showcase', hammock: 'eggchair', mural: 'mural' }[id];
-          h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(cost(F.price))}</b></div><div class="sub">${F.desc}</div>
-            <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, cost(F.price))}</div></div>`;
+        // first pick a category, then the pieces in it (Chuck 2026-11-15: easier to find once there are many)
+        const TH = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf', bar: 'winbar', beanbag: 'beanbag', wallwalk: 'wallwalk', showcase: 'showcase', hammock: 'eggchair', mural: 'mural' };
+        const inCat = c => [...(c === 'table' ? ['table'] : []), ...Object.keys(FURN).filter(id => FURN_CAT_OF[id] === c), ...Object.keys(DECOR).filter(d => DECOR[d].cat === c).map(d => 'd:' + d)];
+        const icon = { lamp: 'fx_lantern', tree: 'cattree', seat: 'fx_pawseat', table: 'table', cab: 'fx_dishcab', plant: 'fx_monstera', bed: 'fx_yarnbed', wall: 'fx_catclock', etc: 'deodor' };
+        if (!furnCat || !FURN_CATS[furnCat]) {
+          h += `<p class="muted">先選種類。新傢俱同一款最多買 ${DECO_MAX} 件，效果會疊加；買來的傢俱可以用左邊的「佈置」搬位置、換顏色。</p><div class="fcgrid">`;
+          for (const [c, nm] of Object.entries(FURN_CATS)) h += `<button class="fcat" data-fcat="${c}"><img src="assets/${icon[c]}.webp" alt="" onerror="this.remove()"><b>${nm}</b><small>${inCat(c).length} 款</small></button>`;
+          h += '</div>';
+        } else {
+          h += `<div class="fchead"><button data-fcat="">‹ 回到種類</button><b>${FURN_CATS[furnCat]}</b></div>`;
+          for (const id of inCat(furnCat)) {
+            if (id === 'table') {
+              const full = G.tables >= maxTables();
+              h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(cost(TABLE_PRICE))}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < EXPANSIONS.length ? `（擴大店面後可以放 ${TABLE_CAPS[G.expand + 1]} 張）` : ''}${G.at === 2 ? '・第 3、4、7、8 張在庭院，下雨天不能坐' : ''}</div>
+                <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', cost(TABLE_PRICE))}</div></div>`;
+            } else if (id.startsWith('d:')) {
+              const d = id.slice(2), D = DECOR[d], n = (G.decos || {})[d] || 0, locked = D.lv > shopLv();
+              h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm"><img class="thumb" src="assets/fx_${d}.webp" alt="" onerror="this.remove()">${locked ? '🔒 ' : ''}${D.name}<span class="newtag">新</span></span><b>${yen(cost(D.price))}</b></div><div class="sub">${D.desc}・已經有 ${n}/${DECO_MAX} 件</div>
+                <div class="row" style="margin:0">${n >= DECO_MAX ? `<button disabled>已經買滿 ${DECO_MAX} 件了</button>` : locked ? `<button disabled>店鋪 Lv.${D.lv} 解鎖</button>` : btn(id, cost(D.price))}</div></div>`;
+            } else {
+              const F = FURN[id], own = ownF(id), locked = F.lv > shopLv(), th = TH[id];
+              h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(cost(F.price))}</b></div><div class="sub">${F.desc}</div>
+                <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, cost(F.price))}</div></div>`;
+            }
+          }
         }
       } else if (storeTab === 'wear') {
         h += `<p class="muted">店長的衣服買了馬上換上；髮夾和貓咪衣飾之後在「衣櫃」可以隨時換。</p><p class="kh">店長衣服</p>`;
@@ -4996,6 +5069,7 @@ function renderPhone() {
     G.cash -= C.fee; S.today.spent += C.fee; G.collab = { id, until: G.day + COLLAB_DAYS - 1 };
     sfx('delivery'); toast(`跟「${C.co}」簽約了！接下來 ${COLLAB_DAYS} 天，客人可以加購${C.item}`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => { sfx('app_switch'); storeTab = b.dataset.stab; renderPhone(); });
+  sc.querySelectorAll('[data-fcat]').forEach(b => b.onclick = () => { sfx('ui_click'); furnCat = b.dataset.fcat; renderPhone(); sc.scrollTop = 0; });
   q('#expandBtn') && (q('#expandBtn').onclick = () => { doExpand(); renderPhone(); });
   q('#elevBtn') && (q('#elevBtn').onclick = () => { buyElev(); renderPhone(); });
   sc.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(b.dataset.call));
@@ -5125,6 +5199,15 @@ function buy(id, credit) {
     if (id === 'cushion') S.cushions.push(...CUSHION_EXTRA.map(p => ({ ...p, cust: null })));
     if (id === 'beanbag' || id === 'hammock') S.cushions.push(...furnCushions().filter(p => p.kind === id).map(p => ({ ...p, cust: null })));
     S.tables.push(...furnSeats(id));
+  } else if (id.startsWith('d:') && DECOR[id.slice(2)]) { // newer furniture: comes out wherever there's room (or waits, put away, for 佈置)
+    const d = id.slice(2), D = DECOR[d], n = (G.decos = G.decos || {})[d] || 0;
+    if (n >= DECO_MAX || D.lv > shopLv()) return;
+    name = D.name; price = D.price; G.decos[d] = n + 1;
+    tagPlaces(G.at); applyPlace();
+    const spot = window.DECO && DECO.autoPlace('d_' + d + '_' + n);
+    if (!spot) later(1.2, () => toast(`店裡找不到空位，「${D.name}」先收起來了，到「佈置」選地方擺`));
+    else if (spot !== S.view) later(1.2, () => toast(`「${D.name}」擺在 ${fname(spot)}，可以在「佈置」換位置`));
+    seatSync();
   } else if (TOYS[id]) {
     if (toysHere().includes(id) || TOYS[id].lv > shopLv()) return;
     name = TOYS[id].name; price = TOYS[id].price; (G.toys = G.toys || []).push(id);
@@ -5162,6 +5245,7 @@ function readPlace(o) {
     if (r.dx) v.dx = n(r.dx); if (r.dy) v.dy = n(r.dy);
     if (r.flip === true) v.flip = true; if (r.hide === true) v.hide = true;
     if (typeof r.col === 'string' && /^[a-z]{2,10}$/.test(r.col)) v.col = r.col;
+    if ([1, 2, 5, 6].includes(r.f)) v.f = r.f;
     if (Object.keys(v).length) out[k] = v;
   }
   return out;
@@ -5208,6 +5292,7 @@ function decodeSave(code) {
       duty: Array.isArray(s.duty) ? [...new Set(s.duty.filter(x => CAT_DEFS[x]))] : null,
       toys: id === 3 && Array.isArray(s.toys) ? [...new Set(s.toys.filter(t => TOYS[t]))] : [], elev: id === 3 && s.elev === true,
       place: readPlace(s.place),
+      decos: Object.fromEntries(Object.entries(s.decos && typeof s.decos === 'object' ? s.decos : {}).filter(([k, n]) => DECOR[k] && n > 0).map(([k, n]) => [k, Math.min(DECO_MAX, Math.floor(n))])),
       garden: id === 2 ? PLOTS.map((p, i) => { const g = Array.isArray(s.garden) ? s.garden[i] : null; const st = [0, 1, 2].includes(g?.s) ? g.s : 0;
         return { s: st, g: st === 2 ? 1 : st ? clamp(num(g.g, 0), 0, 1) : 0, wet: 0 }; }) : [],
     };
