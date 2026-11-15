@@ -1,11 +1,11 @@
 // 佈置（Chuck 2026-11-15）：左邊「佈置」按鈕打開佈置模式，任何時間都可以（開店中遊戲會先暫停）。
 // 按住傢俱拖到想放的地方：綠色可以放，紅色不行（樓梯、門口、櫃台、烤箱、飯碗、貓砂這些店員要走的地方，或疊到別的傢俱）。
 // 靠牆的傢俱（貓跳台、書櫃、燈…）只能左右移，桌子和坐墊可以前後左右移，牆上的掛飾可以上下左右移。
-// 每件傢俱也可以左右翻轉（座位不行）、收起來、放回原位、換顏色（原色免費，其他顏色每次 ¥100 或 ¥200）。
+// 收起來的傢俱沒有效果，擺出來才有。每件傢俱也可以左右翻轉（座位不行）、收起來、放回原位、換顏色（原色免費，其他顏色每次 ¥100 或 ¥200）。
 // 三家店各自記在 G.place（每家店的存檔欄位），格式 { 傢俱: { dx, dy, flip, col, hide } }，位置是跟原本擺法差多少。
 // 客人坐著的位子、還沒收的桌子不能搬；貓咪正在爬的傢俱一搬，貓就跳下來。
 // 用到 index.html 的全域：G、S、W、V、CAM、DRAG、g、ctx、art、propArt、toast、sfx、yen、hasF、hid、flipped、plantSpot、seatSync、applyPlace、
-// saveProgress、toCanvas、closeDrawer、setHudMore、floorsHere、fname、fw、PROP、SHOWCASE、MURAL、WALLWALK、BAR_SEATS、BEANBAG_SEATS、HAMMOCK_SEATS、
+// ownF、saveProgress、toCanvas、closeDrawer、setHudMore、floorsHere、fname、fw、PROP、SHOWCASE、MURAL、WALLWALK、BAR_SEATS、BEANBAG_SEATS、HAMMOCK_SEATS、
 // CUSHION_EXTRA、CUSHION_POS、EXPANSIONS、TABLE_POS、TOYS、toysHere、LAYOUT、STAIRS、STAIR_BOTTOM、WELL_2F、QUEUE、COUNTER、MGR_COUNTER、
 // CASHIER_SPOT、SERVER_PICK、OVEN_SPOT、KGATE、KGATE_L、WC、ROOM_DOOR2、ROOF_DOOR2、BOWL、LITTER、OUT_X、$。
 (function () {
@@ -29,24 +29,24 @@
     // 1F
     TABLE_POS.slice(0, G.tables).forEach((p, i) => add({ key: 't' + i, f: 1, name: '原木矮桌', ref: p, mode: 'floor', seat: true, flip: false, price: BIG,
       calls: () => [{ n: 'table', x: p.x + 6, y: p.y + 1, w: 72 }, { n: 'cushion', x: p.x - 44, y: p.y + 8, w: 62 }] }));
-    if (hasF('bar')) { const b = BAR_SEATS, v = { get x() { return (b[0].x + b[1].x) / 2 - 11; }, get y() { return b[0].y + 2; } };
+    if (ownF('bar')) { const b = BAR_SEATS, v = { get x() { return (b[0].x + b[1].x) / 2 - 11; }, get y() { return b[0].y + 2; } };
       add({ key: 'bar', f: 1, name: '窗邊吧檯椅', ref: v, refs: b, bx: (b[0].bx + b[1].bx) / 2 - 11, by: b[0].by + 2, mode: 'wall', seat: true, flip: false, price: BIG,
         calls: () => [{ n: 'winbar', x: v.x, y: v.y, w: 100 }, ...b.map(s => ({ n: 'cushion', x: s.x - 44, y: s.y + 9, w: 62 }))] }); }
-    if (hasF('showcase')) one('showcase', 1, '甜點展示櫃', 'showcase', 70, BIG, { ref: SHOWCASE });
-    if (hasF('plant')) one('plant', 1, '綠意盆栽', 'plant', 44, SMALL, { bx: PROP.plant.bx, by: PROP.plant.by });
-    if (hasF('lamp')) one('lamp', 1, '暖光立燈', 'lamp', 40, SMALL);
-    if (hasF('chalk')) one('chalk', 1, '今日推薦黑板', 'chalkboard', 50, SMALL);
-    if (hasF('record')) one('record', 1, '復古唱片機', 'record', 64, BIG);
+    if (ownF('showcase')) one('showcase', 1, '甜點展示櫃', 'showcase', 70, BIG, { ref: SHOWCASE });
+    if (ownF('plant')) one('plant', 1, '綠意盆栽', 'plant', 44, SMALL, { bx: PROP.plant.bx, by: PROP.plant.by });
+    if (ownF('lamp')) one('lamp', 1, '暖光立燈', 'lamp', 40, SMALL);
+    if (ownF('chalk')) one('chalk', 1, '今日推薦黑板', 'chalkboard', 50, SMALL);
+    if (ownF('record')) one('record', 1, '復古唱片機', 'record', 64, BIG);
     // 2F (and 3F/4F of the third shop)
-    if (hasF('cattree')) one('cattree', 2, '豪華貓跳台', 'cattree', 92, BIG, { fun: true });
-    if (hasF('books')) one('books', 2, '貓咪漫畫書櫃', 'bookshelf', 90, BIG, { fun: true });
-    if (hasF('bed')) one('bed', 2, '暖暖貓窩', 'petbed', 60, SMALL, { fun: true });
-    if (hasF('wallwalk')) one('wallwalk', 2, '貓咪壁掛步道', 'wallwalk', 140, BIG, { ref: WALLWALK, mode: 'hang', fun: true });
-    if (hasF('mural')) one('mural', 2, '貓咪主題壁畫', 'mural', 60, BIG, { ref: MURAL, mode: 'hang' });
+    if (ownF('cattree')) one('cattree', 2, '豪華貓跳台', 'cattree', 92, BIG, { fun: true });
+    if (ownF('books')) one('books', 2, '貓咪漫畫書櫃', 'bookshelf', 90, BIG, { fun: true });
+    if (ownF('bed')) one('bed', 2, '暖暖貓窩', 'petbed', 60, SMALL, { fun: true });
+    if (ownF('wallwalk')) one('wallwalk', 2, '貓咪壁掛步道', 'wallwalk', 140, BIG, { ref: WALLWALK, mode: 'hang', fun: true });
+    if (ownF('mural')) one('mural', 2, '貓咪主題壁畫', 'mural', 60, BIG, { ref: MURAL, mode: 'hang' });
     const seat = (p, key, name, n, oy, w, f = 2) => add({ key, f, name, ref: p, mode: 'floor', seat: true, flip: false, calls: () => [{ n, x: p.x, y: p.y + oy, w }] });
-    if (hasF('beanbag')) BEANBAG_SEATS.forEach((p, i) => seat(p, 'bb' + i, '懶骨頭沙發', 'beanbag', 6, 62));
-    if (hasF('hammock')) HAMMOCK_SEATS.forEach((p, i) => seat(p, 'hm' + i, '藤編吊椅', 'eggchair', 4, 54));
-    if (hasF('cushion')) CUSHION_EXTRA.forEach((p, i) => seat(p, 'ce' + i, '貓咪坐墊', 'cushion', 7, 62));
+    if (ownF('beanbag')) BEANBAG_SEATS.forEach((p, i) => seat(p, 'bb' + i, '懶骨頭沙發', 'beanbag', 6, 62));
+    if (ownF('hammock')) HAMMOCK_SEATS.forEach((p, i) => seat(p, 'hm' + i, '藤編吊椅', 'eggchair', 4, 54));
+    if (ownF('cushion')) CUSHION_EXTRA.forEach((p, i) => seat(p, 'ce' + i, '貓咪坐墊', 'cushion', 7, 62));
     EXPANSIONS.slice(0, G.expand).forEach((e, i) => e.cushions.forEach((p, j) => seat(p, 'xc' + i + '_' + j, '坐墊', 'cushion', 7, 62, p.f || 2)));
     if (G.at === 3) CUSHION_POS.forEach((p, i) => seat(p, 'c' + i, '坐墊', 'cushion', 7, 62, p.f || 2));
     for (const t of toysHere()) { const T = TOYS[t];
@@ -193,7 +193,7 @@
     if (!it) return;
     const r = G.place[it.key] = G.place[it.key] || {};
     if (kind === 'flip') { if (!it.flip) { clean(it.key); return toast('座位不能翻轉'); } r.flip = !r.flip; clean(it.key); moved(it); }
-    if (kind === 'hide') { const b = busy(it); if (b) { clean(it.key); return toast(b); } r.hide = true; clean(it.key); moved(it); S.edit.sel = null; toast(`「${it.name}」收起來了，下面點它可以再拿出來`); }
+    if (kind === 'hide') { const b = busy(it); if (b) { clean(it.key); return toast(b); } r.hide = true; clean(it.key); moved(it); S.edit.sel = null; toast(`「${it.name}」收起來了，收著的時候沒有效果，下面點它可以再拿出來`); }
     if (kind === 'reset') {
       const b = busy(it); if (b) { clean(it.key); return toast(b); }
       const old = { dx: r.dx, dy: r.dy, flip: r.flip }; delete r.dx; delete r.dy; delete r.flip; clean(it.key); applyPlace();

@@ -236,7 +236,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
       <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲；勾「分享給大家看」的照片，其他玩家可以在「大家的貼文」按讚、留言（可以選句子、貼圖或自己打字，髒話會自動變成＊）。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
-      <li><b>佈置</b>：按左邊的「佈置」鈕，任何時間都可以把買來的傢俱、桌子和坐墊搬到喜歡的地方（開店中遊戲會先暫停）。綠色可以放，紅色是店員要走的地方不能擋；客人坐著的位子要等客人離開才能搬。也可以左右翻轉、收起來、放回原位，或換顏色（原色免費，其他顏色每次 ¥100～200）。每家店各自佈置。</li>
+      <li><b>佈置</b>：按左邊的「佈置」鈕，任何時間都可以把買來的傢俱、桌子和坐墊搬到喜歡的地方（開店中遊戲會先暫停）。綠色可以放，紅色是店員要走的地方不能擋；客人坐著的位子要等客人離開才能搬。也可以左右翻轉、收起來（收起來的傢俱沒有效果）、放回原位，或換顏色（原色免費，其他顏色每次 ¥100～200）。每家店各自佈置。</li>
       <li><b>出門走走</b>：營業時間（18:30 前）走到 1F 門口，或打開手機「出去玩」，可以出門去公園、市場或聯名公司，一次大約 2 小時，一天最多 3 次。店員會幫忙顧店，營收照算。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
@@ -453,7 +453,7 @@ const TOYS = {
 const TOY_IDS = Object.keys(TOYS);
 const toysHere = () => G.at === 3 ? (G.toys || []).filter(t => TOYS[t]) : [];
 const toySeats = () => toysHere().map(t => ({ ...TOYS[t].seat, toy: t }));
-const toyFlow = () => 1 + .05 * toysHere().length;
+const toyFlow = () => 1 + .05 * toysHere().filter(t => !hid(TOYS[t])).length;
 const ELEV_PRICE = 100000; // the elevator of 貓咪室內樂園 (bought in 我的店); staff and the manager both ride it
 const TOOLS = {
   wand:   { name: '逗貓棒',       price: 150, lv: 1, keep: true, desc: '店長摸貓時，親密度每次多 +1' },
@@ -823,7 +823,7 @@ function applyPlace() {
 }
 const hid = p => !!(p && p.ik && G.place && G.place[p.ik] && G.place[p.ik].hide); // put away in 佈置
 const flipped = p => !!(p && p.ik && G.place && G.place[p.ik] && G.place[p.ik].flip);
-const onF = (id, p) => hasF(id) && !hid(p);
+const onF = (id, p) => ownF(id) && !hid(p);
 // after 佈置 moves, hides or brings back a seat: update today's tables and cushions in place (the same objects, so guests keep theirs)
 function seatSync() {
   if (!S) return;
@@ -1047,7 +1047,9 @@ function dutyCapOf(id) {
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv() && dishHere(d));
-const hasF = id => G.furn.includes(id);
+const ownF = id => G.furn.includes(id); // bought (the shop and 佈置 go by this)
+// furniture effects only count while the piece is out in the shop: one put away in 佈置 does nothing (Chuck 2026-11-15)
+const hasF = id => ownF(id) && !hid({ plant: PROP.plant, lamp: PROP.lamp, chalk: PROP.chalk, record: PROP.record, cattree: PROP.cattree, books: PROP.books, bed: PROP.bed, wallwalk: WALLWALK, mural: MURAL, showcase: SHOWCASE, bar: BAR_SEATS[0] }[id]);
 const plantSpot = () => hasF('bar') && !(G.place && G.place.plant) ? PROP.plantAlt : PROP.plant; // the window counter takes the plant's spot, unless the player placed it
 // guests only order what the shop has made at least once (or what is in the showcase right now)
 const madeOk = d => !G.made || G.made[d] || S.display[d] > 0;
@@ -4620,7 +4622,7 @@ function renderPhone() {
         h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(cost(TABLE_PRICE))}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < EXPANSIONS.length ? `（擴大店面後可以放 ${TABLE_CAPS[G.expand + 1]} 張）` : ''}${G.at === 2 ? '・第 3、4、7、8 張在庭院，下雨天不能坐' : ''}</div>
           <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', cost(TABLE_PRICE))}</div></div>`;
         for (const [id, F] of Object.entries(FURN)) {
-          const own = hasF(id), locked = F.lv > shopLv();
+          const own = ownF(id), locked = F.lv > shopLv();
           const th = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf', bar: 'winbar', beanbag: 'beanbag', wallwalk: 'wallwalk', showcase: 'showcase', hammock: 'eggchair', mural: 'mural' }[id];
           h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(cost(F.price))}</b></div><div class="sub">${F.desc}</div>
             <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, cost(F.price))}</div></div>`;
@@ -4646,7 +4648,7 @@ function renderPhone() {
         const day = S.phase !== 'settle';
         h += `<p class="muted">幫店裡加點小幫手。標「今天」的道具只有今天有效，明天要再買。</p>`;
         for (const [id, T] of Object.entries(TOOLS)) {
-          const own = T.keep ? hasF(id) : S.buff[id], locked = T.lv > shopLv(), noStaff = T.staff && !S.staff.length;
+          const own = T.keep ? ownF(id) : S.buff[id], locked = T.lv > shopLv(), noStaff = T.staff && !S.staff.length;
           h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}${T.name}<small class="tg">${T.keep ? '永久' : '今天'}</small></span><b>${yen(cost(T.price))}</b></div><div class="sub">${T.desc}</div>
             <div class="row" style="margin:0">${own ? `<button disabled>${T.keep ? '已經有了' : '今天已經用了'}</button>` : locked ? `<button disabled>店鋪 Lv.${T.lv} 解鎖</button>` : noStaff ? '<button disabled>還沒有員工</button>' : !T.keep && !day ? '<button disabled>打烊了，明天再買</button>' : btn(id, cost(T.price))}</div></div>`;
         }
@@ -5022,7 +5024,7 @@ function buy(id, credit) {
     name = '原木矮桌'; price = TABLE_PRICE;
     G.tables++; const p = TABLE_POS[G.tables - 1]; S.tables.push({ ...p, cust: null, dirty: false, busy: false, out: isOut(p) });
   } else if (FURN[id]) {
-    if (hasF(id) || FURN[id].lv > shopLv()) return;
+    if (ownF(id) || FURN[id].lv > shopLv()) return;
     name = FURN[id].name; price = FURN[id].price; G.furn.push(id);
     if (id === 'cushion') S.cushions.push(...CUSHION_EXTRA.map(p => ({ ...p, cust: null })));
     if (id === 'beanbag' || id === 'hammock') S.cushions.push(...furnCushions().filter(p => p.kind === id).map(p => ({ ...p, cust: null })));
@@ -5032,7 +5034,7 @@ function buy(id, credit) {
     name = TOYS[id].name; price = TOYS[id].price; (G.toys = G.toys || []).push(id);
     S.cushions.push({ ...TOYS[id].seat, toy: id, cust: null });
   } else if (TOOLS[id]) {
-    const T = TOOLS[id]; if (T.lv > shopLv() || (T.keep ? hasF(id) : S.buff[id] || S.phase === 'settle')) return;
+    const T = TOOLS[id]; if (T.lv > shopLv() || (T.keep ? ownF(id) : S.buff[id] || S.phase === 'settle')) return;
     name = T.name; price = T.price; if (T.keep) G.furn.push(id); else S.buff[id] = true;
   } else {
     const it = SHOP.find(s => s.id === id); name = it.name; price = it.price; G.stock[id] += it.amt;
