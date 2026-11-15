@@ -181,8 +181,9 @@
         try {
           const w = ci.naturalWidth * CATK * k.size.sx, h = ci.naturalHeight * CATK * k.size.s;
           x.drawImage(ci, cx - w / 2, foot - h + 3, w, h);
-          if (r.po !== 2 && CHARMS[r.n] && art(CHARMS[r.n].img)) drawCatWorn(r.n, k, ci, r.po, cx, foot + 3, 1); else if (r.n) later();
-          if (r.po !== 2 && CHARMS[r.h]) { if (art(CHARMS[r.h].img)) headOn(r.h, k, ci, r.po, cx, foot + 3, 1); else later(); }
+          if (d.real) {} // 真實店貓 are painted from photos: no anchors for accessories on them yet
+          else if (r.po !== 2 && CHARMS[r.n] && art(CHARMS[r.n].img)) drawCatWorn(r.n, k, ci, r.po, cx, foot + 3, 1); else if (r.n) later();
+          if (!d.real && r.po !== 2 && CHARMS[r.h]) { if (art(CHARMS[r.h].img)) headOn(r.h, k, ci, r.po, cx, foot + 3, 1); else later(); }
         } finally { g = prev; }
       } else later();
     }
@@ -269,7 +270,8 @@
       <div style="position:absolute;top:8px;left:10px;font-weight:700">${catNameOf(c)}<div class="sub" style="font-weight:400">好感 ❤ ${G.bond[c] || 0}</div></div></div>
       <div class="row" style="margin:8px 0 6px;gap:6px">${chip(SLOT === 'chead', 'data-phslot="chead"', '頭飾')}${chip(SLOT === 'cat', 'data-phslot="cat"', '項圈')}<button disabled style="padding:5px 9px;font-size:13px">小衣服（下一版）</button></div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">${tile('', '不戴', !now)}${own.map(id => tile(id, CHARMS[id].name, now === id)).join('')}</div>`;
-    if (!own.length) h += `<p class="muted" style="margin:8px 0 0">還沒有${SLOT === 'chead' ? '頭飾' : '項圈'}。</p>`;
+    if (CAT_DEFS[c].real) h += '<p class="muted" style="margin:8px 0 0">真實店貓是照著照片畫的，暫時還不能戴飾品，可以直接拍照。</p>';
+    else if (!own.length) h += `<p class="muted" style="margin:8px 0 0">還沒有${SLOT === 'chead' ? '頭飾' : '項圈'}。</p>`;
     h += `<div class="row" style="margin:8px 0 0"><button data-phshop="1">到商店買更多${SLOT === 'chead' ? '頭飾' : '項圈'}</button></div>
       <p class="muted" style="margin:6px 0 0">買一次每隻貓都可以戴。戴著頭飾的貓會在店裡走來走去，客人看到會誇獎，喵IG 的讚也會變多。</p>`;
     return h;
