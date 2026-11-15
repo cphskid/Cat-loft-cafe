@@ -3,10 +3,18 @@
 // 進度存在 G.sign = { n: 總共簽到幾次, last: 最後簽到的日期 'YYYY-MM-DD' }，跟著存檔一起上雲端，換裝置也接得上。
 // 第 7 天的大獎：第一輪送「幸運草鈴鐺項圈」（貓咪），第二輪送「幸運草髮夾」（店長），之後換成現金。
 // 現金獎勵跟著開了幾家店變多，不然開到第三家店時 ¥300 就沒感覺了。
+// 🔥 連勝火花（Chuck 2026-11-15「每天開始玩的時候手指點一下火花就會亮起，然後會出現你連勝幾天」）：
+//   畫面左上角有一個火花，每天第一次是灰的，點一下就亮起來，顯示「連續 N 天」。點亮火花會一起簽到領獎勵（同一張卡）。
+//   漏掉一天：守火貓幫你守住一次，連勝不斷；用掉之後再連續點亮 7 天守火貓才回來。漏掉兩天以上就從 1 天重新開始。
+//   存在 G.streak = { n, best, last, days, guard }（「我的紀錄」也看這個），一樣用真實世界的日期。
 // 用到 index.html 的全域：G、S、started、closeChoose、saveProgress、toast、sfx、yen、gainExp、CHARMS、renderPhone、$。
 (function () {
   const pad = n => String(n).padStart(2, '0');
-  const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = () => ymd(new Date());
+  const ago = k => { const d = new Date(); d.setDate(d.getDate() - k); return ymd(d); };
+  // put the same change on G and on the day-start snapshot, so the save code agrees
+  const both = fn => { fn(G); if (S && S.startG) fn(S.startG); };
   const st = () => G.sign || (G.sign = { n: 0, last: '' });
   // 'YYYY-MM-DD' strings compare by date; a later `last` (the device clock went back) waits until that day has passed
   const can = () => !!(G && today() > st().last);
@@ -46,13 +54,46 @@
   }
   const note = () => `<p class="muted" style="margin:6px 0 0">每天可以簽到一次，漏掉一天也不會歸零，下次來就領下一格。已經簽到 ${st().n} 天。</p>`;
 
+  // ---------- 🔥 連勝火花 ----------
+  const GUARD_BACK = 7;
+  const fs = () => { const f = G.streak || (G.streak = { n: 0, best: 0, last: '', days: 0, guard: 1 }); if (f.guard !== 0) f.guard = 1; return f; };
+  const lit = () => !!G && fs().last >= today();
+  // what lighting today would do: keep going (yesterday), saved by the guard cat (missed exactly one day), or start over
+  function plan() {
+    const f = fs();
+    if (f.last === ago(1)) return { n: f.n + 1, saved: false };
+    if (f.n > 0 && f.last === ago(2) && f.guard) return { n: f.n + 1, saved: true };
+    return { n: 1, saved: false, lost: f.n > 1 ? f.n : 0 };
+  }
+  // the number the unlit flame shows: the streak still alive (or 0 if it already went out)
+  const alive = () => { const f = fs(); if (lit()) return f.n; const p = plan(); return p.n > 1 ? f.n : 0; };
+  function light() {
+    if (!G || lit()) return null;
+    const f = fs(), p = plan();
+    const guard = p.saved ? 0 : (f.guard || (p.n % GUARD_BACK === 0 ? 1 : 0));
+    const back = !p.saved && !f.guard && guard === 1;
+    both(g => { g.streak = { n: p.n, best: Math.max(f.best || 0, p.n), last: today(), days: (f.days || 0) + 1, guard }; });
+    saveProgress(); paint();
+    return { ...p, from: p.lost || p.n === 1 ? 0 : f.n, back };
+  }
+  const guardLine = () => fs().guard ? '🐱 守火貓待命中：漏一天也會幫你守住火花' : `🐱 守火貓休息中，再連續點亮 ${GUARD_BACK - fs().n % GUARD_BACK} 天就回來`;
+  function paint() {
+    const b = $('flameBtn'); if (!b) return;
+    b.hidden = !started || !G; if (b.hidden) return;
+    const on = lit();
+    b.classList.toggle('off', !on);
+    $('flameN').textContent = alive();
+    b.setAttribute('aria-label', on ? `連勝火花：連續 ${fs().n} 天` : '連勝火花還沒點亮，點一下點亮');
+  }
+
   function claim() {
     if (!can()) return null;
     const { k, r } = pos(), R = reward(k, r);
     R.give(G, true); if (S && S.startG) { R.give(S.startG, false); S.startG.sign = { n: st().n + 1, last: today() }; }
     G.sign = { n: st().n + 1, last: today() };
+    const fire = light();
     saveProgress(); sfx(k === 6 ? 'badge' : 'wallet');
-    return { k, R };
+    return { k, R, fire };
   }
   const doneText = ({ k, R }) => R.charm ? `簽到第 7 天！拿到${R.text}，${CHARMS[R.charm].slot === 'cat' ? '到手機「衣櫃」幫貓咪戴上吧' : '已經戴上了'}` : `簽到第 ${k + 1} 天：${R.text}`;
 
@@ -62,27 +103,63 @@
   }
   function bind(sc) {
     const b = sc.querySelector('#signGo'); if (!b) return;
-    b.onclick = () => { const got = claim(); if (got) toast(doneText(got)); renderPhone(); };
+    b.onclick = () => { const got = claim(); if (got) { toast(doneText(got)); if (got.fire) toast(`🔥 火花點亮了！連續 ${got.fire.n} 天`); } renderPhone(); };
   }
   const sub = () => can() ? '今天還沒簽到！' : `已簽到 ${st().n} 天`;
 
-  // ---------- the card when the shop opens ----------
-  const free = () => started && S && G.day > 1 && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && !S.out && $('phoneOv').hidden && $('chooseOv').hidden;
-  function offer() {
-    if (!can() || !free()) return;
-    const c = $('chooseCard');
-    c.innerHTML = `<h2>📅 每日簽到</h2>${grid()}<div class="row"><button id="signLater">等一下</button><button class="primary" id="signNow">簽到領獎勵</button></div>${note()}`;
+  // ---------- the flame card: pops up when the shop opens, or when the flame at the top left is tapped ----------
+  // lighting the flame also signs in for today (one card, not two popups)
+  const free = () => started && S && S.phase !== 'settle' && !S.cook && !S.reg && !S.mini && !S.uiPause && !S.out && $('phoneOv').hidden && $('chooseOv').hidden;
+  const need = () => !!G && (!lit() || can());
+  const sparks = () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => { const a = i / 10 * Math.PI * 2, r = 70 + (i % 3) * 12;
+    return `<i style="--x:${Math.round(Math.cos(a) * r)}px;--y:${Math.round(Math.sin(a) * r)}px;animation-delay:${(i % 3) * 60}ms"></i>`; }).join('');
+  function card() {
+    const c = $('chooseCard'), on = lit(), f = fs(), p = on ? null : plan();
+    let cap;
+    if (on) cap = `<div class="n">連續 ${f.n} 天</div><div class="muted">最長紀錄 ${Math.max(f.best || 0, f.n)} 天・今天的火花已經點亮了</div>`;
+    else cap = `<div class="hint">點一下火花，把它點亮！</div><div class="muted">${p.n > 1 ? `點亮就是連續 ${p.n} 天${p.saved ? '（昨天沒來，守火貓會幫你守住）' : ''}` : (p.lost ? `上次連續 ${p.lost} 天，火花熄掉了，今天重新點起來吧` : '每天來點一下，火花就會越燒越旺')}</div>`;
+    const sign = can() ? `<p class="muted" style="text-align:center;margin:6px 0 0">${on ? '今天還沒簽到喔' : '點亮火花會一起簽到領今天的獎勵'}</p>${grid()}` : '';
+    const btns = on ? (can() ? '<button id="flLater">等一下</button><button class="primary" id="flSign">簽到領獎勵</button>' : '<button class="primary" id="flLater">好！</button>') : '<button id="flLater">等一下</button>';
+    c.innerHTML = `<h2>🔥 今天的火花</h2><button class="flamebig ${on ? 'lit' : 'off'}" id="flBig" aria-label="${on ? '火花亮著' : '點一下點亮火花'}"><span class="fl">🔥</span>${sparks()}</button>
+      <div class="flamecap" id="flCap">${cap}</div><div class="flameguard">${guardLine()}</div><div id="flSignBox">${sign}</div><div class="row" id="flBtns">${btns}</div>`;
     $('chooseOv').hidden = false; S.uiPause = true;
-    $('signLater').onclick = closeChoose;
-    $('signNow').onclick = () => {
-      const got = claim(); if (!got) { closeChoose(); return; }
-      c.innerHTML = `<h2>📅 簽到成功！</h2>${grid()}<p style="text-align:center;font-weight:700">${doneText(got)}</p><div class="row"><button class="primary" id="signOk">好！</button></div>`;
-      $('signOk').onclick = closeChoose;
+    $('flLater').onclick = () => { closeChoose(); paint(); };
+    const s2 = $('flSign'); if (s2) s2.onclick = () => { const got = claim(); done(null, got); };
+    if (!on) $('flBig').onclick = () => {
+      const fire = light(); if (!fire) return;
+      const got = can() ? claim() : null;
+      const b = $('flBig'); b.classList.remove('off'); b.classList.add('lit', 'go'); b.onclick = null;
+      sfx('badge'); done(fire, got);
     };
   }
+  // after lighting / signing: count the number up, then show what happened
+  function done(fire, got) {
+    const f = fs(), cap = $('flCap');
+    let extra = '';
+    if (fire && fire.saved) extra += '<div class="flamesave">昨天沒來，🐱 守火貓幫你守住了火花！</div>';
+    if (fire && fire.back) extra += '<div class="flamesave">🐱 守火貓休息夠了，又回來幫你守火了！</div>';
+    if (fire && fire.lost) extra += `<div class="muted">火花重新點起來了，明天再來就是連續 2 天！</div>`;
+    cap.innerHTML = `<div class="n" id="flNum">連續 ${fire ? fire.from : f.n} 天</div><div class="muted">最長紀錄 ${f.best || f.n} 天</div>${extra}`;
+    if (fire) { const a = fire.from, z = fire.n, t0 = performance.now();
+      const step = t => { const k = Math.min(1, (t - t0) / 700), el = $('flNum'); if (!el) return; el.textContent = `連續 ${Math.round(a + (z - a) * k)} 天${k === 1 ? '！' : ''}`; if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step); }
+    $('flSignBox').innerHTML = got ? `${grid()}<p style="text-align:center;font-weight:700;margin:4px 0 0">${doneText(got)}</p>` : '';
+    document.querySelector('#chooseCard .flameguard').textContent = guardLine();
+    $('flBtns').innerHTML = '<button class="primary" id="flOk">好！</button>';
+    $('flOk').onclick = () => { closeChoose(); paint(); };
+    paint();
+  }
+  function offer() { paint(); if (G && G.day > 1 && need() && free()) card(); }
+  function tap() {
+    if (!started || !S) return;
+    if (!$('chooseOv').hidden || !$('phoneOv').hidden || S.cook || S.reg || S.mini || S.phase === 'settle') { toast('等一下再來點火花喔'); return; }
+    card();
+  }
+  const btn = document.getElementById('flameBtn'); if (btn) btn.onclick = tap;
   // look a little after the shop opens (after the gift check), then every minute so a page left open past midnight offers the new day
   setInterval(() => { if (document.visibilityState === 'visible') offer(); }, 60000);
-  const wait = setInterval(() => { if (started) { clearInterval(wait); setTimeout(offer, 6000); } }, 2000);
+  setInterval(paint, 3000);
+  const wait = setInterval(() => { if (started) { clearInterval(wait); paint(); setTimeout(offer, 6000); } }, 2000);
 
-  window.CHECKIN = { page, bind, sub, can };
+  window.CHECKIN = { page, bind, sub, can, lit, light, paint, card };
 })();
