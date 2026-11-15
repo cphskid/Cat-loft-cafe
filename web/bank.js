@@ -4,7 +4,7 @@
 //   本來還要送 20 寶石，遊戲還沒有寶石，先不送。存滿那天一次拿回 ¥30,000（Chuck：存進去的 ¥16,000 加獎勵，「改成 30,000 整比較好」）。
 //   G.bank = { n: 這一輪存了幾天, last: 最後存錢的日期, sum: 這一輪存了多少, won: 存滿過幾輪 }
 // 我的紀錄（Chuck 2026-10-31「連勝上線天數，還有玩家可以看得到自己遊玩的總時間，這樣會比較有成就感」）：
-//   G.streak = { n: 連續幾天有上線, best: 最長連續, last: 最後上線的日期, days: 總共上線幾天 }；總遊玩時間是 G.play（只算畫面開著、兩分鐘內有操作）。
+//   G.streak = { n: 連續幾天有上線, best: 最長連續, last: 最後上線的日期, days: 總共上線幾天, guard: 守火貓在不在 }；2026-11-15 起改成點亮火花才算（checkin.js）；總遊玩時間是 G.play（只算畫面開著、兩分鐘內有操作）。
 // 用到 index.html 的全域：G、S、started、saveProgress、toast、sfx、yen、renderPhone。
 (function () {
   const DAYS = 16, PER = 1000, PAYOUT = 30000;
@@ -15,25 +15,17 @@
   // put the same change on G and on the day-start snapshot, so the save code agrees
   const both = fn => { fn(G); if (S && S.startG) fn(S.startG); };
 
-  // ---------- 我的紀錄: the login streak ----------
-  function touch() {
-    if (!started || !G) return;
-    const st = G.streak || (G.streak = { n: 0, best: 0, last: '', days: 0 }), t = today();
-    if (st.last >= t) return; // already counted today (or the clock went back)
-    const n = st.last === yesterday() ? st.n + 1 : 1;
-    both(g => { g.streak = { n, best: Math.max(st.best, n), last: t, days: (st.days || 0) + 1 }; });
-    if (n > 1) toast(`🔥 連續上線第 ${n} 天！`);
-    saveProgress();
-  }
+  // ---------- 我的紀錄 ----------
+  // the streak itself (G.streak) is counted by the daily flame in checkin.js: it grows the day the player taps the flame
   const hms = s => { s = Math.floor(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h} 小時 ${m} 分` : `${m} 分鐘`; };
   function recordPage() {
     const st = G.streak || { n: 0, best: 0, days: 0 };
     const box = (icon, big, label) => `<div class="item" style="text-align:center;margin:0;padding:12px 6px"><div style="font-size:26px">${icon}</div><div style="font-size:22px;font-weight:700">${big}</div><div class="sub">${label}</div></div>`;
     return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      ${box('🔥', `${st.n} 天`, '連續上線')}${box('🏆', `${st.best} 天`, '最長連續上線')}
+      ${box('🔥', `${st.n} 天`, '連續點亮火花')}${box('🏆', `${st.best} 天`, '最長連續上線')}
       ${box('⏱️', hms(G.play), '總遊玩時間')}${box('📅', `${st.days || 0} 天`, '總共上線')}
       ${box('☀️', `第 ${G.day} 天`, '店裡過了幾天')}${box('🚪', (G.stats.guests || 0).toLocaleString() + ' 位', '接待過的客人')}</div>
-      <p class="muted" style="margin:8px 0 0">每天（真實世界的日期）打開遊戲就算上線一天，隔一天沒來連續天數會重新算。遊玩時間只算畫面開著、有在玩的時間，從 2026/10/31 開始算。</p>`;
+      <p class="muted" style="margin:8px 0 0">每天（真實世界的日期）點亮一次🔥火花就算上線一天。漏掉一天，守火貓會幫你守住一次火花；漏掉兩天以上就重新開始。遊玩時間只算畫面開著、有在玩的時間，從 2026/10/31 開始算。</p>`;
   }
 
   // ---------- 喵喵銀行 ----------
@@ -79,9 +71,6 @@
   function bind(sc) { const g = sc.querySelector('#bankGo'); if (g) g.onclick = deposit; }
   const sub = () => { if (!G) return ''; const b = bk(); return canSave() ? (b.n ? `第 ${b.n + 1} 天還沒存！` : '每天存 ¥1,000') : `連續 ${b.n || DAYS} 天`; };
 
-  setInterval(() => { if (document.visibilityState === 'visible') touch(); }, 60000);
-  const wait = setInterval(() => { if (started) { clearInterval(wait); touch(); } }, 2000);
-
   window.BANK = { page: bankPage, bind, sub, can: () => !!G && canSave() && bk().n > 0 && !broken() };
-  window.RECORD = { page: recordPage, sub: () => G && G.streak && G.streak.n ? `連續上線 ${G.streak.n} 天` : '遊玩時間' };
+  window.RECORD = { page: recordPage, sub: () => G && G.streak && G.streak.n ? `🔥 連續 ${G.streak.n} 天` : '遊玩時間' };
 })();
