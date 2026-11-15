@@ -95,6 +95,11 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .stabs button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
 .item .tg{font-size:11px;font-weight:400;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:6px}
 .item .thumb{width:54px;height:40px;object-fit:contain;float:left;margin:0 10px 0 0}
+.fcgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.fcat{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:14px;background:#fff;border:2px solid var(--line,#E2CFB3)}
+.fcat img{height:48px;max-width:70px;object-fit:contain}.fcat b{font-size:14px}.fcat small{color:#8A6A52;font-size:11px}
+.fchead{display:flex;align-items:center;gap:10px;margin:2px 0 8px}.fchead button{padding:4px 10px;font-size:13px}.fchead b{font-size:16px}
+.newtag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:8px;background:#E8735A;color:#fff;font-size:11px;line-height:17px;vertical-align:2px}
 .item{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .item .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .item .nm{font-weight:700}
@@ -245,6 +250,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
     <button class="rb" data-pane="inv" aria-label="庫存">庫存<span class="badge sm" id="invBadge" hidden>!</span></button>
     <button class="rb" data-pane="staff" id="staffTab" aria-label="員工" hidden>員工</button>
     <button class="rb" data-pane="tips" id="tipsTab" aria-label="今日提示" hidden>提示</button>
+    <button class="rb" id="decoBtn" aria-label="佈置：搬動傢俱、換顏色">佈置</button>
     <button class="rb" data-pane="howto" aria-label="怎麼玩">說明</button>
   </div>
   <div class="panel drawer" id="drawer" hidden>
@@ -263,6 +269,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
       <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲；勾「分享給大家看」的照片，其他玩家可以在「大家的貼文」按讚、留言（可以選句子、貼圖或自己打字，髒話會自動變成＊）。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
+      <li><b>佈置</b>：按左邊的「佈置」鈕，任何時間都可以把買來的傢俱、桌子和坐墊搬到喜歡的地方（開店中遊戲會先暫停）。綠色可以放，紅色是店員要走的地方不能擋；客人坐著的位子要等客人離開才能搬。也可以左右翻轉、收起來（收起來的傢俱沒有效果）、放回原位，或換顏色（原色免費，其他顏色每次 ¥100～200）。每家店各自佈置。</li>
       <li><b>出門走走</b>：營業時間（18:30 前）走到 1F 門口，或打開手機「出去玩」，可以出門去公園、市場或聯名公司，一次大約 2 小時，一天最多 3 次。店員會幫忙顧店，營收照算。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
@@ -347,15 +354,16 @@ function updateCam(dt) {
     V.s = s; V.tx = w / 2 - (box.x + box.w / 2) * s; V.ty = h / 2 - (box.y + box.h / 2) * s; V.cx = box.x + box.w / 2; V.cy = box.y + box.h / 2;
     return;
   }
-  const s = viewScale(w, h), vw = w / s, vh = h / s, maxX = W - vw, maxY = H - vh;
-  const m = S && S.mgr, follow = m && m.floor === S.view && !DRAG.moved && performance.now() > CAM.hold;
+  const hv = h - (S && S.edit && window.DECO ? DECO.barH() : 0); // 佈置: keep the floor above its tool bar
+  const s = viewScale(w, hv), vw = w / s, vh = hv / s, maxX = W - vw, maxY = H - vh;
+  const m = S && S.mgr, follow = m && m.floor === S.view && !DRAG.moved && performance.now() > CAM.hold && !S.edit;
   const k = CAM.snap ? 1 : Math.min(1, dt * 5);
   if (maxX <= 0) CAM.x = maxX / 2;
   else {
     if (follow) CAM.x += (clamp(m.x - vw / 2, 0, maxX) - CAM.x) * k;
     CAM.x = clamp(CAM.x, 0, maxX);
   }
-  if (maxY <= 0) CAM.y = maxY / 2;
+  if (maxY <= 0) CAM.y = S && S.edit ? maxY : maxY / 2;
   else { // the manager's feet sit about two thirds down the screen
     if (follow) CAM.y += (clamp(m.y - vh * .68, 0, maxY) - CAM.y) * k;
     CAM.y = clamp(CAM.y, 0, maxY);
@@ -421,14 +429,43 @@ const FURN = {
   books:   { name: '貓咪漫畫書櫃', price: 240, lv: 6, desc: '2F 客人可以翻漫畫等貓，就算沒摸到貓也不會扣星' },
   mural:   { name: '貓咪主題壁畫', price: 500, lv: 7, desc: '2F 牆上的貓咪壁畫，客人更容易給 5 星' },
 };
+// 商店「傢俱」 is browsed by category first (Chuck 2026-11-15); every old piece belongs to one
+const FURN_CATS = { lamp: '燈', tree: '貓跳台', seat: '座位', table: '桌子', cab: '櫃子', plant: '植物', bed: '貓窩', wall: '牆面裝飾', etc: '其他' };
+const FURN_CAT_OF = { plant: 'plant', lamp: 'lamp', record: 'cab', bar: 'seat', beanbag: 'seat', cushion: 'seat', hammock: 'seat', wallwalk: 'tree', cattree: 'tree', deodor: 'etc', warmer: 'cab', chalk: 'wall', showcase: 'cab', bed: 'bed', sign: 'wall', books: 'cab', mural: 'wall' };
+// More furniture (Chuck 2026-11-15): placed with 佈置, up to DECO_MAX of each (each piece has its own colour), and the effects stack.
+// Art: assets/fx_<id>.webp (tools/art/README). w/h = size in the scene; mode = wall (stands by the wall: left/right only) / floor / hang (on the wall);
+// f = the floor a new one goes to; fx = effect; seats = loft seats it adds ([dx, lift]); perch = where a cat sits (fraction of h up, px = fraction of w across)
+const DECO_MAX = 3;
+const DECOR = {
+  lantern:   { name: '紙燈籠立燈',     cat: 'lamp',  lv: 2, price: 150, w: 41, h: 130, mode: 'wall', f: 1, fx: 'lamp',   desc: '跟暖光立燈一樣：客人給 4 星以上，經驗 +1' },
+  lily:      { name: '鈴蘭花立燈',     cat: 'lamp',  lv: 3, price: 180, w: 47, h: 125, mode: 'wall', f: 1,                desc: '彎彎的花莖掛著三朵鈴蘭燈，純裝飾' },
+  earlamp:   { name: '貓耳立燈',       cat: 'lamp',  lv: 4, price: 220, w: 35, h: 130, mode: 'wall', f: 1, fx: 'pat',    desc: '燈罩上有兩隻貓耳朵，客人排隊和等餐的耐心 +10%' },
+  treehouse: { name: '小樹屋貓跳台',   cat: 'tree',  lv: 2, price: 160, w: 55, h: 100, mode: 'wall', f: 2, fx: 'energy15', perch: [.93, 0], desc: '矮矮的樹屋，貓咪醒著時體力消耗慢 15%' },
+  logtower:  { name: '原木高塔貓跳台', cat: 'tree',  lv: 4, price: 340, w: 84, h: 190, mode: 'wall', f: 2, fx: 'energy30', perch: [.74, -.24], desc: '跟豪華貓跳台一樣：貓咪醒著時體力消耗慢 30%' },
+  cloudtree: { name: '雲朵貓跳台',     cat: 'tree',  lv: 6, price: 420, w: 89, h: 170, mode: 'wall', f: 2, fx: 'play',   perch: [.84, 0], desc: '軟綿綿的雲朵平台，貓咪醒著時更愛找客人玩' },
+  pawseat:   { name: '貓掌坐墊',       cat: 'seat',  lv: 2, price: 120, w: 59, h: 58, mode: 'floor', f: 2, seats: [[0, 6]],               desc: '粉紅肉球的大坐墊，2F 多 1 個座位' },
+  catbag:    { name: '貓咪懶骨頭',     cat: 'seat',  lv: 4, price: 200, w: 65, h: 62, mode: 'floor', f: 2, seats: [[0, 14]],              desc: '貓咪臉的懶骨頭，2F 多 1 個座位' },
+  cloudsofa: { name: '雲朵沙發',       cat: 'seat',  lv: 3, price: 260, w: 89, h: 62, mode: 'floor', f: 2, seats: [[-20, 12], [22, 12]],  desc: '像雲一樣的矮沙發，2F 多 2 個座位' },
+  lowcab:    { name: '木頭矮櫃',       cat: 'cab',   lv: 2, price: 160, w: 85, h: 62, mode: 'wall', f: 1,                desc: '擺著幾個茶杯的拉門矮櫃，純裝飾' },
+  dishcab:   { name: '玻璃餐具櫃',     cat: 'cab',   lv: 3, price: 240, w: 80, h: 122, mode: 'wall', f: 1, fx: 'reorder', desc: '整齊的盤子和碗，客人吃完再加點的機會高一點' },
+  figcab:    { name: '貓咪公仔展示櫃', cat: 'cab',   lv: 5, price: 300, w: 70, h: 118, mode: 'wall', f: 1, fx: 'star',   desc: '滿滿的貓咪公仔，客人比較容易給 5 星' },
+  monstera:  { name: '龜背芋',         cat: 'plant', lv: 1, price: 80,  w: 55, h: 84, mode: 'wall', f: 1, fx: 'pat',     desc: '跟綠意盆栽一樣：客人排隊和等餐的耐心 +10%' },
+  succul:    { name: '多肉植物架',     cat: 'plant', lv: 2, price: 100, w: 56, h: 84, mode: 'wall', f: 1,                desc: '三層木架擺滿小多肉，純裝飾' },
+  olive:     { name: '小橄欖樹',       cat: 'plant', lv: 3, price: 120, w: 59, h: 96, mode: 'wall', f: 1,                desc: '陶盆裡的小橄欖樹，純裝飾' },
+  boxbed:    { name: '紙箱貓窩',       cat: 'bed',   lv: 1, price: 60,  w: 52, h: 34, mode: 'floor', f: 2, fx: 'sleep20', perch: [.4, 0], desc: '鋪了毯子的紙箱，貓咪睡覺回復體力快 20%' },
+  yarnbed:   { name: '毛線球貓窩',     cat: 'bed',   lv: 4, price: 220, w: 54, h: 50, mode: 'floor', f: 2, fx: 'sleep50', perch: [.3, 0], desc: '跟暖暖貓窩一樣：貓咪睡覺回復體力快 50%' },
+  wreath:    { name: '乾燥花圈',       cat: 'wall',  lv: 1, price: 90,  w: 45, h: 52, mode: 'hang', f: 1,                desc: '掛在牆上的乾燥花圈，純裝飾' },
+  catclock:  { name: '貓咪掛鐘',       cat: 'wall',  lv: 2, price: 150, w: 41, h: 72, mode: 'hang', f: 1,                desc: '貓咪臉的掛鐘，尾巴是鐘擺，純裝飾' },
+  catpaint:  { name: '睡貓水彩畫',     cat: 'wall',  lv: 3, price: 180, w: 51, h: 40, mode: 'hang', f: 1, fx: 'star2',  desc: '小小的睡貓畫，客人比較容易給 5 星（效果小一點）' },
+};
 // where the furniture without a fixed role in the layout stands (floor y = the prop's bottom)
-let PROP = { plant: { x: 880, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 720, y: 480 }, plantAlt: { x: 24, y: 482 } }; // plantAlt: where the plant goes once the window counter takes its spot
+let PROP = { plant: { x: 880, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 720, y: 480 }, plantAlt: { x: 24, y: 482 }, record: { x: 721, y: 480 }, bed: { x: 206, y: 466 } }; // plantAlt: where the plant goes once the window counter takes its spot
 let CUSHION_EXTRA = [{ x: 520, y: 546 }, { x: 578, y: 594 }];
 // seats that come with a piece of furniture: 1F window counter (works like a table), 2F beanbags and hanging chairs (like cushions; lift = how high the guest sits)
 let BAR_SEATS = [{ x: 892, y: 506 }, { x: 946, y: 506 }];
 let BEANBAG_SEATS = [{ x: 196, y: 590 }, { x: 262, y: 598 }];
 let HAMMOCK_SEATS = [{ x: 880, y: 526 }, { x: 932, y: 526 }];
-let SHOWCASE = { x: 160, y: 556 }, WARMER = { x: 401, y: 366 }; const WALLWALK = { x: 82, y: 304 }; let MURAL = { x: 918, y: 442 };
+let SHOWCASE = { x: 160, y: 556 }, WARMER = { x: 401, y: 366 }; let WALLWALK = { x: 82, y: 304 }; let MURAL = { x: 918, y: 442 };
 const furnCushions = () => [...(hasF('cushion') ? CUSHION_EXTRA : []), ...(hasF('beanbag') ? BEANBAG_SEATS.map(p => ({ ...p, kind: 'beanbag', lift: 12 })) : []), ...(hasF('hammock') ? HAMMOCK_SEATS.map(p => ({ ...p, kind: 'hammock', lift: 30 })) : [])];
 const furnSeats = id => id === 'bar' ? BAR_SEATS.map(p => ({ ...p, bar: true, cust: null, dirty: false, busy: false })) : [];
 const LAND_GOAL = 100000;
@@ -478,7 +515,7 @@ const TOYS = {
 const TOY_IDS = Object.keys(TOYS);
 const toysHere = () => G.at === 3 ? (G.toys || []).filter(t => TOYS[t]) : [];
 const toySeats = () => toysHere().map(t => ({ ...TOYS[t].seat, toy: t }));
-const toyFlow = () => 1 + .05 * toysHere().length;
+const toyFlow = () => 1 + .05 * toysHere().filter(t => !hid(TOYS[t])).length;
 const ELEV_PRICE = 100000; // the elevator of 貓咪室內樂園 (bought in 我的店); staff and the manager both ride it
 const TOOLS = {
   wand:   { name: '逗貓棒',       price: 150, lv: 1, keep: true, desc: '店長摸貓時，親密度每次多 +1' },
@@ -853,12 +890,66 @@ let LAYOUT = LAYOUTS[1], OUT_X = 99999;
 // switch every floor-plan constant over to shop `id`
 function applyLayout(id) {
   const L = LAYOUT = LAYOUTS[id] || LAYOUTS[1];
-  ({ PROP, SHOWCASE, WARMER, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, MAX_TABLES, EXPANSIONS, TABLE_CAPS, CUSHION_POS, BEDS, EXTRA_BEDS, OUT_X } = L);
+  // everything a player can move in 佈置 (deco.js) is a fresh copy, so moving it never touches LAYOUTS
+  const C = JSON.parse(JSON.stringify({ PROP: L.PROP, SHOWCASE: L.SHOWCASE, CUSHION_EXTRA: L.CUSHION_EXTRA, BAR_SEATS: L.BAR_SEATS, BEANBAG_SEATS: L.BEANBAG_SEATS, HAMMOCK_SEATS: L.HAMMOCK_SEATS, MURAL: L.MURAL, TABLE_POS: L.TABLE_POS, CUSHION_POS: L.CUSHION_POS, EXPANSIONS: L.EXPANSIONS }));
+  ({ PROP, SHOWCASE, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, CUSHION_POS, EXPANSIONS } = C);
+  ({ WARMER, MAX_TABLES, TABLE_CAPS, BEDS, EXTRA_BEDS, OUT_X } = L);
+  WALLWALK = { x: 82, y: 304 }; PROP.record = PROP.record || { x: 721, y: 480 }; PROP.bed = PROP.bed || { x: 206, y: 466 };
+  for (const t of TOY_IDS) { TOYS[t].x = TOY_BASE[t].x; TOYS[t].y = TOY_BASE[t].y; TOYS[t].seat = { ...TOY_BASE[t].seat }; }
+  tagPlaces(id); applyPlace();
   if (id === 2) for (const n of ['s2bg1', 's2bg2', 's2bg4', ...GUESTS2.map(c => c + '_0'), ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's2' + r + '_0')]) art(n);
   if (id === 3) for (const n of [...shopArt(3), ...TOY_IDS.map(t => TOYS[t].img)]) art(n);
   prerender();
 }
 // painted floors and the crew's sprites a shop needs before it opens
+// 佈置: every movable thing's position object gets ik (the item it belongs to; the key in G.place) and pk (unique, to find the
+// matching seat in S.tables / S.cushions), plus bx/by = where the layout puts it. G.place[ik] = { dx, dy, flip, col, hide }.
+// The 4 loft cushions of the first two shops are painted into the background, so they stay put (pk only, no ik).
+const TOY_BASE = JSON.parse(JSON.stringify(TOYS));
+let PLACED = [];
+function tagPlaces(id) {
+  PLACED = [];
+  const tag = (o, ik, pk) => { if (!o) return; if (ik) o.ik = ik; o.pk = pk || ik; o.bx = o.x; o.by = o.y; PLACED.push(o); };
+  TABLE_POS.forEach((p, i) => tag(p, 't' + i));
+  BAR_SEATS.forEach((p, i) => tag(p, 'bar', 'bar' + i));
+  tag(SHOWCASE, 'showcase'); tag(MURAL, 'mural'); tag(WALLWALK, 'wallwalk');
+  for (const k of ['plant', 'lamp', 'chalk', 'record', 'cattree', 'books', 'bed']) tag(PROP[k], k);
+  BEANBAG_SEATS.forEach((p, i) => tag(p, 'bb' + i)); HAMMOCK_SEATS.forEach((p, i) => tag(p, 'hm' + i)); CUSHION_EXTRA.forEach((p, i) => tag(p, 'ce' + i));
+  EXPANSIONS.forEach((e, i) => e.cushions.forEach((p, j) => tag(p, 'xc' + i + '_' + j)));
+  CUSHION_POS.forEach((p, i) => tag(p, id === 3 ? 'c' + i : null, 'c' + i));
+  for (const t of TOY_IDS) { tag(TOYS[t], t); tag(TOYS[t].seat, t, 'seat_' + t); }
+  // the newer furniture: one position per piece bought (its G.place record holds where it is, as dx/dy from 0,0, and which floor)
+  DECO_PIECES = [];
+  for (const [d, n] of Object.entries((G && G.decos) || {})) for (let i = 0; i < n && DECOR[d]; i++) {
+    const key = 'd_' + d + '_' + i, D = DECOR[d], P = { x: 0, y: 0, f0: D.f, deco: d }; tag(P, key);
+    const seats = (D.seats || []).map(([dx, lift], j) => { const st = { x: dx, y: 0, lift, kind: 'deco', f0: D.f, deco: d }; tag(st, key, key + 's' + j); return st; });
+    DECO_PIECES.push({ key, id: d, D, P, seats });
+  }
+}
+let DECO_PIECES = [];
+const decoOn = () => DECO_PIECES.filter(d => !hid(d.P));
+const decoN = fx => decoOn().filter(d => d.D.fx === fx).length; // how many of the newer pieces with this effect are out in the shop
+const decoSeats = () => DECO_PIECES.flatMap(d => d.seats);
+function applyPlace() {
+  const P = (G && G.place) || {};
+  for (const o of PLACED) { const r = o.ik && P[o.ik]; o.x = o.bx + (r ? r.dx || 0 : 0); o.y = o.by + (r ? r.dy || 0 : 0); if (o.deco) o.f = (r && r.f) || o.f0; }
+  if (window.DECO) DECO.refresh();
+}
+const hid = p => { // put away in 佈置 (a newer piece that was never placed counts as put away)
+  if (!p || !p.ik || !G || !G.place) return false; const r = G.place[p.ik];
+  return p.deco ? !r || !!r.hide || r.dx == null : !!(r && r.hide);
+};
+const flipped = p => !!(p && p.ik && G.place && G.place[p.ik] && G.place[p.ik].flip);
+const onF = (id, p) => ownF(id) && !hid(p);
+// after 佈置 moves, hides or brings back a seat: update today's tables and cushions in place (the same objects, so guests keep theirs)
+function seatSync() {
+  if (!S) return;
+  const keep = (list, src, fresh) => src.filter(p => !hid(p)).map(p => { const o = list.find(t => t.pk && t.pk === p.pk) || fresh(p); o.x = p.x; o.y = p.y; return o; });
+  S.tables = keep(S.tables, TABLE_POS.slice(0, G.tables).concat(hasF('bar') ? BAR_SEATS.map(p => ({ ...p, bar: true })) : []), p => ({ ...p, cust: null, dirty: false, busy: false }));
+  S.tables.forEach(t => t.out = isOut(t) && !t.bar);
+  S.cushions = keep(S.cushions, CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats(), decoSeats()), p => ({ ...p, cust: null }));
+  S.cushions.forEach(c => { const src = c.pk && PLACED.find(o => o.pk === c.pk); if (src && src.deco) c.f = src.f; });
+}
 const shopArt = id => id === 2 ? ['s2bg1', 's2bg2', 's2bg4'] : id === 3 ? ['s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6', ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's3' + r + '_0')] : [];
 const fw = f => LAYOUT.FW[f] || 960; // width of floor f in the current shop
 const bgName = f => (G && G.at === 3 ? 's3bg' : G && G.at === 2 && f !== 3 ? 's2bg' : 'bg') + f; // painted background of floor f
@@ -1040,17 +1131,17 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {}, head: {} }, album: { m: {}, p: [], got: [], pd: [0, 0] }, collab: null, ig: [], letters: [], mtype: '', hm: '', real: {}, ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0, guard: 1 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [], diary: { r: {}, l: {} },
+           exp: 0, earned: 0, furn: [], place: {}, decos: {}, keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {}, head: {} }, album: { m: {}, p: [], got: [], pd: [0, 0] }, collab: null, ig: [], letters: [], mtype: '', hm: '', real: {}, ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0, guard: 1 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [], diary: { r: {}, l: {} },
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
 // The shop you are working in today has those fields right on G, so the rest of the game never needs to know
 // which shop it is; the other shops wait in G.shops until you go there (loadShop).
-const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden', 'toys', 'elev'];
+const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden', 'toys', 'elev', 'place', 'decos'];
 function freshShop(id) {
   const prices = {}; for (const k of ['loft', 'beans', 'treat', ...DISHES]) prices[k] = baseOf(k, id);
   return { exp: 0, furn: [], tables: 4, expand: 0, staff: [], hired: {}, sched: {}, duty: [], prices, stock: { flour: 10, food: 6, catfood: 3, litter: 3, beans: 0, treat: 10, garden: 10 },
-           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [], toys: [], elev: false };
+           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [], toys: [], elev: false, place: {}, decos: {} };
 }
 const shopRec = id => id === G.at ? G : G.shops[id];
 function loadShop(id) {
@@ -1069,7 +1160,10 @@ function dutyCapOf(id) {
 }
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv() && dishHere(d));
-const hasF = id => G.furn.includes(id);
+const ownF = id => G.furn.includes(id); // bought (the shop and 佈置 go by this)
+// furniture effects only count while the piece is out in the shop: one put away in 佈置 does nothing (Chuck 2026-11-15)
+const hasF = id => ownF(id) && !hid({ plant: PROP.plant, lamp: PROP.lamp, chalk: PROP.chalk, record: PROP.record, cattree: PROP.cattree, books: PROP.books, bed: PROP.bed, wallwalk: WALLWALK, mural: MURAL, showcase: SHOWCASE, bar: BAR_SEATS[0] }[id]);
+const plantSpot = () => hasF('bar') && !(G.place && G.place.plant) ? PROP.plantAlt : PROP.plant; // the window counter takes the plant's spot, unless the player placed it
 // guests only order what the shop has made at least once (or what is in the showcase right now)
 const madeOk = d => !G.made || G.made[d] || S.display[d] > 0;
 const markMade = d => { if (G.made) G.made[d] = 1; };
@@ -1077,7 +1171,7 @@ const markMade = d => { if (G.made) G.made[d] = 1; };
 const EASY = { 1: { gap: 1.5, max: 3, pat: 1.4, exact: .5 }, 2: { gap: 1.45, max: 4, pat: 1.25, exact: .35 }, 3: { gap: 1.2, max: 6, pat: 1.1, exact: .2 } };
 const easy = () => EASY[G.day] || null;
 const dispTotal = () => DISHES.reduce((a, d) => a + (S.display[d] || 0), 0);
-const patMul = () => (hasF('record') ? 1.2 : 1) * (hasF('plant') ? 1.1 : 1);
+const patMul = () => (hasF('record') ? 1.2 : 1) * (hasF('plant') ? 1.1 : 1) * Math.pow(1.1, decoN('pat'));
 const litterMax = () => hasF('deodor') ? 5 : 3;
 const unlockNames = lv => [...DISHES.filter(d => MENU[d].lv === lv && dishHere(d)).map(d => (MENU[d].meal ? '正餐「' : '甜點「') + MENU[d].name + '」'), ...Object.keys(FURN).filter(f => FURN[f].lv === lv).map(f => '傢俱「' + FURN[f].name + '」')].join('、');
 // ---- bond between the manager and each cat ----
@@ -1654,8 +1748,8 @@ function startDay(carry) {
     day: G.day, phase: 'prep', time: 420, view: 1, speed: S ? S.speed : 1, paused: false, uiPause: false,
     mgr: { floor: 1, x: MGR_COUNTER.x, y: MGR_COUNTER.y, path: [], speed: 270, face: 1, task: null, carry: null, mode: 'idle', actT: 0, si: 0 },
     tasks: [], customers: [], queue: [], cid: 0,
-    tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []),
-    cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()).map(p => ({ ...p, cust: null })),
+    tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []).filter(p => !hid(p)),
+    cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats(), decoSeats()).filter(p => !hid(p)).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     lv0: shopLv(), // dishes unlocked by a level-up today are only ordered from tomorrow
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
@@ -1797,7 +1891,7 @@ window.addEventListener('online', retryMissingArt);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) retryMissingArt(); });
 window.addEventListener('pageshow', retryMissingArt);
 // rare guests and outfits are fetched the first time they are needed
-const LAZY_ART = /^((c(9|1\d|2\d)|mo\d+m?|s[23]\w+)_\d|acc_\w+|s[23]bg\d|toy_\w+)$/;
+const LAZY_ART = /^((c(9|1\d|2\d)|mo\d+m?|s[23]\w+)_\d|acc_\w+|s[23]bg\d|toy_\w+|fx_\w+)$/;
 const artOk = n => { const im = ART[n]; return !!(im && im.complete && im.naturalWidth); };
 // Wait (at most ARTWAIT ms) until every core sprite, plus the given extra ones, has arrived; onTick(done, total) shows progress.
 const ARTWAIT = 10000;
@@ -1816,10 +1910,15 @@ function artReady(extra, onTick) {
 const art = n => { let im = ART[n]; if (!im && LAZY_ART.test(n)) { loadArtImg(n, 0); im = ART[n]; } return im && im.complete && im.naturalWidth ? im : null; };
 // draw an image with its bottom centre at (x, y), h pixels tall, mirrored when flip
 function sprite(im, x, y, h, flip, w) {
-  w = w || im.naturalWidth * h / im.naturalHeight;
+  w = w || (im.naturalWidth || im.width) * h / (im.naturalHeight || im.height);
   g.save(); g.translate(x, y); if (flip) g.scale(-1, 1); g.drawImage(im, -w / 2, -h, w, h); g.restore();
 }
-function propArt(n, x, y, w) { const im = art(n); if (!im) return false; sprite(im, x, y, im.naturalHeight * w / im.naturalWidth, false, w); return true; }
+function propArt(n, x, y, w) {
+  let im = art(n); if (!im) return false;
+  const fx = window.DECO && g === ctx && DECO.fx[n + '@' + Math.round(x) + ',' + Math.round(y)]; // 佈置: this piece was recoloured or flipped
+  if (fx && fx.col) im = DECO.tinted(n, im, fx.col) || im;
+  sprite(im, x, y, (im.naturalHeight || im.height) * w / (im.naturalWidth || im.width), fx && fx.flip, w); return true;
+}
 // small painted name tags for the doors and signs (the painted backgrounds carry no text)
 function tag(t, x, y, size = 11) {
   g.font = `700 ${size}px ${FONT}`; const w = g.measureText(t).width + 14;
@@ -2241,20 +2340,22 @@ function drawRestroomState() {
 }
 function drawFurn1() {
   const bx = (BAR_SEATS[0].x + BAR_SEATS[1].x) / 2 - 11;
-  if (hasF('bar') && !propArt('winbar', bx, 508, 100)) { wood(bx - 38, 474, 92, 8, '#B98B5F', 1.4); line(bx - 32, 482, bx - 32, 506, INK, 2.5); line(bx + 48, 482, bx + 48, 506, INK, 2.5); }
-  if (hasF('showcase') && !propArt('showcase', SHOWCASE.x, SHOWCASE.y, 70)) { wood(SHOWCASE.x - 34, SHOWCASE.y - 36, 68, 36, '#A9774B', 1.3); rrect(SHOWCASE.x - 32, SHOWCASE.y - 70, 64, 34, 6, 'rgba(235,246,250,.8)', INK, 1.2); }
+  if (onF('bar', BAR_SEATS[0]) && !propArt('winbar', bx, BAR_SEATS[0].y + 2, 100)) { const by = BAR_SEATS[0].y - 32; wood(bx - 38, by, 92, 8, '#B98B5F', 1.4); line(bx - 32, by + 8, bx - 32, by + 32, INK, 2.5); line(bx + 48, by + 8, bx + 48, by + 32, INK, 2.5); }
+  if (onF('showcase', SHOWCASE) && !propArt('showcase', SHOWCASE.x, SHOWCASE.y, 70)) { wood(SHOWCASE.x - 34, SHOWCASE.y - 36, 68, 36, '#A9774B', 1.3); rrect(SHOWCASE.x - 32, SHOWCASE.y - 70, 64, 34, 6, 'rgba(235,246,250,.8)', INK, 1.2); }
   // the window counter takes the plant's spot, so the plant moves to the entrance
-  const plant = hasF('bar') ? PROP.plantAlt : PROP.plant;
-  if (hasF('plant') && !propArt('plant', plant.x, plant.y, 44)) { rect(plant.x - 10, plant.y - 18, 20, 18, '#C98B62', INK, 1.1); ell(plant.x, plant.y - 30, 16, 14, '#7FA66A', INK, 1.1); }
-  if (hasF('lamp')) { const { x, y } = PROP.lamp; g.globalAlpha = .25 + Math.sin(S.t * 1.5) * .05; ell(x, y - 118, 40, 30, '#FFE7A8'); g.globalAlpha = 1;
+  const plant = plantSpot();
+  if (onF('plant', PROP.plant) && !propArt('plant', plant.x, plant.y, 44)) { rect(plant.x - 10, plant.y - 18, 20, 18, '#C98B62', INK, 1.1); ell(plant.x, plant.y - 30, 16, 14, '#7FA66A', INK, 1.1); }
+  if (onF('lamp', PROP.lamp)) { const { x, y } = PROP.lamp; g.globalAlpha = .25 + Math.sin(S.t * 1.5) * .05; ell(x, y - 118, 40, 30, '#FFE7A8'); g.globalAlpha = 1;
     if (!propArt('lamp', x, y, 40)) { line(x, y, x, y - 110, INK, 2); poly([[x - 16, y - 108], [x + 16, y - 108], [x + 11, y - 132], [x - 11, y - 132]], '#FFF1D2', INK, 1.2); } }
-  if (hasF('chalk') && !propArt('chalkboard', PROP.chalk.x, PROP.chalk.y, 50)) { rect(PROP.chalk.x - 22, PROP.chalk.y - 60, 44, 52, '#3F5E4A', INK, 1.3); pawPrint(PROP.chalk.x, PROP.chalk.y - 36, .4, '#F4F0E8'); }
-  if (hasF('record') && propArt('record', 721, 480, 64)) { if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; } }
-  else if (hasF('record')) { // low cabinet + gramophone between the menu board and the restroom
+  if (onF('chalk', PROP.chalk) && !propArt('chalkboard', PROP.chalk.x, PROP.chalk.y, 50)) { rect(PROP.chalk.x - 22, PROP.chalk.y - 60, 44, 52, '#3F5E4A', INK, 1.3); pawPrint(PROP.chalk.x, PROP.chalk.y - 36, .4, '#F4F0E8'); }
+  const R = PROP.record, rx = R.x - 721, ry = R.y - 480;
+  if (onF('record', R) && propArt('record', R.x, R.y, 64)) { if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + rx + t * 6, 372 + ry - t * 16, 15, '#B07E52'); g.globalAlpha = 1; } }
+  else if (onF('record', R)) { g.save(); g.translate(rx, ry); // low cabinet + gramophone between the menu board and the restroom
     wood(690, 438, 62, 40, '#A9774B', 1.3); line(721, 442, 721, 474, 'rgba(70,45,30,.3)', 1);
     rect(694, 426, 46, 12, '#7A5238', INK, 1.1); ell(712, 426, 14, 3.6, '#2E2826', INK, 1); ell(712, 426, 3.5, 1.2, '#D9773E');
     line(732, 426, 738, 408, INK, 1.4); poly([[736, 410], [748, 384], [760, 382], [756, 396], [740, 412]], '#E2B573', INK, 1.1);
     if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; }
+    g.restore();
   }
   if (hasF('warmer')) { // warm glass box on top of the oven cabinet
     const { x, y } = WARMER;
@@ -2269,15 +2370,15 @@ function drawFurn1() {
   }
 }
 function drawFurn2() {
-  if (hasF('wallwalk') && !propArt('wallwalk', WALLWALK.x, WALLWALK.y, 140)) for (let i = 0; i < 3; i++) wood(WALLWALK.x - 66 + i * 46, WALLWALK.y - 60 + i * 22, 40, 7, '#B98B5F', 1.2);
-  if (hasF('mural') && !propArt('mural', MURAL.x, MURAL.y, 60)) { wood(MURAL.x - 30, MURAL.y - 104, 60, 104, '#D9B98E', 1.3); rect(MURAL.x - 24, MURAL.y - 98, 48, 92, '#FBEFD9', INK, 1); pawPrint(MURAL.x, MURAL.y - 52, .5, '#D9773E'); }
-  if (hasF('beanbag')) for (const p of BEANBAG_SEATS) if (!propArt('beanbag', p.x, p.y + 6, 62)) { ell(p.x, p.y - 12, 30, 20, '#F1E6D2', INK, 1.3); ell(p.x, p.y - 16, 14, 6, '#E3D4BC', null); }
-  if (hasF('hammock')) for (const p of HAMMOCK_SEATS) if (!propArt('eggchair', p.x, p.y + 4, 54)) { line(p.x - 20, p.y, p.x - 20, p.y - 92, '#B98B5F', 3); ell(p.x + 4, p.y - 40, 20, 30, '#E8D3AE', INK, 1.3); }
-  if (hasF('cattree') && !propArt('cattree', PROP.cattree.x, PROP.cattree.y, 92)) { const { x, y } = PROP.cattree; rect(x - 6, y - 150, 12, 150, '#E3CDA4', INK, 1.2); for (const h of [50, 100, 150]) ell(x, y - h, 30, 7, '#D9C3A0', INK, 1.2); }
-  if (hasF('books') && !propArt('bookshelf', PROP.books.x, PROP.books.y, 90)) { const { x, y } = PROP.books; wood(x - 42, y - 80, 84, 80, '#A9774B', 1.3); for (let i = 0; i < 8; i++) rect(x - 36 + i * 9, y - 72, 7, 30, ['#C96B5B', '#6E8FB3', '#E2B573', '#7FA66A'][i % 4], INK, .8); }
-  if (hasF('cushion')) for (const c of CUSHION_EXTRA) cushion(c.x, c.y, '#EAD3C6');
-  for (const c of expandCushions()) if ((c.f || 2) === 2) cushion(c.x, c.y, '#D9E2D0');
-  if (hasF('bed')) { if (!propArt('petbed', 206, 466, 60)) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); } text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
+  if (onF('wallwalk', WALLWALK) && !propArt('wallwalk', WALLWALK.x, WALLWALK.y, 140)) for (let i = 0; i < 3; i++) wood(WALLWALK.x - 66 + i * 46, WALLWALK.y - 60 + i * 22, 40, 7, '#B98B5F', 1.2);
+  if (onF('mural', MURAL) && !propArt('mural', MURAL.x, MURAL.y, 60)) { wood(MURAL.x - 30, MURAL.y - 104, 60, 104, '#D9B98E', 1.3); rect(MURAL.x - 24, MURAL.y - 98, 48, 92, '#FBEFD9', INK, 1); pawPrint(MURAL.x, MURAL.y - 52, .5, '#D9773E'); }
+  if (hasF('beanbag')) for (const p of BEANBAG_SEATS) if (!hid(p) && !propArt('beanbag', p.x, p.y + 6, 62)) { ell(p.x, p.y - 12, 30, 20, '#F1E6D2', INK, 1.3); ell(p.x, p.y - 16, 14, 6, '#E3D4BC', null); }
+  if (hasF('hammock')) for (const p of HAMMOCK_SEATS) if (!hid(p) && !propArt('eggchair', p.x, p.y + 4, 54)) { line(p.x - 20, p.y, p.x - 20, p.y - 92, '#B98B5F', 3); ell(p.x + 4, p.y - 40, 20, 30, '#E8D3AE', INK, 1.3); }
+  if (onF('cattree', PROP.cattree) && !propArt('cattree', PROP.cattree.x, PROP.cattree.y, 92)) { const { x, y } = PROP.cattree; rect(x - 6, y - 150, 12, 150, '#E3CDA4', INK, 1.2); for (const h of [50, 100, 150]) ell(x, y - h, 30, 7, '#D9C3A0', INK, 1.2); }
+  if (onF('books', PROP.books) && !propArt('bookshelf', PROP.books.x, PROP.books.y, 90)) { const { x, y } = PROP.books; wood(x - 42, y - 80, 84, 80, '#A9774B', 1.3); for (let i = 0; i < 8; i++) rect(x - 36 + i * 9, y - 72, 7, 30, ['#C96B5B', '#6E8FB3', '#E2B573', '#7FA66A'][i % 4], INK, .8); }
+  if (hasF('cushion')) for (const c of CUSHION_EXTRA) if (!hid(c)) cushion(c.x, c.y, '#EAD3C6');
+  for (const c of expandCushions()) if ((c.f || 2) === 2 && !hid(c)) cushion(c.x, c.y, '#D9E2D0');
+  if (onF('bed', PROP.bed)) { const { x, y } = PROP.bed; if (!propArt('petbed', x, y, 60)) { ell(x, y - 8, 27, 9, '#E3A99A', INK, 1.3); ell(x, y - 11, 19, 5, '#FBEDE6', null); } text('暖暖貓窩', x, y - 20, 9, '#B0705F', 'center', FONT, 700); }
   if (hasF('deodor') && propArt('deodor', 457, 552, 30)) { ell(457, 530, 3, 3, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); }
   else if (hasF('deodor')) { rrect(446, 520, 22, 30, 5, '#E8EEF0', INK, 1.2); ell(457, 530, 4, 4, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); for (let i = 0; i < 3; i++) line(450 + i * 4, 542, 450 + i * 4, 547, 'rgba(90,64,50,.4)', 1); }
 }
@@ -3201,7 +3302,7 @@ function takeOrder(quiet, w) {
 }
 function sayFor(c, t) { c.say = { text: t, t: 2.2 }; }
 function goLoft(c) {
-  const cu = S.cushions.find(k => !k.cust);
+  const free = S.cushions.filter(k => !k.cust), cu = free[Math.floor(Math.random() * free.length)]; // any free seat, so the newer ones get used too
   if (cu) { cu.cust = c; c.cushion = cu; routeTo(c, cu.f || 2, cu.x, cu.y + 4); }
   else routeTo(c, 2, rand(fw(2) * .625, fw(2) * .94), rand(540, 594));
   c.state = 'toLoft';
@@ -3209,7 +3310,7 @@ function goLoft(c) {
 function afterEat(c) {
   // customers linger: some order a second dessert at the same table
   const hadMeal = MENU[c.order.dish].meal; // after a meal, half of them want dessert
-  if (!c.reordered && S.phase === 'open' && Math.random() < (hadMeal ? .5 : .35) + (hasF('showcase') ? .15 : 0)) {
+  if (!c.reordered && S.phase === 'open' && Math.random() < (hadMeal ? .5 : .35) + (hasF('showcase') ? .15 : 0) + .05 * decoN('reorder')) {
     const p = pickDish(c, hadMeal);
     if (p.dish) {
       c.reordered = true; c.order.dish = p.dish; c.state = 'waitFood'; c.pat = c.maxPat = 55 * patMul(); c.wait = 0;
@@ -3235,8 +3336,9 @@ function leave(c) {
   if (c.state === 'leaving') return;
   if (c.played && !c.angry) c.stars++; // a cat came over to play: best part of the visit
   if (hasF('mural') && c.order?.loft && !c.angry && Math.random() < .5) c.stars++; // the cat mural on 2F
+  if (!c.angry && Math.random() < 1 - Math.pow(.75, decoN('star')) * Math.pow(.88, decoN('star2'))) c.stars++; // figurine cabinets, cat paintings
   const s = clamp(c.stars, 1, 5); c.final = s;
-  S.today.ratings.push(s); gainExp(s + (s >= 4 && hasF('lamp') ? 1 : 0));
+  S.today.ratings.push(s); gainExp(s + (s >= 4 ? (hasF('lamp') ? 1 : 0) + decoN('lamp') : 0));
   // fans never drop: an unhappy guest just doesn't become one
   let df = [0, 0, 0, 1, 2][s - 1];
   if (!c.order || (!c.order.dish && !c.order.loft && !c.order.beans)) df = 0; // walked out without buying anything
@@ -3305,23 +3407,24 @@ const PLAY_STATES = ['petting', 'eating', 'waitFood'];
 const TOY_PX = { toySpin: [180, 286], toyTunnel: [340, 354], toyBalls: [170, 152], toySofa: [300, 163], toyCastle: [300, 226], toyTower: [260, 427] }; // toy_*.webp sizes
 function funSpots() {
   const L = [], st = (path, act, t, line, more) => ({ path, act, t, line, ...more });
-  if (hasF('cattree')) {
+  if (onF('cattree', PROP.cattree)) {
     const { x, y } = PROP.cattree, s = 92 / 200, X = sx => x - 46 + sx * s, Y = sy => y - 181 + sy * s;
     const box = { x: X(115), y: Y(280), jump: true }, low = { x: X(56), y: Y(212), jump: true }, mid = { x: X(125), y: Y(115), jump: true }, top = { x: X(75), y: Y(22), jump: true };
     L.push({ id: 'cattree', f: 2, ground: { x: x + 40, y: 508 }, stages: Math.random() < .5
       ? [st([box, low, mid, top], 'sit', [6, 9], pick(['爬到最高了！', '喵～看得好遠']))]
       : [st([box, low, mid], 'nap', [10, 16], '在這裡睡一下…')] });
   }
-  if (hasF('wallwalk')) {
+  if (onF('wallwalk', WALLWALK)) {
     const { x, y } = WALLWALK, s = 140 / 320, X = sx => x - 70 + sx * s, Y = sy => y - 69 + sy * s;
     L.push({ id: 'wallwalk', f: 2, ground: { x: x + 72, y: 510 }, stages: [st([{ x: X(265), y: Y(112), jump: true }, { x: X(150), y: Y(76) }, { x: X(50), y: Y(10) }], 'sit', [6, 10], pick(['走過吊橋了！', '喵～好高喔']))] });
   }
-  if (hasF('bed')) L.push({ id: 'bed', f: 2, ground: { x: 244, y: 512 }, stages: [st([{ x: 206, y: 457, jump: true }], 'nap', [12, 20], '暖呼呼的…')] });
-  if (hasF('books')) {
+  if (onF('bed', PROP.bed)) { const { x, y } = PROP.bed; L.push({ id: 'bed', f: 2, ground: { x: x + 38, y: Math.max(512, y + 46) }, stages: [st([{ x, y: y - 9, jump: true }], 'nap', [12, 20], '暖呼呼的…')] }); }
+  if (onF('books', PROP.books)) {
     const { x, y } = PROP.books;
     L.push({ id: 'books', f: 2, ground: { x: x + 44, y: 508 }, stages: [st([{ x: x + 17, y: y - 87, jump: true }], Math.random() < .5 ? 'sit' : 'nap', [8, 14], '書櫃上面視野最好')] });
   }
   for (const id of toysHere()) {
+    if (hid(TOYS[id])) continue;
     const T = TOYS[id], [iw, ih] = TOY_PX[id], sc = T.w / iw, X = sx => T.x - T.w / 2 + sx * sc, Y = sy => T.y - ih * sc + sy * sc, toy = { toy: id, lift: T.y - (T.y < 520 ? 20 : 0) + 1 };
     if (id === 'toySpin') L.push({ id, f: 2, ground: { x: T.x - 46, y: 514 }, stages: [st([], 'play', [5, 8], '追羽毛！')] });
     if (id === 'toyBalls') L.push({ id, f: 2, ground: { x: T.x - 48, y: 514 }, stages: [st([], 'play', [5, 8], '叮叮噹噹～')] });
@@ -3330,6 +3433,18 @@ function funSpots() {
       back: [{ x: X(100), y: Y(55), warp: true }, { x: T.x + 54, y: 596, jump: true }] });
     if (id === 'toyCastle') L.push({ id, f: 2, ground: { x: T.x - 92, y: 596 }, ...toy, stages: [st([{ x: X(55), y: Y(18), jump: true }], 'sit', [7, 11], '我是城堡的國王喵！')] });
     if (id === 'toyTower') L.push({ id, f: 2, ground: { x: T.x - 62, y: 508 }, ...toy, stages: [st([{ x: X(52), y: Y(290), jump: true }, { x: X(43), y: Y(206), jump: true }, { x: X(218), y: Y(140), jump: true }], Math.random() < .4 ? 'nap' : 'sit', [8, 13], '皇宮最高的地方！')] });
+  }
+  for (const d of decoOn()) if (d.D.perch) { // the newer cat trees and beds: one jump up (or in)
+    const { x, y, f } = d.P, D = d.D, bed = D.cat === 'bed';
+    L.push({ id: d.key, f, ground: { x: x + D.w / 2 + 12, y: Math.max(y + (D.mode === 'floor' ? 4 : 26), 508) },
+      stages: [st([{ x: x + D.perch[1] * D.w, y: y - D.perch[0] * D.h, jump: true }], bed || Math.random() < .4 ? 'nap' : 'sit', bed ? [12, 20] : [7, 12], bed ? pick(['暖呼呼的…', '這裡好好睡']) : pick(['爬上去囉！', '喵～這裡好舒服']))] });
+  }
+  // 佈置 can flip a piece left-right: mirror its perches around the piece's middle
+  for (const sp of L) {
+    const ref = { cattree: PROP.cattree, wallwalk: WALLWALK, bed: PROP.bed, books: PROP.books }[sp.id] || TOYS[sp.id] || (DECO_PIECES.find(d => d.key === sp.id) || {}).P;
+    if (!flipped(ref)) continue;
+    const m = p => { if (p) p.x = 2 * ref.x - p.x; };
+    m(sp.ground); sp.stages.forEach(s => s.path.forEach(m)); (sp.back || []).forEach(m);
   }
   return L.filter(sp => floorsHere().includes(sp.f) && !S.cats.some(o => o.fun && o.fun.spot.id === sp.id));
 }
@@ -3353,7 +3468,7 @@ function endPlay(k) { if (k.target) { k.target.catBuddy = null; if (k.target.fed
 function wander(k) {
   // cats like company: walk over to a customer and play with them
   const guests = S.customers.filter(c => c.floor === k.floor && !c.catBuddy && !c.hidden && PLAY_STATES.includes(c.state));
-  if (guests.length && !k.sulk && Math.random() < Math.min(.95, (k.happy ? .8 : k.P.play || .5) * (hasF('wallwalk') ? 1.3 : 1))) {
+  if (guests.length && !k.sulk && Math.random() < Math.min(.95, (k.happy ? .8 : k.P.play || .5) * (hasF('wallwalk') ? 1.3 : 1) * Math.pow(1.3, decoN('play')))) {
     const c = pick(guests); c.catBuddy = k; k.target = c;
     routeTo(k, k.floor, clamp(c.x + (c.x > fw(k.floor) / 2 ? -50 : 50), 160, fw(k.floor) - 40), clamp(c.y + 4, 500, 594)); k.state = 'toPlay'; return;
   }
@@ -3389,8 +3504,8 @@ function updCat(k, dt) {
   const open = S.phase === 'open';
   for (const key of ['happy', 'sulk', 'petCool']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
   if (k.wantPet) { k.wantPet -= dt; if (k.wantPet <= 0 || k.state === 'sleep') { k.wantPet = 0; if (k.state !== 'sleep') { k.sulk = 30; say(k, '哼…'); sfx('cat_grumpy', k.floor); } } }
-  if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
-  if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * (S.buff.catnip ? .6 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
+  if (k.state === 'sleep') { if (open) { k.energy += 2.2 * (hasF('bed') ? 1.5 : 1) * (1 + .2 * decoN('sleep20') + .5 * decoN('sleep50')) * dt; k.hunger += .15 * dt; if (k.energy >= 96) wakeCat(k); } return; }
+  if (open) { k.energy -= .42 * (k.P.energy || 1) * (hasF('cattree') ? .7 : 1) * Math.max(.4, 1 - .15 * decoN('energy15') - .3 * decoN('energy30')) * (S.buff.catnip ? .6 : 1) * dt; k.hunger += .4 * (k.P.hunger || 1) * dt; }
   const arrived = moveAlong(k, dt);
   if (k.lift != null && arrived && !k.fun) k.lift = null;
   switch (k.state) {
@@ -3413,7 +3528,7 @@ function updCat(k, dt) {
     } break;
     case 'fun': {
       const F = k.fun, s = F.spot.stages[F.stage];
-      k.t -= dt; if (s.act === 'nap' && open) k.energy = Math.min(100, k.energy + (F.spot.id === 'bed' ? 1.6 : 1) * dt);
+      k.t -= dt; if (s.act === 'nap' && open) k.energy = Math.min(100, k.energy + (F.spot.id === 'bed' || String(F.spot.id).startsWith('d_yarnbed') ? 1.6 : String(F.spot.id).startsWith('d_boxbed') ? 1.2 : 1) * dt);
       if (k.t <= 0 && F.stage + 1 < F.spot.stages.length) { F.stage++; k.hide = false; k.path = F.spot.stages[F.stage].path.map(p => ({ f: F.spot.f, ...p })); k.state = 'toFun'; break; }
       if (k.t <= 0 || (open && (k.hunger > 70 || (k.energy < 15 && s.act !== 'nap')))) { k.path = funExit(k); k.state = 'funBack'; }
       break;
@@ -4068,6 +4183,8 @@ function drawWorld() {
   if (f === 4) G.garden.forEach((p, i) => items.push({ y: PLOTS[i].y, d: () => drawPlot(p, i) }));
   if (f === 4) items.push({ y: VEG_STALL.y - 20, d: drawVegCrate });
   if (G.at === 3) drawPalace(f, items);
+  for (const d of DECO_PIECES) if (d.P.f === f && !hid(d.P)) { const { x, y } = d.P, D = d.D, oy = D.seats ? 6 : 0;
+    items.push({ y: D.mode === 'hang' ? -1 : y - 1, d: () => { if (!propArt('fx_' + d.id, x, y + oy, D.w)) rrect(x - D.w / 2, y + oy - D.h, D.w, D.h, 8, '#F1D9B5', INK, 1.2); } }); }
   if (S.mgr.floor === f && !S.out) items.push({ y: S.mgr.y, d: drawMgr });
   S.staff.forEach(s => { if (s.floor === f) items.push({ y: s.y, d: () => drawStaff(s) }); });
   S.cats.forEach(k => { if (k.floor === f) items.push({ y: k.onBed ? 0 : k.lift ?? k.y, d: () => drawCat(k) }); });
@@ -4079,6 +4196,7 @@ function drawWorld() {
   if (window.OUTING) OUTING.draw(f);
   if (window.PHOTO) PHOTO.draw(f);
   if (window.TUT) TUT.drawWorld(f);
+  if (S.edit && window.DECO) DECO.draw(f);
   if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, V.cy, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
   if (S.cook) drawCook();
@@ -4086,9 +4204,9 @@ function drawWorld() {
 }
 // 貓咪室內樂園: the painted floors carry no cushions, so the loft seats are drawn here; 2F also shows the toys you bought
 function drawPalace(f, items) {
-  for (const c of CUSHION_POS) if ((c.f || 2) === f) cushion(c.x, c.y, '#E9C9A8');
-  if (f !== 2) for (const c of expandCushions()) if (c.f === f) cushion(c.x, c.y, '#E3B0A0');
-  if (f === 2) for (const t of toysHere()) { const T = TOYS[t]; items.push({ y: T.y - (T.y < 520 ? 20 : 0), d: () => { if (!propArt(T.img, T.x, T.y, T.w)) { rrect(T.x - T.w / 2, T.y - 60, T.w, 60, 8, '#F1D9B5', INK, 1.3); text(T.name, T.x, T.y - 28, 10, '#8D4A3A'); } } }); }
+  for (const c of CUSHION_POS) if ((c.f || 2) === f && !hid(c)) cushion(c.x, c.y, '#E9C9A8');
+  if (f !== 2) for (const c of expandCushions()) if (c.f === f && !hid(c)) cushion(c.x, c.y, '#E3B0A0');
+  if (f === 2) for (const t of toysHere()) { const T = TOYS[t]; if (hid(T)) continue; items.push({ y: T.y - (T.y < 520 ? 20 : 0), d: () => { if (!propArt(T.img, T.x, T.y, T.w)) { rrect(T.x - T.w / 2, T.y - 60, T.w, 60, 8, '#F1D9B5', INK, 1.3); text(T.name, T.x, T.y - 28, 10, '#8D4A3A'); } } }); }
 }
 // clouds and rain show through the windows (behind everyone) and over the open-air parts: the courtyard and the roof
 function drawWeather(f, back) {
@@ -4222,6 +4340,7 @@ function tapStairs(f, x, y) {
 }
 cv.addEventListener('pointerdown', e => {
   if (!started || !S || S.phase === 'settle') return;
+  if (S.edit && DECO.down(e)) return;
   if (!$('drawer').hidden || !$('hudMore').hidden) { closeDrawer(); setHudMore(false); return; } // tapping the scene folds panels away
   const p = toCanvas(e);
   if (S.mini) { S.mini.last = p; cv.setPointerCapture(e.pointerId); return; }
@@ -4233,9 +4352,11 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointerup', e => {
   cookRelease();
+  if (S && S.edit && DECO.up(e)) return;
   if (DRAG.id !== e.pointerId) return;
   DRAG.id = null;
   if (DRAG.moved) { DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; return; }
+  if (S && S.edit) return;
   if (!started || !S || S.paused || S.phase === 'settle' || S.mini || S.cook || S.reg) return;
   const p = toCanvas(e), h = hitTest(p.x, p.y);
   if (h && h.weak && strayTap(e)) return; // a thumb resting on the edge or just missing a button shouldn't send the manager off
@@ -4257,6 +4378,7 @@ function strayTap(e) {
 }
 cv.addEventListener('pointercancel', e => { cookRelease(); if (DRAG.id === e.pointerId) { DRAG.id = null; DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; } });
 cv.addEventListener('pointermove', e => {
+  if (S && S.edit && DECO.move(e)) return;
   if (DRAG.id === e.pointerId) {
     const dx = e.clientX - DRAG.x0, dy = e.clientY - DRAG.y0;
     if (!DRAG.moved && Math.hypot(dx, dy) > 10) DRAG.moved = true;
@@ -4588,7 +4710,7 @@ function charmItem(id, wear) {
   return `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${CHARM_WHO[C.slot]}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
     <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
 }
-let phoneApp = 'home', storeTab = 'stock', ivRole = null, ivSeen = {}, ivAsk = null;
+let phoneApp = 'home', storeTab = 'stock', furnCat = '', ivRole = null, ivSeen = {}, ivAsk = null;
 function openPhone(app) { sfx('phone_open'); phoneApp = app; if (window.DIARY) DIARY.cur = null; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
 function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; if (PG.run) playMusic(G.music); if (!$('phoneOv').hidden) sfx('phone_close'); PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
 $('phoneOv').addEventListener('click', e => { if (e.target.id === 'phoneOv') closePhone(); });
@@ -4636,15 +4758,31 @@ function renderPhone() {
         for (const it of SHOP) if (!it.shop || it.shop === G.at) h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(cost(it.price))}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div><div class="row" style="margin:0">${btn(it.id, cost(it.price))}</div></div>`;
         if (G.owned.includes(2) && !vegTop) h += vegSellItem();
       } else if (storeTab === 'furn') {
-        h += `<p class="muted">傢俱買了會一直擺在店裡。錢不夠時可以先賒帳。</p>`;
-        const full = G.tables >= maxTables();
-        h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(cost(TABLE_PRICE))}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < EXPANSIONS.length ? `（擴大店面後可以放 ${TABLE_CAPS[G.expand + 1]} 張）` : ''}${G.at === 2 ? '・第 3、4、7、8 張在庭院，下雨天不能坐' : ''}</div>
-          <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', cost(TABLE_PRICE))}</div></div>`;
-        for (const [id, F] of Object.entries(FURN)) {
-          const own = hasF(id), locked = F.lv > shopLv();
-          const th = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf', bar: 'winbar', beanbag: 'beanbag', wallwalk: 'wallwalk', showcase: 'showcase', hammock: 'eggchair', mural: 'mural' }[id];
-          h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(cost(F.price))}</b></div><div class="sub">${F.desc}</div>
-            <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, cost(F.price))}</div></div>`;
+        // first pick a category, then the pieces in it (Chuck 2026-11-15: easier to find once there are many)
+        const TH = { plant: 'plant', lamp: 'lamp', record: 'record', cushion: 'cushion', cattree: 'cattree', chalk: 'chalkboard', deodor: 'deodor', warmer: 'warmer', bed: 'petbed', sign: 'lightbox', books: 'bookshelf', bar: 'winbar', beanbag: 'beanbag', wallwalk: 'wallwalk', showcase: 'showcase', hammock: 'eggchair', mural: 'mural' };
+        const inCat = c => [...(c === 'table' ? ['table'] : []), ...Object.keys(FURN).filter(id => FURN_CAT_OF[id] === c), ...Object.keys(DECOR).filter(d => DECOR[d].cat === c).map(d => 'd:' + d)];
+        const icon = { lamp: 'fx_lantern', tree: 'cattree', seat: 'fx_pawseat', table: 'table', cab: 'fx_dishcab', plant: 'fx_monstera', bed: 'fx_yarnbed', wall: 'fx_catclock', etc: 'deodor' };
+        if (!furnCat || !FURN_CATS[furnCat]) {
+          h += `<p class="muted">先選種類。新傢俱同一款最多買 ${DECO_MAX} 件，效果會疊加；買來的傢俱可以用左邊的「佈置」搬位置、換顏色。</p><div class="fcgrid">`;
+          for (const [c, nm] of Object.entries(FURN_CATS)) h += `<button class="fcat" data-fcat="${c}"><img src="assets/${icon[c]}.webp" alt="" onerror="this.remove()"><b>${nm}</b><small>${inCat(c).length} 款</small></button>`;
+          h += '</div>';
+        } else {
+          h += `<div class="fchead"><button data-fcat="">‹ 回到種類</button><b>${FURN_CATS[furnCat]}</b></div>`;
+          for (const id of inCat(furnCat)) {
+            if (id === 'table') {
+              const full = G.tables >= maxTables();
+              h += `<div class="item"><div class="top"><span class="nm"><img class="thumb" src="assets/table.webp" alt="" onerror="this.remove()">原木矮桌＋坐墊</span><b>${yen(cost(TABLE_PRICE))}</b></div><div class="sub">1F 多一個座位，客人比較不用等空桌・目前 ${G.tables}/${maxTables()} 張${G.expand < EXPANSIONS.length ? `（擴大店面後可以放 ${TABLE_CAPS[G.expand + 1]} 張）` : ''}${G.at === 2 ? '・第 3、4、7、8 張在庭院，下雨天不能坐' : ''}</div>
+                <div class="row" style="margin:0">${full ? '<button disabled>店裡放不下了</button>' : btn('table', cost(TABLE_PRICE))}</div></div>`;
+            } else if (id.startsWith('d:')) {
+              const d = id.slice(2), D = DECOR[d], n = (G.decos || {})[d] || 0, locked = D.lv > shopLv();
+              h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm"><img class="thumb" src="assets/fx_${d}.webp" alt="" onerror="this.remove()">${locked ? '🔒 ' : ''}${D.name}<span class="newtag">新</span></span><b>${yen(cost(D.price))}</b></div><div class="sub">${D.desc}・已經有 ${n}/${DECO_MAX} 件</div>
+                <div class="row" style="margin:0">${n >= DECO_MAX ? `<button disabled>已經買滿 ${DECO_MAX} 件了</button>` : locked ? `<button disabled>店鋪 Lv.${D.lv} 解鎖</button>` : btn(id, cost(D.price))}</div></div>`;
+            } else {
+              const F = FURN[id], own = ownF(id), locked = F.lv > shopLv(), th = TH[id];
+              h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${th ? `<img class="thumb" src="assets/${th}.webp" alt="" onerror="this.remove()">` : ''}${locked ? '🔒 ' : ''}${F.name}</span><b>${yen(cost(F.price))}</b></div><div class="sub">${F.desc}</div>
+                <div class="row" style="margin:0">${own ? '<button disabled>已經擺在店裡了</button>' : locked ? `<button disabled>店鋪 Lv.${F.lv} 解鎖</button>` : btn(id, cost(F.price))}</div></div>`;
+            }
+          }
         }
       } else if (storeTab === 'wear') {
         h += `<p class="muted">店長的衣服買了馬上換上；髮夾和貓咪衣飾之後在「衣櫃」可以隨時換。</p><p class="kh">店長衣服</p>`;
@@ -4668,7 +4806,7 @@ function renderPhone() {
         const day = S.phase !== 'settle';
         h += `<p class="muted">幫店裡加點小幫手。標「今天」的道具只有今天有效，明天要再買。</p>`;
         for (const [id, T] of Object.entries(TOOLS)) {
-          const own = T.keep ? hasF(id) : S.buff[id], locked = T.lv > shopLv(), noStaff = T.staff && !S.staff.length;
+          const own = T.keep ? ownF(id) : S.buff[id], locked = T.lv > shopLv(), noStaff = T.staff && !S.staff.length;
           h += `<div class="item${locked ? ' locked' : ''}"><div class="top"><span class="nm">${locked ? '🔒 ' : ''}${T.name}<small class="tg">${T.keep ? '永久' : '今天'}</small></span><b>${yen(cost(T.price))}</b></div><div class="sub">${T.desc}</div>
             <div class="row" style="margin:0">${own ? `<button disabled>${T.keep ? '已經有了' : '今天已經用了'}</button>` : locked ? `<button disabled>店鋪 Lv.${T.lv} 解鎖</button>` : noStaff ? '<button disabled>還沒有員工</button>' : !T.keep && !day ? '<button disabled>打烊了，明天再買</button>' : btn(id, cost(T.price))}</div></div>`;
         }
@@ -4931,6 +5069,7 @@ function renderPhone() {
     G.cash -= C.fee; S.today.spent += C.fee; G.collab = { id, until: G.day + COLLAB_DAYS - 1 };
     sfx('delivery'); toast(`跟「${C.co}」簽約了！接下來 ${COLLAB_DAYS} 天，客人可以加購${C.item}`); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => { sfx('app_switch'); storeTab = b.dataset.stab; renderPhone(); });
+  sc.querySelectorAll('[data-fcat]').forEach(b => b.onclick = () => { sfx('ui_click'); furnCat = b.dataset.fcat; renderPhone(); sc.scrollTop = 0; });
   q('#expandBtn') && (q('#expandBtn').onclick = () => { doExpand(); renderPhone(); });
   q('#elevBtn') && (q('#elevBtn').onclick = () => { buyElev(); renderPhone(); });
   sc.querySelectorAll('[data-call]').forEach(b => b.onclick = () => startCall(b.dataset.call));
@@ -5055,17 +5194,26 @@ function buy(id, credit) {
     name = '原木矮桌'; price = TABLE_PRICE;
     G.tables++; const p = TABLE_POS[G.tables - 1]; S.tables.push({ ...p, cust: null, dirty: false, busy: false, out: isOut(p) });
   } else if (FURN[id]) {
-    if (hasF(id) || FURN[id].lv > shopLv()) return;
+    if (ownF(id) || FURN[id].lv > shopLv()) return;
     name = FURN[id].name; price = FURN[id].price; G.furn.push(id);
     if (id === 'cushion') S.cushions.push(...CUSHION_EXTRA.map(p => ({ ...p, cust: null })));
     if (id === 'beanbag' || id === 'hammock') S.cushions.push(...furnCushions().filter(p => p.kind === id).map(p => ({ ...p, cust: null })));
     S.tables.push(...furnSeats(id));
+  } else if (id.startsWith('d:') && DECOR[id.slice(2)]) { // newer furniture: comes out wherever there's room (or waits, put away, for 佈置)
+    const d = id.slice(2), D = DECOR[d], n = (G.decos = G.decos || {})[d] || 0;
+    if (n >= DECO_MAX || D.lv > shopLv()) return;
+    name = D.name; price = D.price; G.decos[d] = n + 1;
+    tagPlaces(G.at); applyPlace();
+    const spot = window.DECO && DECO.autoPlace('d_' + d + '_' + n);
+    if (!spot) later(1.2, () => toast(`店裡找不到空位，「${D.name}」先收起來了，到「佈置」選地方擺`));
+    else if (spot !== S.view) later(1.2, () => toast(`「${D.name}」擺在 ${fname(spot)}，可以在「佈置」換位置`));
+    seatSync();
   } else if (TOYS[id]) {
     if (toysHere().includes(id) || TOYS[id].lv > shopLv()) return;
     name = TOYS[id].name; price = TOYS[id].price; (G.toys = G.toys || []).push(id);
     S.cushions.push({ ...TOYS[id].seat, toy: id, cust: null });
   } else if (TOOLS[id]) {
-    const T = TOOLS[id]; if (T.lv > shopLv() || (T.keep ? hasF(id) : S.buff[id] || S.phase === 'settle')) return;
+    const T = TOOLS[id]; if (T.lv > shopLv() || (T.keep ? ownF(id) : S.buff[id] || S.phase === 'settle')) return;
     name = T.name; price = T.price; if (T.keep) G.furn.push(id); else S.buff[id] = true;
   } else {
     const it = SHOP.find(s => s.id === id); name = it.name; price = it.price; G.stock[id] += it.amt;
@@ -5087,6 +5235,20 @@ function encodeSave(src) {
   const b = btoa(unescape(encodeURIComponent(JSON.stringify({ v: 2, ...src }))));
   let sum = 0; for (const ch of b) sum = (sum * 31 + ch.charCodeAt(0)) % 9973;
   return `CAT-${b}-${sum}`;
+}
+// 佈置 records: { item: { dx, dy, flip, col, hide } }; anything odd is dropped (the piece just goes back to where the layout puts it)
+function readPlace(o) {
+  const out = {}; if (!o || typeof o !== 'object') return out;
+  for (const [k, r] of Object.entries(o)) {
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(k) || !r || typeof r !== 'object') continue;
+    const v = {}, n = x => typeof x === 'number' && isFinite(x) ? Math.max(-2000, Math.min(2000, Math.round(x))) : 0;
+    if (r.dx) v.dx = n(r.dx); if (r.dy) v.dy = n(r.dy);
+    if (r.flip === true) v.flip = true; if (r.hide === true) v.hide = true;
+    if (typeof r.col === 'string' && /^[a-z]{2,10}$/.test(r.col)) v.col = r.col;
+    if ([1, 2, 5, 6].includes(r.f)) v.f = r.f;
+    if (Object.keys(v).length) out[k] = v;
+  }
+  return out;
 }
 // 貓咪小日記 (diary.js) in a save: read pages as a 7-bit mask per cat, and the last 14 nightly lines per cat
 function cleanDiary(o, day) {
@@ -5129,6 +5291,8 @@ function decodeSave(code) {
       sched: Object.fromEntries(Object.keys(s.sched || {}).filter(r => validKey(r) && s.sched[r]).map(r => [r, { shift: SHIFTS[s.sched[r].shift] ? s.sched[r].shift : 'all', brk: [0, ...BREAK_HOURS].includes(s.sched[r].brk) ? s.sched[r].brk : defSched(r).brk }])),
       duty: Array.isArray(s.duty) ? [...new Set(s.duty.filter(x => CAT_DEFS[x]))] : null,
       toys: id === 3 && Array.isArray(s.toys) ? [...new Set(s.toys.filter(t => TOYS[t]))] : [], elev: id === 3 && s.elev === true,
+      place: readPlace(s.place),
+      decos: Object.fromEntries(Object.entries(s.decos && typeof s.decos === 'object' ? s.decos : {}).filter(([k, n]) => DECOR[k] && n > 0).map(([k, n]) => [k, Math.min(DECO_MAX, Math.floor(n))])),
       garden: id === 2 ? PLOTS.map((p, i) => { const g = Array.isArray(s.garden) ? s.garden[i] : null; const st = [0, 1, 2].includes(g?.s) ? g.s : 0;
         return { s: st, g: st === 2 ? 1 : st ? clamp(num(g.g, 0), 0, 1) : 0, wet: 0 }; }) : [],
     };
@@ -5975,5 +6139,6 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 <script src="photo.js"></script>
 <script src="realcat.js"></script>
 <script src="diary.js"></script>
+<script src="deco.js"></script>
 </body>
 </html>
