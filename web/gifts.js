@@ -52,6 +52,7 @@
       await card(`<h2>💌 管理者傳訊息給你</h2><p style="font-size:17px;white-space:pre-wrap">${cleanName(x.note, '', 200)}</p>`, [{ label: '知道了', v: 1, main: true }]);
       await rpc('catloft_claim_gifts', [x.id]); return;
     }
+    if (g.realcat) { if (window.REALCAT) await REALCAT.offerGift(x, card, rpc); return; } // 真實店貓 (realcat.js)
     if (g.outfit) {
       const o = OUTFITS.find(o => o.id === g.outfit);
       if (!o) { await rpc('catloft_decline_gifts', [x.id]); return; }
