@@ -768,7 +768,13 @@ const LAYOUTS = {
 // rooftop garden (second shop): reached by the stairs at the right end of 2F; six planter boxes
 const ROOF_DOOR2 = { x: 1384, y: 500 }, ROOF_IN = { x: 1360, y: 540 };
 const PLOTS = [250, 380, 510, 640, 770, 900].map(x => ({ x, y: 500 }));
-const GROW = 70, WET = 45; // seconds of watered time a crop needs to ripen; how long one watering lasts (rain keeps it wet)
+const VEG_STALL = { x: 1080, y: 520 }; // the produce crate where surplus 庭院蔬果 waits to go to market
+// GROW: seconds of watered time a crop needs to ripen. One watering lasts the rest of the day (rain waters too); a dry crop
+// still grows, just at DRY speed, and every crop keeps growing overnight (gardenNight), so a planted box never looks stuck.
+// (2026-11-15: players said crops "reset every day": a watering only lasted 45 s, dry crops never grew at all, and the
+// feeder's harvest-and-replant turned grown plants back into seedlings with no word on where the vegetables went.)
+const GROW = 70, WET = 1e6, DRY = 1 / 3, NIGHT_GROW = { wet: .6, dry: .3 };
+const VEG_PRICE = 20, VEG_KEEP = 10; // selling surplus 庭院蔬果 at the market: per 份, and how many 「多的全賣」 leaves for cooking
 const CROPS = [{ id: 'berry', name: '草莓', n: 4 }, { id: 'mint', name: '薄荷', n: 4 }, { id: 'pumpkin', name: '南瓜', n: 5 }];
 const STRAY_SPOT = { sun: { x: 1336, y: 500 }, rain: { x: 1132, y: 494 } };
 let LAYOUT = LAYOUTS[1], OUT_X = 99999;
@@ -3354,7 +3360,8 @@ function plotTask(i) {
   if (!lbl) return null;
   return { label: lbl, kind: 'garden', plot: i, steps: [{ f: 4, x: P.x + 40, y: P.y + 40, dur: p.s === 1 ? 1 : 1.4, fn: w => {
     if (p.s === 0) { p.s = 1; p.g = 0; p.wet = 0; floatText(4, P.x, P.y - 60, `種下${C.name}`, '#6E9B4E'); }
-    else if (p.s === 2) { p.s = 0; p.g = 0; G.stock.garden += C.n; G.stats.harvest++; sfx('quest', 4); floatText(4, P.x, P.y - 70, `${C.name}收成！庭院蔬果 +${C.n}`, '#6E9B4E'); say(w, pick(['大豐收！', '好新鮮～', '拿去做庭院餐點'])); }
+    else if (p.s === 2) { p.s = 0; p.g = 0; G.stock.garden += C.n; G.stats.harvest++; S.today.harvN = (S.today.harvN || 0) + 1; S.today.harvAmt = (S.today.harvAmt || 0) + C.n; sfx('quest', 4); floatText(4, P.x, P.y - 70, `${C.name}收成！庭院蔬果 +${C.n}`, '#6E9B4E'); say(w, pick(['大豐收！', '好新鮮～', '拿去做庭院餐點']));
+      if (!isMgr(w) && S.view !== 4 && !S.harvTold) { S.harvTold = true; toast(`${w.name}在頂樓收成了${C.name}，放進庫存（庭院蔬果現有 ${G.stock.garden} 份），多的可以在手機「商店」賣掉`); } }
     else if (!(p.wet > 0)) { p.wet = WET; sfx('pour', 4); floatText(4, P.x, P.y - 60, '澆好水了', '#6E9BB8'); }
   } }], onEnd: () => { S.gardenBusy = S.gardenBusy && S.gardenBusy.filter(x => x !== i); } };
 }
@@ -3369,8 +3376,26 @@ function growGarden(dt) {
   if (G.at !== 2) return;
   for (const p of G.garden) if (p.s === 1) {
     if (S.rain) p.wet = WET;
-    if (p.wet > 0) { p.wet -= dt; p.g += dt / GROW; if (p.g >= 1) { p.s = 2; p.g = 1; } }
+    const wet = p.wet > 0; if (wet) p.wet -= dt;
+    p.g += dt / GROW * (wet ? 1 : DRY); if (p.g >= 1) { p.s = 2; p.g = 1; }
   }
+}
+// overnight on 貓咪庭院's roof: planted crops keep growing (more if they were watered or it rained today).
+// When the manager worked elsewhere today, that shop's feeder looked after the garden: harvest what is ripe, replant, water.
+function gardenNight() {
+  if (!G.owned.includes(2)) return null;
+  const r = shopRec(2), rain = wxOf(S.day) === 'rain', away = G.at !== 2;
+  const feeder = away && r.staff.some(k => roleOf(k) === 'feeder');
+  let ripe = 0, got = 0;
+  for (const [i, p] of r.garden.entries()) {
+    if (feeder && p.s === 2) { const C = CROPS[i % CROPS.length]; r.stock.garden += C.n; got += C.n; G.stats.harvest++; p.s = 0; }
+    if (feeder && p.s === 0) { p.s = 1; p.g = 0; }
+    if (feeder && p.s === 1) p.wet = 1;
+    if (p.s === 1) { p.g += (p.wet > 0 || rain) ? NIGHT_GROW.wet : NIGHT_GROW.dry; if (p.g >= 1) { p.s = 2; p.g = 1; } }
+    if (p.s === 2) ripe++;
+    p.wet = 0;
+  }
+  return { ripe, got, away };
 }
 // A shop you are not in today is run by its own staff; what it takes is worked out at closing time.
 function awayDay(id) {
@@ -3905,6 +3930,7 @@ function drawWorld() {
   if (f === 1) { items.push({ y: COUNTER.front, d: drawCounter }); S.tables.forEach(t => items.push({ y: t.y, d: () => drawTable(t) })); }
   if (f === 1 && S.stray) items.push({ y: S.stray.y, d: drawStray });
   if (f === 4) G.garden.forEach((p, i) => items.push({ y: PLOTS[i].y, d: () => drawPlot(p, i) }));
+  if (f === 4) items.push({ y: VEG_STALL.y - 20, d: drawVegCrate });
   if (G.at === 3) drawPalace(f, items);
   if (S.mgr.floor === f && !S.out) items.push({ y: S.mgr.y, d: drawMgr });
   S.staff.forEach(s => { if (s.floor === f) items.push({ y: s.y, d: () => drawStaff(s) }); });
@@ -3968,6 +3994,13 @@ function drawPlot(p, i) {
   text(C.name, x, y - 14, 11, '#FFF6EA', 'center', FONT, 700);
   if (p.s === 1 && (p.wet > 0 || S.rain)) for (let j = 0; j < 3; j++) ell(x - 30 + j * 30, y - 44 + Math.sin(S.t * 3 + j) * 2, 1.8, 2.6, '#7FB3D9');
   if (S.phase !== 'settle' && (p.s === 2 || (p.s === 1 && !(p.wet > 0) && !S.rain))) alertMark(x, y - 92, p.s === 2 ? '#6E9B4E' : '#7FB3D9');
+}
+// the produce crate on the roof: fills up with what the garden grew; tap 「賣多的蔬果」 next to it to sell the surplus
+function drawVegCrate() {
+  const { x, y } = VEG_STALL, n = G.stock.garden, full = Math.min(1, n / 30);
+  wood(x - 40, y - 46, 80, 30, '#A9774B', 1.4);
+  for (let j = 0; j < Math.round(full * 8); j++) ell(x - 30 + (j % 4) * 20, y - 48 - Math.floor(j / 4) * 7, 8, 5.5, ['#D9534F', '#5E9B5A', '#E8873A'][j % 3], INK, .7);
+  text(`蔬果 ${n} 份`, x, y - 25, 11, '#FFF6EA', 'center', FONT, 700);
 }
 function floorAlerts(f) {
   const a = [];
@@ -4215,6 +4248,7 @@ function nearbyActions() {
   } else if (f === 4) {
     add(ROOF_IN.x, ROOF_IN.y, '下 2F', leaveRoom);
     G.garden.forEach((p, i) => { const l = plotLabel(p, i); if (l) add(PLOTS[i].x + 40, PLOTS[i].y + 40, l, () => actPlot(i)); });
+    if (G.stock.garden > VEG_KEEP) add(VEG_STALL.x, VEG_STALL.y, '賣多的蔬果', () => { storeTab = 'stock'; openPhone('shop'); });
   } else if (f === 3) {
     if (!LAYOUT.LINKS) add(ROOM_IN.x, ROOM_IN.y, '回 2F 閣樓', leaveRoom);
     add(COFFEE.x, COFFEE.y, '喝杯咖啡', actCoffee);
@@ -4455,7 +4489,10 @@ function renderPhone() {
       if (costMul() > 1) h += `<p class="muted">${G.shopName}在熱鬧的地段，這裡買東西都是暖陽貓閣的 ${costMul()} 倍價錢。</p>`;
       if (storeTab === 'stock') {
         h += `<p class="muted">下單後馬上送到。錢不夠時可以先賒帳，會記在負債裡。</p>`;
+        const vegTop = G.owned.includes(2) && S.view === 4; // opened from the produce crate on the roof: selling comes first
+        if (vegTop) h += vegSellItem();
         for (const it of SHOP) if (!it.shop || it.shop === G.at) h += `<div class="item"><div class="top"><span class="nm">${it.name}</span><b>${yen(cost(it.price))}</b></div><div class="sub">${it.desc}・現有 ${G.stock[it.id]} ${it.unit}</div><div class="row" style="margin:0">${btn(it.id, cost(it.price))}</div></div>`;
+        if (G.owned.includes(2) && !vegTop) h += vegSellItem();
       } else if (storeTab === 'furn') {
         h += `<p class="muted">傢俱買了會一直擺在店裡。錢不夠時可以先賒帳。</p>`;
         const full = G.tables >= maxTables();
@@ -4727,6 +4764,7 @@ function renderPhone() {
     G.prices[id] = clamp(G.prices[id] + +b.dataset.d, 5, base * 2); renderPhone();
   });
   sc.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy, false));
+  sc.querySelectorAll('[data-sellveg]').forEach(b => b.onclick = () => sellVeg(+b.dataset.sellveg));
   sc.querySelectorAll('[data-charm]').forEach(b => b.onclick = () => { const id = b.dataset.charm, C = CHARMS[id], E = evNow();
     if (G.acc.own.includes(id) || C.inv || C.sign || G.cash < C.price || (C.ev ? !E || E.id !== C.ev || evEarned(E) < C.need : C.lv > shopLv())) return;
     G.cash -= C.price; S.today.spent += C.price; G.acc.own.push(id); if (C.slot !== 'cat') G.acc.mgr[C.slot] = id;
@@ -4842,6 +4880,19 @@ function buyElev() {
   if (G.at !== 3 || G.elev || G.cash < ELEV_PRICE || S.phase === 'settle') return;
   G.cash -= ELEV_PRICE; S.today.spent += ELEV_PRICE; G.elev = true; sfx('build');
   toast('電梯裝好了！走到電梯門口就能搭'); say(S.mgr, '有電梯，上下樓輕鬆多了'); saveProgress();
+}
+// 賣菜: surplus 庭院蔬果 from 貓咪庭院's roof goes to the market, from any shop (it is that shop's stock)
+function vegSellItem() {
+  const have = shopRec(2).stock.garden, extra = Math.max(0, have - VEG_KEEP), shut = S.phase === 'settle';
+  return `<div class="item"><div class="top"><span class="nm">🥕 賣掉多的庭院蔬果</span><b>每份 ${yen(VEG_PRICE)}</b></div><div class="sub">頂樓菜園種太多了？拿去市場賣。做成庭院餐點賺比較多，所以「多的全賣」會留 ${VEG_KEEP} 份給廚房・貓咪庭院現有 ${have} 份</div>
+    <div class="row" style="margin:0">${shut ? '<button disabled>打烊了，明天再賣</button>' : `<button ${have >= 5 ? '' : 'disabled'} data-sellveg="5">賣 5 份（${yen(5 * VEG_PRICE)}）</button><button class="primary" ${extra ? '' : 'disabled'} data-sellveg="${extra}">多的全賣${extra ? `（${extra} 份，${yen(extra * VEG_PRICE)}）` : ''}</button>`}</div></div>`;
+}
+function sellVeg(n) {
+  const st = shopRec(2).stock; n = Math.min(Math.floor(n), st.garden);
+  if (!(n > 0) || S.phase === 'settle') return;
+  const got = n * VEG_PRICE;
+  st.garden -= n; G.cash += got; gainEarned(got); S.today.veg = (S.today.veg || 0) + got; S.today.vegN = (S.today.vegN || 0) + n;
+  sfx('register', 1); toast(`賣掉 ${n} 份庭院蔬果，收入 ${yen(got)}（還剩 ${st.garden} 份）`); renderPhone(); saveProgress();
 }
 function buy(id, credit) {
   let name, price;
@@ -5547,7 +5598,7 @@ function closeDay() {
   checkDaily();
   const dailyDone = S.daily.filter(q => q.done).length, unclaimed = S.daily.filter(q => q.done && !q.got);
   for (const q of unclaimed) { q.got = true; G.cash += q.cash; gainExp(q.exp); }
-  const revenue = T.dessert + T.loft + T.beans + T.treat + T.merch;
+  const revenue = T.dessert + T.loft + T.beans + T.treat + T.merch + (T.veg || 0);
   // the partner company sends a thank-you gift when its merch sold well today
   const CO = collabNow(); let gift = 0;
   if (CO && T.merchN >= CO.goal) { gift = Math.round((CO.gift[0] + (CO.gift[1] - CO.gift[0]) * clamp((T.merchN - CO.goal) / CO.goal, 0, 1)) / 10) * 10; G.cash += gift; }
@@ -5567,6 +5618,7 @@ function closeDay() {
   const avg = T.ratings.length ? T.ratings.reduce((a, b) => a + b, 0) / T.ratings.length : 0;
   const fanLoss = 0;
   const away = G.owned.filter(id => id !== G.at).map(awayDay);
+  const night = gardenNight();
   const day = S.day;
   G.day = day + 1;
   saveProgress();
@@ -5596,6 +5648,7 @@ function closeDay() {
       ${T.treatN ? `<tr><td>貓咪肉泥（賣出 ${T.treatN} 條，${T.fed} 隻次貓咪吃到）</td><td>${yen(T.treat)}</td></tr>` : ''}
       ${T.tips ? `<tr><td>稀有顧客給的小費</td><td>${yen(T.tips)}</td></tr>` : ''}
       ${T.beansN ? `<tr><td>咖啡豆（賣出 ${T.beansN} 包）</td><td>${yen(T.beans)}</td></tr>` : ''}
+      ${T.vegN ? `<tr><td>賣多的庭院蔬果（${T.vegN} 份）</td><td>${yen(T.veg)}</td></tr>` : ''}
       ${CO ? `<tr><td>聯名周邊 ${CO.item}（賣出 ${T.merchN} 個）</td><td>${yen(T.merch)}</td></tr>
       <tr><td>${CO.co}的謝禮${gift ? '（周邊賣得好！）' : `（一天賣到 ${CO.goal} 個才有）`}${collabNow() ? '' : '・合作今天結束'}</td><td>${gift ? '+' + yen(gift) : '—'}</td></tr>` : ''}
       <tr><td>採購支出${T.credit ? `（其中賒帳 ${yen(T.credit)}）` : ''}</td><td>−${yen(T.spent)}</td></tr>
@@ -5617,6 +5670,7 @@ function closeDay() {
     ${traffic}
     ${comments}
     ${dailyLine}
+    ${night ? `<p class="muted">🌱 頂樓菜園${T.harvN ? `今天收成 ${T.harvN} 次（+${T.harvAmt} 份）` : ''}${night.got ? `${T.harvN ? '，' : ''}員工幫忙收成 +${night.got} 份` : ''}${T.harvN || night.got ? '・' : ''}種下的菜晚上會繼續長${night.ripe ? `，明天有 ${night.ripe} 格可以收成` : ''}・庭院蔬果現有 ${shopRec(2).stock.garden} 份</p>` : ''}
     ${review}
     <p style="margin-top:14px">店鋪 Lv.${lvNow}${lvNow < MAX_LV ? `・經驗 ${G.exp}/${nx}` : '・已滿級'}${gained.length ? `　🎉 今天升了 ${gained.length} 級！` : ''}</p>
     <div class="prog"><i style="width:${lvPct}%"></i></div>
