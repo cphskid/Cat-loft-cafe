@@ -4726,7 +4726,7 @@ function renderPhone() {
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '誰最會賺', '#C9A03A', '榜']);
     if (CLOUD.sb && !CLOUD.db && window.FRIENDS) apps.splice(apps.length - 2, 0, ['friend', '好友', FRIENDS.sub(), '#D98AA0', '友']);
     if (window.MEOW) apps.splice(apps.length - 2, 0, ['quiz', '喵型測驗', MEOW.sub(), '#E0A040', '喵']);
-    if (window.REALCAT && CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['realcat', '我的真實店貓', REALCAT.sub(), '#6E9B4E', '🏠']);
+    if (window.REALCAT && REALCAT.open && CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['realcat', '我的真實店貓', REALCAT.sub(), '#6E9B4E', '🏠']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()">${(a[0] === 'report' && FB.unread) || (a[0] === 'sign' && window.CHECKIN && CHECKIN.can()) || (a[0] === 'news' && window.NEWS && NEWS.unread()) || (a[0] === 'bank' && window.BANK && BANK.can()) || (a[0] === 'cats' && window.DIARY && DIARY.anyUnread()) || (a[0] === 'badge' && badgeUnpaid().length) ? '<span class="badge sm">!</span>' : ''}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
@@ -4923,7 +4923,7 @@ function renderPhone() {
       const where = k => k.anim ? '跟店長玩' : k.state === 'sleep' ? '睡覺中' : k.state === 'play' || k.state === 'toPlay' ? '陪客人玩' : k.state === 'eat' ? '吃飯中' : k.floor === 3 ? (G.at === 3 ? '在 5F 休息' : '休息室') : `在 ${fname(k.floor)} 散步`;
       const tab = S.catTab || 'mine', cap = dutyCap(), duty = onDuty();
       const rtag = d => `<span style="font-size:11px;padding:1px 6px;border-radius:8px;color:#fff;background:${RARITY[d.rarity].color};margin-left:4px">${RARITY[d.rarity].name}</span>`;
-      h += `<div class="row" style="margin:0 0 6px;gap:6px">${[['mine', `我的貓 ${G.cats.length}`], ['adopt', '領養中心'], ['dex', `圖鑑 ${G.seen.length}/${CAT_IDS.length}`], ...(window.REALCAT && CLOUD.sb && !CLOUD.db ? [['real', '真實店貓']] : [])].map(([k, n]) => `<button data-ctab="${k}" ${k === tab ? 'class="primary"' : ''}>${n}</button>`).join('')}</div>`;
+      h += `<div class="row" style="margin:0 0 6px;gap:6px">${[['mine', `我的貓 ${G.cats.length}`], ['adopt', '領養中心'], ['dex', `圖鑑 ${G.seen.length}/${CAT_IDS.length}`], ...(window.REALCAT && REALCAT.open && CLOUD.sb && !CLOUD.db ? [['real', '真實店貓']] : [])].map(([k, n]) => `<button data-ctab="${k}" ${k === tab ? 'class="primary"' : ''}>${n}</button>`).join('')}</div>`;
       if (tab === 'mine') {
         if (G.owned.includes(3)) h += `<p class="muted">貓咪室內樂園開張後可以「送養」：幫貓咪找到愛牠的新家，新家會寄感謝信來，還會多一些粉絲。</p>`;
         h += `<p class="muted">今天是第 ${G.day} 天。${G.owned.length > 1 ? G.owned.map(id => `${shopRec(id).shopName}可以有 ${dutyCapOf(id)} 隻貓上班（現在 ${dutyList(id).length} 隻）`).join('，') + '。' : `店裡同時可以有 ${cap} 隻貓上班（店鋪等級越高、擴建越多，名額越多，最多 ${shopDef().cats} 隻）。`}其他的貓在貓咪宿舍休息。排班從明天開店生效。點「改名」可以幫貓取名字。</p>`;
@@ -4942,7 +4942,7 @@ function renderPhone() {
         }
         if (G.letters?.length) h += `<p class="kh">💌 新家寄來的信</p>` + G.letters.slice().reverse().map(l => `<div class="item"><div class="top"><span class="nm">${catThumb(CAT_DEFS[l.id], 26)} ${l.nm}</span><span class="sub">第 ${l.d} 天送養</span></div><div class="sub">${l.fam}：「謝謝你們照顧${l.nm}，牠在新家過得很好！」</div></div>`).join('');
         if (list.length > per) h += `<div class="row" style="margin:0;justify-content:center"><button data-cpage="${pg - 1}" ${pg ? '' : 'disabled'}>‹ 上一頁</button><span class="sub">${pg + 1}/${Math.ceil(list.length / per)}</span><button data-cpage="${pg + 1}" ${(pg + 1) * per < list.length ? '' : 'disabled'}>下一頁 ›</button></div>`;
-      } else if (tab === 'real' && window.REALCAT) {
+      } else if (tab === 'real' && window.REALCAT && REALCAT.open) {
         h += REALCAT.tabHtml();
       } else if (tab === 'adopt') {
         h += `<p class="muted">中途之家每天會送來 4 隻新的貓，明天會換一批。店鋪 Lv.2 開始會出現「少見」的貓，Lv.4「稀有」，Lv.6「傳說」。領養要付現金，不能賒帳。</p>`;
