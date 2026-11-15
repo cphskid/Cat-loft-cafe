@@ -217,6 +217,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
     <button class="rb" data-pane="inv" aria-label="庫存">庫存<span class="badge sm" id="invBadge" hidden>!</span></button>
     <button class="rb" data-pane="staff" id="staffTab" aria-label="員工" hidden>員工</button>
     <button class="rb" data-pane="tips" id="tipsTab" aria-label="今日提示" hidden>提示</button>
+    <button class="rb" id="decoBtn" aria-label="佈置：搬動傢俱、換顏色">佈置</button>
     <button class="rb" data-pane="howto" aria-label="怎麼玩">說明</button>
   </div>
   <div class="panel drawer" id="drawer" hidden>
@@ -235,6 +236,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       <li><b>員工休息室</b>：2F 那扇「員工休息室」的門可以走進去（搖桿在門口往上推、按動作鍵，或直接點門）。累了的員工會在沙發上休息，店長可以幫他們打氣（體力 +40），也可以喝杯咖啡讓自己走路變快。</li>
       <li>手機的「喵喵宣傳」可以發傳單、辦試吃、登報紙，讓今天的客人變多、粉絲增加；「喵IG」可以拍店裡的照片發文，會有讚和留言，也會加粉絲；勾「分享給大家看」的照片，其他玩家可以在「大家的貼文」按讚、留言（可以選句子、貼圖或自己打字，髒話會自動變成＊）。「徽章」收集成就，「小遊戲」有喵喵接點心、拉花挑戰、貓咪翻牌、躲貓貓四款，每款每天第一次玩都有零用錢，今日推薦的那款雙倍。</li>
       <li>手機的「喵才獵人」可以雇員工，他們會自己找事做，打烊時領日薪。體力用完會去 2F 員工休息室休息。</li>
+      <li><b>佈置</b>：按左邊的「佈置」鈕，任何時間都可以把買來的傢俱、桌子和坐墊搬到喜歡的地方（開店中遊戲會先暫停）。綠色可以放，紅色是店員要走的地方不能擋；客人坐著的位子要等客人離開才能搬。也可以左右翻轉、收起來、放回原位，或換顏色（原色免費，其他顏色每次 ¥100～200）。每家店各自佈置。</li>
       <li><b>出門走走</b>：營業時間（18:30 前）走到 1F 門口，或打開手機「出去玩」，可以出門去公園、市場或聯名公司，一次大約 2 小時，一天最多 3 次。店員會幫忙顧店，營收照算。</li>
       <li><b>做甜點和正餐</b>：店長到廚房（樓梯旁的烤箱）選一道菜，會照食譜一步一步做。正餐用「正餐食材」，甜點用麵粉。點畫面（或按空白鍵）倒料、按住攪拌、看準綠色區按下抓火候，完美火候會多做一份。雇了阿杰的話，他會自己烤。</li>
       <li><b>店鋪等級</b>：客人的星星、完美火候、摸摸想撒嬌的貓、每天打烊都會加經驗，升級會解鎖新食譜和新傢俱。累計營收到 ¥100,000 可以開拓新土地，再花 ¥100,000 就能在手機「分店地圖」開第二家店「貓咪庭院」（三層樓、有庭院和屋頂菜園）。</li>
@@ -319,15 +321,16 @@ function updateCam(dt) {
     V.s = s; V.tx = w / 2 - (box.x + box.w / 2) * s; V.ty = h / 2 - (box.y + box.h / 2) * s; V.cx = box.x + box.w / 2; V.cy = box.y + box.h / 2;
     return;
   }
-  const s = viewScale(w, h), vw = w / s, vh = h / s, maxX = W - vw, maxY = H - vh;
-  const m = S && S.mgr, follow = m && m.floor === S.view && !DRAG.moved && performance.now() > CAM.hold;
+  const hv = h - (S && S.edit && window.DECO ? DECO.barH() : 0); // 佈置: keep the floor above its tool bar
+  const s = viewScale(w, hv), vw = w / s, vh = hv / s, maxX = W - vw, maxY = H - vh;
+  const m = S && S.mgr, follow = m && m.floor === S.view && !DRAG.moved && performance.now() > CAM.hold && !S.edit;
   const k = CAM.snap ? 1 : Math.min(1, dt * 5);
   if (maxX <= 0) CAM.x = maxX / 2;
   else {
     if (follow) CAM.x += (clamp(m.x - vw / 2, 0, maxX) - CAM.x) * k;
     CAM.x = clamp(CAM.x, 0, maxX);
   }
-  if (maxY <= 0) CAM.y = maxY / 2;
+  if (maxY <= 0) CAM.y = S && S.edit ? maxY : maxY / 2;
   else { // the manager's feet sit about two thirds down the screen
     if (follow) CAM.y += (clamp(m.y - vh * .68, 0, maxY) - CAM.y) * k;
     CAM.y = clamp(CAM.y, 0, maxY);
@@ -394,13 +397,13 @@ const FURN = {
   mural:   { name: '貓咪主題壁畫', price: 500, lv: 7, desc: '2F 牆上的貓咪壁畫，客人更容易給 5 星' },
 };
 // where the furniture without a fixed role in the layout stands (floor y = the prop's bottom)
-let PROP = { plant: { x: 880, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 720, y: 480 }, plantAlt: { x: 24, y: 482 } }; // plantAlt: where the plant goes once the window counter takes its spot
+let PROP = { plant: { x: 880, y: 480 }, lamp: { x: 660, y: 480 }, chalk: { x: 290, y: 488 }, cattree: { x: 410, y: 480 }, books: { x: 720, y: 480 }, plantAlt: { x: 24, y: 482 }, record: { x: 721, y: 480 }, bed: { x: 206, y: 466 } }; // plantAlt: where the plant goes once the window counter takes its spot
 let CUSHION_EXTRA = [{ x: 520, y: 546 }, { x: 578, y: 594 }];
 // seats that come with a piece of furniture: 1F window counter (works like a table), 2F beanbags and hanging chairs (like cushions; lift = how high the guest sits)
 let BAR_SEATS = [{ x: 892, y: 506 }, { x: 946, y: 506 }];
 let BEANBAG_SEATS = [{ x: 196, y: 590 }, { x: 262, y: 598 }];
 let HAMMOCK_SEATS = [{ x: 880, y: 526 }, { x: 932, y: 526 }];
-let SHOWCASE = { x: 160, y: 556 }, WARMER = { x: 401, y: 366 }; const WALLWALK = { x: 82, y: 304 }; let MURAL = { x: 918, y: 442 };
+let SHOWCASE = { x: 160, y: 556 }, WARMER = { x: 401, y: 366 }; let WALLWALK = { x: 82, y: 304 }; let MURAL = { x: 918, y: 442 };
 const furnCushions = () => [...(hasF('cushion') ? CUSHION_EXTRA : []), ...(hasF('beanbag') ? BEANBAG_SEATS.map(p => ({ ...p, kind: 'beanbag', lift: 12 })) : []), ...(hasF('hammock') ? HAMMOCK_SEATS.map(p => ({ ...p, kind: 'hammock', lift: 30 })) : [])];
 const furnSeats = id => id === 'bar' ? BAR_SEATS.map(p => ({ ...p, bar: true, cust: null, dirty: false, busy: false })) : [];
 const LAND_GOAL = 100000;
@@ -784,12 +787,51 @@ let LAYOUT = LAYOUTS[1], OUT_X = 99999;
 // switch every floor-plan constant over to shop `id`
 function applyLayout(id) {
   const L = LAYOUT = LAYOUTS[id] || LAYOUTS[1];
-  ({ PROP, SHOWCASE, WARMER, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, MAX_TABLES, EXPANSIONS, TABLE_CAPS, CUSHION_POS, BEDS, EXTRA_BEDS, OUT_X } = L);
+  // everything a player can move in 佈置 (deco.js) is a fresh copy, so moving it never touches LAYOUTS
+  const C = JSON.parse(JSON.stringify({ PROP: L.PROP, SHOWCASE: L.SHOWCASE, CUSHION_EXTRA: L.CUSHION_EXTRA, BAR_SEATS: L.BAR_SEATS, BEANBAG_SEATS: L.BEANBAG_SEATS, HAMMOCK_SEATS: L.HAMMOCK_SEATS, MURAL: L.MURAL, TABLE_POS: L.TABLE_POS, CUSHION_POS: L.CUSHION_POS, EXPANSIONS: L.EXPANSIONS }));
+  ({ PROP, SHOWCASE, CUSHION_EXTRA, BAR_SEATS, BEANBAG_SEATS, HAMMOCK_SEATS, MURAL, TABLE_POS, CUSHION_POS, EXPANSIONS } = C);
+  ({ WARMER, MAX_TABLES, TABLE_CAPS, BEDS, EXTRA_BEDS, OUT_X } = L);
+  WALLWALK = { x: 82, y: 304 }; PROP.record = PROP.record || { x: 721, y: 480 }; PROP.bed = PROP.bed || { x: 206, y: 466 };
+  for (const t of TOY_IDS) { TOYS[t].x = TOY_BASE[t].x; TOYS[t].y = TOY_BASE[t].y; TOYS[t].seat = { ...TOY_BASE[t].seat }; }
+  tagPlaces(id); applyPlace();
   if (id === 2) for (const n of ['s2bg1', 's2bg2', 's2bg4', ...GUESTS2.map(c => c + '_0'), ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's2' + r + '_0')]) art(n);
   if (id === 3) for (const n of [...shopArt(3), ...TOY_IDS.map(t => TOYS[t].img)]) art(n);
   prerender();
 }
 // painted floors and the crew's sprites a shop needs before it opens
+// 佈置: every movable thing's position object gets ik (the item it belongs to; the key in G.place) and pk (unique, to find the
+// matching seat in S.tables / S.cushions), plus bx/by = where the layout puts it. G.place[ik] = { dx, dy, flip, col, hide }.
+// The 4 loft cushions of the first two shops are painted into the background, so they stay put (pk only, no ik).
+const TOY_BASE = JSON.parse(JSON.stringify(TOYS));
+let PLACED = [];
+function tagPlaces(id) {
+  PLACED = [];
+  const tag = (o, ik, pk) => { if (!o) return; if (ik) o.ik = ik; o.pk = pk || ik; o.bx = o.x; o.by = o.y; PLACED.push(o); };
+  TABLE_POS.forEach((p, i) => tag(p, 't' + i));
+  BAR_SEATS.forEach((p, i) => tag(p, 'bar', 'bar' + i));
+  tag(SHOWCASE, 'showcase'); tag(MURAL, 'mural'); tag(WALLWALK, 'wallwalk');
+  for (const k of ['plant', 'lamp', 'chalk', 'record', 'cattree', 'books', 'bed']) tag(PROP[k], k);
+  BEANBAG_SEATS.forEach((p, i) => tag(p, 'bb' + i)); HAMMOCK_SEATS.forEach((p, i) => tag(p, 'hm' + i)); CUSHION_EXTRA.forEach((p, i) => tag(p, 'ce' + i));
+  EXPANSIONS.forEach((e, i) => e.cushions.forEach((p, j) => tag(p, 'xc' + i + '_' + j)));
+  CUSHION_POS.forEach((p, i) => tag(p, id === 3 ? 'c' + i : null, 'c' + i));
+  for (const t of TOY_IDS) { tag(TOYS[t], t); tag(TOYS[t].seat, t, 'seat_' + t); }
+}
+function applyPlace() {
+  const P = (G && G.place) || {};
+  for (const o of PLACED) { const r = o.ik && P[o.ik]; o.x = o.bx + (r ? r.dx || 0 : 0); o.y = o.by + (r ? r.dy || 0 : 0); }
+  if (window.DECO) DECO.refresh();
+}
+const hid = p => !!(p && p.ik && G.place && G.place[p.ik] && G.place[p.ik].hide); // put away in 佈置
+const flipped = p => !!(p && p.ik && G.place && G.place[p.ik] && G.place[p.ik].flip);
+const onF = (id, p) => hasF(id) && !hid(p);
+// after 佈置 moves, hides or brings back a seat: update today's tables and cushions in place (the same objects, so guests keep theirs)
+function seatSync() {
+  if (!S) return;
+  const keep = (list, src, fresh) => src.filter(p => !hid(p)).map(p => { const o = list.find(t => t.pk && t.pk === p.pk) || fresh(p); o.x = p.x; o.y = p.y; return o; });
+  S.tables = keep(S.tables, TABLE_POS.slice(0, G.tables).concat(hasF('bar') ? BAR_SEATS.map(p => ({ ...p, bar: true })) : []), p => ({ ...p, cust: null, dirty: false, busy: false }));
+  S.tables.forEach(t => t.out = isOut(t) && !t.bar);
+  S.cushions = keep(S.cushions, CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()), p => ({ ...p, cust: null }));
+}
 const shopArt = id => id === 2 ? ['s2bg1', 's2bg2', 's2bg4'] : id === 3 ? ['s3bg1', 's3bg2', 's3bg3', 's3bg5', 's3bg6', ...Object.keys(ROLES).filter(r => !ROLES[r].only).map(r => 's3' + r + '_0')] : [];
 const fw = f => LAYOUT.FW[f] || 960; // width of floor f in the current shop
 const bgName = f => (G && G.at === 3 ? 's3bg' : G && G.at === 2 && f !== 3 ? 's2bg' : 'bg') + f; // painted background of floor f
@@ -976,17 +1018,17 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [],
+           exp: 0, earned: 0, furn: [], place: {}, keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [],
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
 // The shop you are working in today has those fields right on G, so the rest of the game never needs to know
 // which shop it is; the other shops wait in G.shops until you go there (loadShop).
-const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden', 'toys', 'elev'];
+const PER_SHOP = ['exp', 'furn', 'tables', 'expand', 'staff', 'hired', 'sched', 'duty', 'prices', 'stock', 'bowl', 'litterDirt', 'keep', 'shopName', 'garden', 'toys', 'elev', 'place'];
 function freshShop(id) {
   const prices = {}; for (const k of ['loft', 'beans', 'treat', ...DISHES]) prices[k] = baseOf(k, id);
   return { exp: 0, furn: [], tables: 4, expand: 0, staff: [], hired: {}, sched: {}, duty: [], prices, stock: { flour: 10, food: 6, catfood: 3, litter: 3, beans: 0, treat: 10, garden: 10 },
-           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [], toys: [], elev: false };
+           bowl: 6, litterDirt: 0, keep: {}, shopName: SHOP_DEFS[id].name, garden: id === 2 ? PLOTS.map(() => ({ s: 0, g: 0, wet: 0 })) : [], toys: [], elev: false, place: {} };
 }
 const shopRec = id => id === G.at ? G : G.shops[id];
 function loadShop(id) {
@@ -1006,6 +1048,7 @@ function dutyCapOf(id) {
 const shopLv = (e = G.exp) => { let l = 1; while (l < MAX_LV && e >= LV_EXP[l]) l++; return l; };
 const unlockedDishes = () => DISHES.filter(d => MENU[d].lv <= shopLv() && dishHere(d));
 const hasF = id => G.furn.includes(id);
+const plantSpot = () => hasF('bar') && !(G.place && G.place.plant) ? PROP.plantAlt : PROP.plant; // the window counter takes the plant's spot, unless the player placed it
 // guests only order what the shop has made at least once (or what is in the showcase right now)
 const madeOk = d => !G.made || G.made[d] || S.display[d] > 0;
 const markMade = d => { if (G.made) G.made[d] = 1; };
@@ -1588,8 +1631,8 @@ function startDay(carry) {
     day: G.day, phase: 'prep', time: 420, view: 1, speed: S ? S.speed : 1, paused: false, uiPause: false,
     mgr: { floor: 1, x: MGR_COUNTER.x, y: MGR_COUNTER.y, path: [], speed: 270, face: 1, task: null, carry: null, mode: 'idle', actT: 0, si: 0 },
     tasks: [], customers: [], queue: [], cid: 0,
-    tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []),
-    cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()).map(p => ({ ...p, cust: null })),
+    tables: TABLE_POS.slice(0, G.tables).map(p => ({ ...p, cust: null, dirty: false, busy: false })).concat(hasF('bar') ? furnSeats('bar') : []).filter(p => !hid(p)),
+    cushions: CUSHION_POS.concat(furnCushions(), expandCushions(), toySeats()).filter(p => !hid(p)).map(p => ({ ...p, cust: null })),
     display: Object.fromEntries(DISHES.map(d => [d, Math.max(0, Math.floor(G.keep[d] || 0))])), restroomDirt: 0, baking: {}, wcBusy: false, warned: {},
     lv0: shopLv(), // dishes unlocked by a level-up today are only ordered from tomorrow
     spawnT: 2.5, lastHour: 7, effects: [], mini: null, cook: null, t: 0, later: [], chatT: 5,
@@ -1750,10 +1793,15 @@ function artReady(extra, onTick) {
 const art = n => { let im = ART[n]; if (!im && LAZY_ART.test(n)) { loadArtImg(n, 0); im = ART[n]; } return im && im.complete && im.naturalWidth ? im : null; };
 // draw an image with its bottom centre at (x, y), h pixels tall, mirrored when flip
 function sprite(im, x, y, h, flip, w) {
-  w = w || im.naturalWidth * h / im.naturalHeight;
+  w = w || (im.naturalWidth || im.width) * h / (im.naturalHeight || im.height);
   g.save(); g.translate(x, y); if (flip) g.scale(-1, 1); g.drawImage(im, -w / 2, -h, w, h); g.restore();
 }
-function propArt(n, x, y, w) { const im = art(n); if (!im) return false; sprite(im, x, y, im.naturalHeight * w / im.naturalWidth, false, w); return true; }
+function propArt(n, x, y, w) {
+  let im = art(n); if (!im) return false;
+  const fx = window.DECO && g === ctx && DECO.fx[n + '@' + Math.round(x) + ',' + Math.round(y)]; // 佈置: this piece was recoloured or flipped
+  if (fx && fx.col) im = DECO.tinted(n, im, fx.col) || im;
+  sprite(im, x, y, (im.naturalHeight || im.height) * w / (im.naturalWidth || im.width), fx && fx.flip, w); return true;
+}
 // small painted name tags for the doors and signs (the painted backgrounds carry no text)
 function tag(t, x, y, size = 11) {
   g.font = `700 ${size}px ${FONT}`; const w = g.measureText(t).width + 14;
@@ -2175,20 +2223,22 @@ function drawRestroomState() {
 }
 function drawFurn1() {
   const bx = (BAR_SEATS[0].x + BAR_SEATS[1].x) / 2 - 11;
-  if (hasF('bar') && !propArt('winbar', bx, 508, 100)) { wood(bx - 38, 474, 92, 8, '#B98B5F', 1.4); line(bx - 32, 482, bx - 32, 506, INK, 2.5); line(bx + 48, 482, bx + 48, 506, INK, 2.5); }
-  if (hasF('showcase') && !propArt('showcase', SHOWCASE.x, SHOWCASE.y, 70)) { wood(SHOWCASE.x - 34, SHOWCASE.y - 36, 68, 36, '#A9774B', 1.3); rrect(SHOWCASE.x - 32, SHOWCASE.y - 70, 64, 34, 6, 'rgba(235,246,250,.8)', INK, 1.2); }
+  if (onF('bar', BAR_SEATS[0]) && !propArt('winbar', bx, BAR_SEATS[0].y + 2, 100)) { const by = BAR_SEATS[0].y - 32; wood(bx - 38, by, 92, 8, '#B98B5F', 1.4); line(bx - 32, by + 8, bx - 32, by + 32, INK, 2.5); line(bx + 48, by + 8, bx + 48, by + 32, INK, 2.5); }
+  if (onF('showcase', SHOWCASE) && !propArt('showcase', SHOWCASE.x, SHOWCASE.y, 70)) { wood(SHOWCASE.x - 34, SHOWCASE.y - 36, 68, 36, '#A9774B', 1.3); rrect(SHOWCASE.x - 32, SHOWCASE.y - 70, 64, 34, 6, 'rgba(235,246,250,.8)', INK, 1.2); }
   // the window counter takes the plant's spot, so the plant moves to the entrance
-  const plant = hasF('bar') ? PROP.plantAlt : PROP.plant;
-  if (hasF('plant') && !propArt('plant', plant.x, plant.y, 44)) { rect(plant.x - 10, plant.y - 18, 20, 18, '#C98B62', INK, 1.1); ell(plant.x, plant.y - 30, 16, 14, '#7FA66A', INK, 1.1); }
-  if (hasF('lamp')) { const { x, y } = PROP.lamp; g.globalAlpha = .25 + Math.sin(S.t * 1.5) * .05; ell(x, y - 118, 40, 30, '#FFE7A8'); g.globalAlpha = 1;
+  const plant = plantSpot();
+  if (onF('plant', PROP.plant) && !propArt('plant', plant.x, plant.y, 44)) { rect(plant.x - 10, plant.y - 18, 20, 18, '#C98B62', INK, 1.1); ell(plant.x, plant.y - 30, 16, 14, '#7FA66A', INK, 1.1); }
+  if (onF('lamp', PROP.lamp)) { const { x, y } = PROP.lamp; g.globalAlpha = .25 + Math.sin(S.t * 1.5) * .05; ell(x, y - 118, 40, 30, '#FFE7A8'); g.globalAlpha = 1;
     if (!propArt('lamp', x, y, 40)) { line(x, y, x, y - 110, INK, 2); poly([[x - 16, y - 108], [x + 16, y - 108], [x + 11, y - 132], [x - 11, y - 132]], '#FFF1D2', INK, 1.2); } }
-  if (hasF('chalk') && !propArt('chalkboard', PROP.chalk.x, PROP.chalk.y, 50)) { rect(PROP.chalk.x - 22, PROP.chalk.y - 60, 44, 52, '#3F5E4A', INK, 1.3); pawPrint(PROP.chalk.x, PROP.chalk.y - 36, .4, '#F4F0E8'); }
-  if (hasF('record') && propArt('record', 721, 480, 64)) { if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; } }
-  else if (hasF('record')) { // low cabinet + gramophone between the menu board and the restroom
+  if (onF('chalk', PROP.chalk) && !propArt('chalkboard', PROP.chalk.x, PROP.chalk.y, 50)) { rect(PROP.chalk.x - 22, PROP.chalk.y - 60, 44, 52, '#3F5E4A', INK, 1.3); pawPrint(PROP.chalk.x, PROP.chalk.y - 36, .4, '#F4F0E8'); }
+  const R = PROP.record, rx = R.x - 721, ry = R.y - 480;
+  if (onF('record', R) && propArt('record', R.x, R.y, 64)) { if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + rx + t * 6, 372 + ry - t * 16, 15, '#B07E52'); g.globalAlpha = 1; } }
+  else if (onF('record', R)) { g.save(); g.translate(rx, ry); // low cabinet + gramophone between the menu board and the restroom
     wood(690, 438, 62, 40, '#A9774B', 1.3); line(721, 442, 721, 474, 'rgba(70,45,30,.3)', 1);
     rect(694, 426, 46, 12, '#7A5238', INK, 1.1); ell(712, 426, 14, 3.6, '#2E2826', INK, 1); ell(712, 426, 3.5, 1.2, '#D9773E');
     line(732, 426, 738, 408, INK, 1.4); poly([[736, 410], [748, 384], [760, 382], [756, 396], [740, 412]], '#E2B573', INK, 1.1);
     if (S.phase === 'open' && G.music !== 'off') { const t = S.t % 2; g.globalAlpha = 1 - t / 2; text('♪', 752 + t * 6, 372 - t * 16, 15, '#B07E52'); g.globalAlpha = 1; }
+    g.restore();
   }
   if (hasF('warmer')) { // warm glass box on top of the oven cabinet
     const { x, y } = WARMER;
@@ -2203,15 +2253,15 @@ function drawFurn1() {
   }
 }
 function drawFurn2() {
-  if (hasF('wallwalk') && !propArt('wallwalk', WALLWALK.x, WALLWALK.y, 140)) for (let i = 0; i < 3; i++) wood(WALLWALK.x - 66 + i * 46, WALLWALK.y - 60 + i * 22, 40, 7, '#B98B5F', 1.2);
-  if (hasF('mural') && !propArt('mural', MURAL.x, MURAL.y, 60)) { wood(MURAL.x - 30, MURAL.y - 104, 60, 104, '#D9B98E', 1.3); rect(MURAL.x - 24, MURAL.y - 98, 48, 92, '#FBEFD9', INK, 1); pawPrint(MURAL.x, MURAL.y - 52, .5, '#D9773E'); }
-  if (hasF('beanbag')) for (const p of BEANBAG_SEATS) if (!propArt('beanbag', p.x, p.y + 6, 62)) { ell(p.x, p.y - 12, 30, 20, '#F1E6D2', INK, 1.3); ell(p.x, p.y - 16, 14, 6, '#E3D4BC', null); }
-  if (hasF('hammock')) for (const p of HAMMOCK_SEATS) if (!propArt('eggchair', p.x, p.y + 4, 54)) { line(p.x - 20, p.y, p.x - 20, p.y - 92, '#B98B5F', 3); ell(p.x + 4, p.y - 40, 20, 30, '#E8D3AE', INK, 1.3); }
-  if (hasF('cattree') && !propArt('cattree', PROP.cattree.x, PROP.cattree.y, 92)) { const { x, y } = PROP.cattree; rect(x - 6, y - 150, 12, 150, '#E3CDA4', INK, 1.2); for (const h of [50, 100, 150]) ell(x, y - h, 30, 7, '#D9C3A0', INK, 1.2); }
-  if (hasF('books') && !propArt('bookshelf', PROP.books.x, PROP.books.y, 90)) { const { x, y } = PROP.books; wood(x - 42, y - 80, 84, 80, '#A9774B', 1.3); for (let i = 0; i < 8; i++) rect(x - 36 + i * 9, y - 72, 7, 30, ['#C96B5B', '#6E8FB3', '#E2B573', '#7FA66A'][i % 4], INK, .8); }
-  if (hasF('cushion')) for (const c of CUSHION_EXTRA) cushion(c.x, c.y, '#EAD3C6');
-  for (const c of expandCushions()) if ((c.f || 2) === 2) cushion(c.x, c.y, '#D9E2D0');
-  if (hasF('bed')) { if (!propArt('petbed', 206, 466, 60)) { ell(206, 458, 27, 9, '#E3A99A', INK, 1.3); ell(206, 455, 19, 5, '#FBEDE6', null); } text('暖暖貓窩', 206, 446, 9, '#B0705F', 'center', FONT, 700); }
+  if (onF('wallwalk', WALLWALK) && !propArt('wallwalk', WALLWALK.x, WALLWALK.y, 140)) for (let i = 0; i < 3; i++) wood(WALLWALK.x - 66 + i * 46, WALLWALK.y - 60 + i * 22, 40, 7, '#B98B5F', 1.2);
+  if (onF('mural', MURAL) && !propArt('mural', MURAL.x, MURAL.y, 60)) { wood(MURAL.x - 30, MURAL.y - 104, 60, 104, '#D9B98E', 1.3); rect(MURAL.x - 24, MURAL.y - 98, 48, 92, '#FBEFD9', INK, 1); pawPrint(MURAL.x, MURAL.y - 52, .5, '#D9773E'); }
+  if (hasF('beanbag')) for (const p of BEANBAG_SEATS) if (!hid(p) && !propArt('beanbag', p.x, p.y + 6, 62)) { ell(p.x, p.y - 12, 30, 20, '#F1E6D2', INK, 1.3); ell(p.x, p.y - 16, 14, 6, '#E3D4BC', null); }
+  if (hasF('hammock')) for (const p of HAMMOCK_SEATS) if (!hid(p) && !propArt('eggchair', p.x, p.y + 4, 54)) { line(p.x - 20, p.y, p.x - 20, p.y - 92, '#B98B5F', 3); ell(p.x + 4, p.y - 40, 20, 30, '#E8D3AE', INK, 1.3); }
+  if (onF('cattree', PROP.cattree) && !propArt('cattree', PROP.cattree.x, PROP.cattree.y, 92)) { const { x, y } = PROP.cattree; rect(x - 6, y - 150, 12, 150, '#E3CDA4', INK, 1.2); for (const h of [50, 100, 150]) ell(x, y - h, 30, 7, '#D9C3A0', INK, 1.2); }
+  if (onF('books', PROP.books) && !propArt('bookshelf', PROP.books.x, PROP.books.y, 90)) { const { x, y } = PROP.books; wood(x - 42, y - 80, 84, 80, '#A9774B', 1.3); for (let i = 0; i < 8; i++) rect(x - 36 + i * 9, y - 72, 7, 30, ['#C96B5B', '#6E8FB3', '#E2B573', '#7FA66A'][i % 4], INK, .8); }
+  if (hasF('cushion')) for (const c of CUSHION_EXTRA) if (!hid(c)) cushion(c.x, c.y, '#EAD3C6');
+  for (const c of expandCushions()) if ((c.f || 2) === 2 && !hid(c)) cushion(c.x, c.y, '#D9E2D0');
+  if (onF('bed', PROP.bed)) { const { x, y } = PROP.bed; if (!propArt('petbed', x, y, 60)) { ell(x, y - 8, 27, 9, '#E3A99A', INK, 1.3); ell(x, y - 11, 19, 5, '#FBEDE6', null); } text('暖暖貓窩', x, y - 20, 9, '#B0705F', 'center', FONT, 700); }
   if (hasF('deodor') && propArt('deodor', 457, 552, 30)) { ell(457, 530, 3, 3, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); }
   else if (hasF('deodor')) { rrect(446, 520, 22, 30, 5, '#E8EEF0', INK, 1.2); ell(457, 530, 4, 4, G.litterDirt >= 3 ? '#D9A23A' : '#7FB36A'); for (let i = 0; i < 3; i++) line(450 + i * 4, 542, 450 + i * 4, 547, 'rgba(90,64,50,.4)', 1); }
 }
@@ -3225,23 +3275,24 @@ const PLAY_STATES = ['petting', 'eating', 'waitFood'];
 const TOY_PX = { toySpin: [180, 286], toyTunnel: [340, 354], toyBalls: [170, 152], toySofa: [300, 163], toyCastle: [300, 226], toyTower: [260, 427] }; // toy_*.webp sizes
 function funSpots() {
   const L = [], st = (path, act, t, line, more) => ({ path, act, t, line, ...more });
-  if (hasF('cattree')) {
+  if (onF('cattree', PROP.cattree)) {
     const { x, y } = PROP.cattree, s = 92 / 200, X = sx => x - 46 + sx * s, Y = sy => y - 181 + sy * s;
     const box = { x: X(115), y: Y(280), jump: true }, low = { x: X(56), y: Y(212), jump: true }, mid = { x: X(125), y: Y(115), jump: true }, top = { x: X(75), y: Y(22), jump: true };
     L.push({ id: 'cattree', f: 2, ground: { x: x + 40, y: 508 }, stages: Math.random() < .5
       ? [st([box, low, mid, top], 'sit', [6, 9], pick(['爬到最高了！', '喵～看得好遠']))]
       : [st([box, low, mid], 'nap', [10, 16], '在這裡睡一下…')] });
   }
-  if (hasF('wallwalk')) {
+  if (onF('wallwalk', WALLWALK)) {
     const { x, y } = WALLWALK, s = 140 / 320, X = sx => x - 70 + sx * s, Y = sy => y - 69 + sy * s;
     L.push({ id: 'wallwalk', f: 2, ground: { x: x + 72, y: 510 }, stages: [st([{ x: X(265), y: Y(112), jump: true }, { x: X(150), y: Y(76) }, { x: X(50), y: Y(10) }], 'sit', [6, 10], pick(['走過吊橋了！', '喵～好高喔']))] });
   }
-  if (hasF('bed')) L.push({ id: 'bed', f: 2, ground: { x: 244, y: 512 }, stages: [st([{ x: 206, y: 457, jump: true }], 'nap', [12, 20], '暖呼呼的…')] });
-  if (hasF('books')) {
+  if (onF('bed', PROP.bed)) { const { x, y } = PROP.bed; L.push({ id: 'bed', f: 2, ground: { x: x + 38, y: Math.max(512, y + 46) }, stages: [st([{ x, y: y - 9, jump: true }], 'nap', [12, 20], '暖呼呼的…')] }); }
+  if (onF('books', PROP.books)) {
     const { x, y } = PROP.books;
     L.push({ id: 'books', f: 2, ground: { x: x + 44, y: 508 }, stages: [st([{ x: x + 17, y: y - 87, jump: true }], Math.random() < .5 ? 'sit' : 'nap', [8, 14], '書櫃上面視野最好')] });
   }
   for (const id of toysHere()) {
+    if (hid(TOYS[id])) continue;
     const T = TOYS[id], [iw, ih] = TOY_PX[id], sc = T.w / iw, X = sx => T.x - T.w / 2 + sx * sc, Y = sy => T.y - ih * sc + sy * sc, toy = { toy: id, lift: T.y - (T.y < 520 ? 20 : 0) + 1 };
     if (id === 'toySpin') L.push({ id, f: 2, ground: { x: T.x - 46, y: 514 }, stages: [st([], 'play', [5, 8], '追羽毛！')] });
     if (id === 'toyBalls') L.push({ id, f: 2, ground: { x: T.x - 48, y: 514 }, stages: [st([], 'play', [5, 8], '叮叮噹噹～')] });
@@ -3250,6 +3301,13 @@ function funSpots() {
       back: [{ x: X(100), y: Y(55), warp: true }, { x: T.x + 54, y: 596, jump: true }] });
     if (id === 'toyCastle') L.push({ id, f: 2, ground: { x: T.x - 92, y: 596 }, ...toy, stages: [st([{ x: X(55), y: Y(18), jump: true }], 'sit', [7, 11], '我是城堡的國王喵！')] });
     if (id === 'toyTower') L.push({ id, f: 2, ground: { x: T.x - 62, y: 508 }, ...toy, stages: [st([{ x: X(52), y: Y(290), jump: true }, { x: X(43), y: Y(206), jump: true }, { x: X(218), y: Y(140), jump: true }], Math.random() < .4 ? 'nap' : 'sit', [8, 13], '皇宮最高的地方！')] });
+  }
+  // 佈置 can flip a piece left-right: mirror its perches around the piece's middle
+  for (const sp of L) {
+    const ref = { cattree: PROP.cattree, wallwalk: WALLWALK, bed: PROP.bed, books: PROP.books }[sp.id] || TOYS[sp.id];
+    if (!flipped(ref)) continue;
+    const m = p => { if (p) p.x = 2 * ref.x - p.x; };
+    m(sp.ground); sp.stages.forEach(s => s.path.forEach(m)); (sp.back || []).forEach(m);
   }
   return L.filter(sp => floorsHere().includes(sp.f) && !S.cats.some(o => o.fun && o.fun.spot.id === sp.id));
 }
@@ -3998,6 +4056,7 @@ function drawWorld() {
   if (S.close && S.close.dim) drawNight(f);
   if (window.OUTING) OUTING.draw(f);
   if (window.TUT) TUT.drawWorld(f);
+  if (S.edit && window.DECO) DECO.draw(f);
   if (S.paused && !S.uiPause) { g.fillStyle = 'rgba(60,40,30,.35)'; g.fillRect(0, 0, W, H); text('暫停中', V.cx, V.cy, 40, '#FFFFFF', 'center', DFONT, 700); }
   if (S.mini) drawMini();
   if (S.cook) drawCook();
@@ -4005,9 +4064,9 @@ function drawWorld() {
 }
 // 貓咪室內樂園: the painted floors carry no cushions, so the loft seats are drawn here; 2F also shows the toys you bought
 function drawPalace(f, items) {
-  for (const c of CUSHION_POS) if ((c.f || 2) === f) cushion(c.x, c.y, '#E9C9A8');
-  if (f !== 2) for (const c of expandCushions()) if (c.f === f) cushion(c.x, c.y, '#E3B0A0');
-  if (f === 2) for (const t of toysHere()) { const T = TOYS[t]; items.push({ y: T.y - (T.y < 520 ? 20 : 0), d: () => { if (!propArt(T.img, T.x, T.y, T.w)) { rrect(T.x - T.w / 2, T.y - 60, T.w, 60, 8, '#F1D9B5', INK, 1.3); text(T.name, T.x, T.y - 28, 10, '#8D4A3A'); } } }); }
+  for (const c of CUSHION_POS) if ((c.f || 2) === f && !hid(c)) cushion(c.x, c.y, '#E9C9A8');
+  if (f !== 2) for (const c of expandCushions()) if (c.f === f && !hid(c)) cushion(c.x, c.y, '#E3B0A0');
+  if (f === 2) for (const t of toysHere()) { const T = TOYS[t]; if (hid(T)) continue; items.push({ y: T.y - (T.y < 520 ? 20 : 0), d: () => { if (!propArt(T.img, T.x, T.y, T.w)) { rrect(T.x - T.w / 2, T.y - 60, T.w, 60, 8, '#F1D9B5', INK, 1.3); text(T.name, T.x, T.y - 28, 10, '#8D4A3A'); } } }); }
 }
 // clouds and rain show through the windows (behind everyone) and over the open-air parts: the courtyard and the roof
 function drawWeather(f, back) {
@@ -4140,6 +4199,7 @@ function tapStairs(f, x, y) {
 }
 cv.addEventListener('pointerdown', e => {
   if (!started || !S || S.phase === 'settle') return;
+  if (S.edit && DECO.down(e)) return;
   if (!$('drawer').hidden || !$('hudMore').hidden) { closeDrawer(); setHudMore(false); return; } // tapping the scene folds panels away
   const p = toCanvas(e);
   if (S.mini) { S.mini.last = p; cv.setPointerCapture(e.pointerId); return; }
@@ -4151,9 +4211,11 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('pointerup', e => {
   cookRelease();
+  if (S && S.edit && DECO.up(e)) return;
   if (DRAG.id !== e.pointerId) return;
   DRAG.id = null;
   if (DRAG.moved) { DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; return; }
+  if (S && S.edit) return;
   if (!started || !S || S.paused || S.phase === 'settle' || S.mini || S.cook || S.reg) return;
   const p = toCanvas(e), h = hitTest(p.x, p.y);
   if (h && h.weak && strayTap(e)) return; // a thumb resting on the edge or just missing a button shouldn't send the manager off
@@ -4175,6 +4237,7 @@ function strayTap(e) {
 }
 cv.addEventListener('pointercancel', e => { cookRelease(); if (DRAG.id === e.pointerId) { DRAG.id = null; DRAG.moved = false; CAM.hold = performance.now() + CAM_HOLD; } });
 cv.addEventListener('pointermove', e => {
+  if (S && S.edit && DECO.move(e)) return;
   if (DRAG.id === e.pointerId) {
     const dx = e.clientX - DRAG.x0, dy = e.clientY - DRAG.y0;
     if (!DRAG.moved && Math.hypot(dx, dy) > 10) DRAG.moved = true;
@@ -4992,6 +5055,19 @@ function encodeSave(src) {
   let sum = 0; for (const ch of b) sum = (sum * 31 + ch.charCodeAt(0)) % 9973;
   return `CAT-${b}-${sum}`;
 }
+// 佈置 records: { item: { dx, dy, flip, col, hide } }; anything odd is dropped (the piece just goes back to where the layout puts it)
+function readPlace(o) {
+  const out = {}; if (!o || typeof o !== 'object') return out;
+  for (const [k, r] of Object.entries(o)) {
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(k) || !r || typeof r !== 'object') continue;
+    const v = {}, n = x => typeof x === 'number' && isFinite(x) ? Math.max(-2000, Math.min(2000, Math.round(x))) : 0;
+    if (r.dx) v.dx = n(r.dx); if (r.dy) v.dy = n(r.dy);
+    if (r.flip === true) v.flip = true; if (r.hide === true) v.hide = true;
+    if (typeof r.col === 'string' && /^[a-z]{2,10}$/.test(r.col)) v.col = r.col;
+    if (Object.keys(v).length) out[k] = v;
+  }
+  return out;
+}
 function decodeSave(code) {
   const m = code.trim().match(/^CAT-([A-Za-z0-9+/=]+)-(\d+)$/);
   if (!m) throw new Error('格式不對');
@@ -5020,6 +5096,7 @@ function decodeSave(code) {
       sched: Object.fromEntries(Object.keys(s.sched || {}).filter(r => validKey(r) && s.sched[r]).map(r => [r, { shift: SHIFTS[s.sched[r].shift] ? s.sched[r].shift : 'all', brk: [0, ...BREAK_HOURS].includes(s.sched[r].brk) ? s.sched[r].brk : defSched(r).brk }])),
       duty: Array.isArray(s.duty) ? [...new Set(s.duty.filter(x => CAT_DEFS[x]))] : null,
       toys: id === 3 && Array.isArray(s.toys) ? [...new Set(s.toys.filter(t => TOYS[t]))] : [], elev: id === 3 && s.elev === true,
+      place: readPlace(s.place),
       garden: id === 2 ? PLOTS.map((p, i) => { const g = Array.isArray(s.garden) ? s.garden[i] : null; const st = [0, 1, 2].includes(g?.s) ? g.s : 0;
         return { s: st, g: st === 2 ? 1 : st ? clamp(num(g.g, 0), 0, 1) : 0, wet: 0 }; }) : [],
     };
@@ -5856,5 +5933,6 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 <script src="checkin.js"></script>
 <script src="news.js"></script>
 <script src="bank.js"></script>
+<script src="deco.js"></script>
 </body>
 </html>
