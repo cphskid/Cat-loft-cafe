@@ -89,6 +89,12 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .app-ic small{font-size:11px;color:var(--muted)}
 .item{background:rgba(255,255,255,.92)}
 .screen.home>p{background:rgba(253,251,247,.85);margin:0 12px 12px!important;border-radius:10px;padding:6px 10px!important}
+.gtabs{display:flex;flex-shrink:0;gap:6px;padding:8px 14px;border-bottom:1px solid var(--line);overflow-x:auto}
+.gtabs button{flex:1 0 auto;padding:6px 10px;font-size:13px;position:relative;white-space:nowrap}
+.gtabs button.on{background:var(--wood);border-color:var(--wood);color:#fff;font-weight:700}
+.gtabs .badge.sm{top:-4px;right:-4px}
+.phv{margin:10px 12px 0;padding:10px 12px;border-radius:12px;background:#FFF6E6;border:1px solid #EBCFA0;font-size:13px}
+.phv ul{margin:6px 0;padding-left:18px}
 .stabs{display:flex;gap:6px;position:sticky;top:0;z-index:1;background:var(--paper);padding:2px 0 6px}
 .cpv{width:56px;height:56px;flex:none;object-fit:contain;background:#FBF4EA;border-radius:10px;padding:4px}
 .stabs button{flex:1;padding:6px 2px;font-size:13px}
@@ -4588,6 +4594,39 @@ function charmItem(id, wear) {
   return `<div class="item${!own && !ok ? ' locked' : ''}"><div style="display:flex;gap:10px;align-items:center"><img class="cpv" src="assets/${C.img}.webp" alt=""><div style="flex:1"><div class="top"><span class="nm">${own ? '' : !ok ? '🔒 ' : ''}${C.name}<small class="tg">${CHARM_WHO[C.slot]}</small></span><b>${own ? (on ? '戴著' : '已擁有') : yen(C.price)}</b></div><div class="sub">${C.desc}</div></div></div>
     <div class="row" style="margin:0;flex-wrap:wrap">${act}</div></div>`;
 }
+// ---- 手機 App 整理（2026-11-15）：31 個 App 併成 16 個，相關的放在同一個 App 裡用分頁切換。
+// 每個分頁還是原本的 App（phoneApp 的值不變），所以 openPhone('photo')、教學、通知這些直接開某個 App 的地方都照舊能用，
+// 只是畫面上方會多一排同組的分頁。首頁圖示用該組第一個 App 的圖示和 data-app，所以教學的 [data-app="shop"] 也照舊。
+const PHONE_GROUPS = [ // [App 名稱, 裡面的分頁, 首頁小字, 首頁圖示（沒寫就用第一個分頁的）]
+  ['喵信', ['news', 'report'], '公告・問題回報', 'mail'], ['商店', ['shop', 'closet'], '買東西・衣櫃'], ['掌上菜單', ['menu']], ['喵才獵人', ['hire']],
+  ['出去玩', ['outing']], ['電話', ['phone']], ['喵喵家族', ['cats', 'realcat'], '貓咪・真實店貓'], ['喵IG', ['ig', 'photo'], '拍照・寫真館'],
+  ['任務', ['daily', 'sign', 'badge'], '任務・簽到・徽章'], ['我的店', ['myshop', 'map', 'music'], '擴建・分店・音樂'], ['行銷', ['promo', 'collab'], '宣傳・聯名'], ['喵錢包', ['wallet', 'bank'], '借錢・銀行'],
+  ['圖鑑', ['guests', 'review', 'record'], '客人・評論・紀錄'], ['社群', ['friend', 'rank', 'quiz'], '好友・排行・測驗'], ['小遊戲', ['game']], ['設定', ['settings', 'save'], '設定・存檔碼'],
+];
+let PHONE_AVAIL = null; // ids shown on the home screen last time (some apps only exist when online)
+function phoneGroups(apps) {
+  const by = Object.fromEntries(apps.map(a => [a[0], a])), used = new Set(), out = [];
+  for (const [name, ids, sub, ic] of PHONE_GROUPS) { const list = ids.filter(id => by[id]); list.forEach(id => used.add(id)); if (list.length) out.push({ name, sub, ic, apps: list.map(id => by[id]) }); }
+  for (const a of apps) if (!used.has(a[0])) out.push({ name: a[1], apps: [a] }); // an app nobody grouped yet still shows up on its own
+  return out;
+}
+function groupOf(id, titles) {
+  const g = PHONE_GROUPS.find(x => x[1].includes(id)); if (!g) return null;
+  const ids = g[1].filter(x => x === id || (PHONE_AVAIL ? PHONE_AVAIL.includes(x) : titles[x]));
+  return ids.length > 1 ? { name: g[0], ids } : null;
+}
+const appBadge = id => !!((id === 'report' && FB.unread) || (id === 'sign' && window.CHECKIN && CHECKIN.can()) || (id === 'news' && window.NEWS && NEWS.unread()) || (id === 'bank' && window.BANK && BANK.can()) || (id === 'cats' && window.DIARY && DIARY.anyUnread()) || (id === 'badge' && badgeUnpaid().length));
+// a one-time note for players who knew the old phone; new players (day 1) never see it
+const PHV_KEY = 'catloft-phone-v2';
+function phoneNewsCard() {
+  let done = true; try { done = !!localStorage.getItem(PHV_KEY); } catch {}
+  if (done || G.day <= 1) return '';
+  return `<div class="phv"><b>📱 手機整理好了！</b>App 太多了，相關的放在一起，打開後上面有分頁可以切換：<ul>
+    <li><b>任務</b>：每日任務・每日簽到・徽章</li><li><b>我的店</b>：等級擴建・分店地圖・喵音樂</li><li><b>行銷</b>：喵喵宣傳・聯名合作</li>
+    <li><b>喵錢包</b>：借錢還款・喵喵銀行</li><li><b>圖鑑</b>：客人圖鑑・喵評論・我的紀錄</li><li><b>社群</b>：好友・排行榜・喵型測驗</li>
+    <li><b>喵信</b>：公告・問題回報</li><li><b>商店</b>多了衣櫃，<b>喵IG</b>多了喵喵寫真館，<b>喵喵家族</b>多了真實店貓，<b>設定</b>多了存檔碼</li></ul>
+    <div class="row" style="justify-content:flex-end"><button class="primary" id="phvOk">知道了</button></div></div>`;
+}
 let phoneApp = 'home', storeTab = 'stock', ivRole = null, ivSeen = {}, ivAsk = null;
 function openPhone(app) { sfx('phone_open'); phoneApp = app; if (window.DIARY) DIARY.cur = null; S.uiPause = true; $('phoneOv').hidden = false; renderPhone(); }
 function closePhone(force) { if (force === true || (CALL && CALL.result)) CALL = null; if (CALL) return; if (PG.run) playMusic(G.music); if (!$('phoneOv').hidden) sfx('phone_close'); PG.run = false; $('phoneOv').hidden = true; if (S) S.uiPause = false; }
@@ -4606,12 +4645,15 @@ function renderPhone() {
     if (window.MEOW) apps.splice(apps.length - 2, 0, ['quiz', '喵型測驗', MEOW.sub(), '#E0A040', '喵']);
     if (window.REALCAT && REALCAT.open && CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['realcat', '我的真實店貓', REALCAT.sub(), '#6E9B4E', '🏠']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
-    h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
-      apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()">${(a[0] === 'report' && FB.unread) || (a[0] === 'sign' && window.CHECKIN && CHECKIN.can()) || (a[0] === 'news' && window.NEWS && NEWS.unread()) || (a[0] === 'bank' && window.BANK && BANK.can()) || (a[0] === 'cats' && window.DIARY && DIARY.anyUnread()) || (a[0] === 'badge' && badgeUnpaid().length) ? '<span class="badge sm">!</span>' : ''}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
-      `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
+    PHONE_AVAIL = apps.map(a => a[0]);
+    h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div>` + phoneNewsCard() + `<div class="apps">` +
+      phoneGroups(apps).map(g => { const a = g.apps[0], hot = g.apps.find(x => appBadge(x[0])); // a group with something new shows that app's own line (e.g. 「2 則新公告」)
+        return `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${g.ic || a[0]}.webp" alt="" onerror="this.remove()">${hot ? '<span class="badge sm">!</span>' : ''}</span><span>${g.name}</span><small>${g.apps.length > 1 ? (hot && hot[2]) || g.sub : a[2]}</small></button>`; }).join('') + '</div>';
   } else {
-    const titles = { realcat: '我的真實店貓', quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到', news: '公告', bank: '喵喵銀行', record: '我的紀錄', photo: '喵喵寫真館' };
-    h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
+    const titles = { report: '問題回報', realcat: '我的真實店貓', quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到', news: '公告', bank: '喵喵銀行', record: '我的紀錄', photo: '喵喵寫真館' };
+    const grp = groupOf(phoneApp, titles);
+    h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${grp ? grp.name : titles[phoneApp]}</h3><button id="pClose">關閉</button></div>` +
+      (grp ? `<div class="gtabs">${grp.ids.map(id => `<button class="${id === phoneApp ? 'on' : ''}" data-app="${id}">${titles[id] || id}${id !== phoneApp && appBadge(id) ? '<span class="badge sm">!</span>' : ''}</button>`).join('')}</div>` : '') + `<div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, baseOf(d)]).concat([['loft', '2F 吸貓入場費', baseOf('loft')], ['beans', '咖啡豆（一包）', baseOf('beans')], ['treat', '貓咪肉泥（一條）', baseOf('treat')]]);
       if (G.at === 2) h += `<p class="muted">貓咪庭院是大店，基準價是暖陽貓閣的 1.5 倍。</p>`;
@@ -4911,6 +4953,7 @@ function renderPhone() {
   sc.querySelectorAll('[data-ui]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.ui.split(':'); UI[k] = v; saveUi(); applyUi(); renderPhone(); });
   const q = s => sc.querySelector(s);
   q('#pClose') && (q('#pClose').onclick = closePhone);
+  q('#phvOk') && (q('#phvOk').onclick = () => { try { localStorage.setItem(PHV_KEY, '1'); } catch {} renderPhone(); });
   q('#pBack') && (q('#pBack').onclick = () => { if (phoneApp === 'cats' && window.DIARY && DIARY.cur) { DIARY.cur = null; renderPhone(); return; } if (CALL && CALL.result) CALL = null; if (!CALL) { phoneApp = 'home'; ivRole = null; renderPhone(); } });
   sc.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
     const id = b.dataset.p, base = baseOf(id);
