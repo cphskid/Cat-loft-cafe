@@ -134,6 +134,31 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .signd.got{opacity:.5}
 .signd.got i{position:absolute;top:2px;right:6px;font-style:normal;color:var(--good);font-weight:700}
 .signd.now{border:2px solid #E0A040;background:#FFF6E3;opacity:1}
+/* 每日連勝火花 (checkin.js) */
+.hudrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%}
+.hudrow .hudbar{white-space:nowrap}
+.flamebtn{flex:none;display:flex;align-items:center;gap:2px;border-radius:20px;padding:3px 10px 3px 6px;background:rgba(253,251,247,.92);border:1px solid var(--line);box-shadow:0 2px 8px rgba(60,40,30,.18);font-variant-numeric:tabular-nums;color:#C2551B}
+.flamebtn .fl{font-size:20px;line-height:1}
+.flamebtn b{font-size:16px;min-width:1ch}
+.flamebtn.off{color:var(--muted);animation:flPulse 1.6s ease-in-out infinite}
+.flamebtn.off .fl{filter:grayscale(1) brightness(1.35) opacity(.6)}
+@keyframes flPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1);box-shadow:0 0 0 4px rgba(224,160,64,.35)}}
+.flamebig{position:relative;display:block;margin:4px auto 0;width:128px;height:128px;border-radius:50%;border:none;background:radial-gradient(circle,#FFF6E3 0,#FFF6E3 55%,transparent 72%);font-size:84px;line-height:128px;padding:0;cursor:pointer}
+.flamebig .fl{display:inline-block;transition:filter .5s}
+.flamebig.off .fl{filter:grayscale(1) brightness(1.4) opacity(.55);animation:flWait 1.4s ease-in-out infinite}
+.flamebig.lit{background:radial-gradient(circle,#FFE2A8 0,#FFD38A 40%,transparent 72%);cursor:default}
+.flamebig.lit .fl{animation:flPop .7s cubic-bezier(.3,1.6,.5,1),flDance 2.2s ease-in-out .7s infinite}
+.flamebig i{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px;border-radius:50%;background:#FFB43C;opacity:0;pointer-events:none}
+.flamebig.go i{animation:flSpark .8s ease-out forwards}
+@keyframes flWait{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes flPop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes flDance{0%,100%{transform:rotate(-3deg) scale(1)}50%{transform:rotate(3deg) scale(1.05)}}
+@keyframes flSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(.3)}}
+.flamecap{text-align:center;margin:2px 0 4px}
+.flamecap .n{font-family:var(--display);font-size:30px;color:#C2551B;font-weight:700}
+.flamecap .hint{font-weight:700;color:var(--wood-d)}
+.flameguard{text-align:center;font-size:13px;margin:2px 0 6px;color:var(--muted)}
+.flamesave{text-align:center;font-weight:700;background:#F1F7EC;border:1px solid #A9C99A;border-radius:10px;padding:6px;margin:4px 0}
 .unl{margin:8px 0 0;padding-left:20px;text-align:left;line-height:1.8}
 .hudtop{position:absolute;left:calc(10px + env(safe-area-inset-left));top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:4;max-width:calc(100% - 80px)}
 .hudbar{display:flex;align-items:center;gap:8px;border-radius:20px;padding:5px 12px;background:rgba(253,251,247,.92);border:1px solid var(--line);box-shadow:0 2px 8px rgba(60,40,30,.18);font-variant-numeric:tabular-nums;color:var(--ink)}
@@ -189,7 +214,10 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
   <div id="toasts"></div>
 
   <div class="hudtop">
+    <div class="hudrow">
     <button class="hudbar" id="hudToggle" aria-expanded="false" aria-controls="hudMore" aria-label="店的狀態，點一下展開更多"><b id="clock">07:00</b><span class="ph" id="phase">晨間備料</span><b id="cash">¥500</b><span class="caret">▾</span></button>
+    <button class="flamebtn off" id="flameBtn" hidden aria-label="每日連勝火花，點一下點亮"><span class="fl">🔥</span><b id="flameN">0</b></button>
+    </div>
     <div class="panel hudmore" id="hudMore" hidden>
       <div class="brand"><span class="logo" id="shopLogo">暖陽貓閣</span><span class="lv" id="lv">Lv.1</span><span class="lv" id="acct"></span></div>
       <div class="stats">
@@ -883,13 +911,8 @@ const slotKey = (role, n) => n > 1 ? role + '#' + n : role;
 const validKey = k => typeof k === 'string' && /^[a-z0-9]+(#[23])?$/.test(k) && !!ROLES[roleOf(k)];
 const keysOf = role => G.staff.filter(k => roleOf(k) === role).sort((a, b) => slotOf(a) - slotOf(b));
 const freeSlot = role => [1, 2, 3].map(n => slotKey(role, n)).find(k => !G.staff.includes(k));
-// the 2nd and 3rd person in a job wear a crew look borrowed from the other shops, so they don't look like clones
-const SPR_SETS = ['', 's2', 's3'];
-function slotSpr(role, n, own) {
-  if (n === 1) return own;
-  const base = role === 'server2' ? 'server' : role, mine = own.slice(0, own.length - base.length);
-  return SPR_SETS.filter(p => p !== mine)[n - 2] + base;
-}
+// every person in a job wears this shop's own uniform, so the whole crew of one shop looks consistent
+function slotSpr(role, n, own) { return own; }
 // ---- job interviews: the manager picks who to hire; a poor pick works slowly and fewer guests come in (fans never drop)
 const HIRE_FEE = [9000, 12000];
 const IV_Q = ['為什麼想來我們店工作？', '客人突然變很多的時候，你會怎麼做？', '一個禮拜可以來幾天？'];
@@ -1008,7 +1031,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', real: {}, ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [], diary: { r: {}, l: {} },
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', real: {}, ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0, guard: 1 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [], diary: { r: {}, l: {} },
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
@@ -5126,7 +5149,7 @@ function decodeSave(code) {
     // seconds actually played (counted from 2026-10-31; older saves start at 0)
     play: Math.max(0, num(o.play, 0)),
     // 我的紀錄 / 喵喵銀行 (bank.js): real-world dates like 每日簽到; bpaid = badges whose cash reward was already taken
-    streak: { n: clamp(Math.floor(num(o.streak?.n, 0)), 0, 99999), best: clamp(Math.floor(num(o.streak?.best, 0)), 0, 99999), last: ymdOk(o.streak?.last), days: clamp(Math.floor(num(o.streak?.days, 0)), 0, 99999) },
+    streak: { n: clamp(Math.floor(num(o.streak?.n, 0)), 0, 99999), best: clamp(Math.floor(num(o.streak?.best, 0)), 0, 99999), last: ymdOk(o.streak?.last), days: clamp(Math.floor(num(o.streak?.days, 0)), 0, 99999), guard: o.streak?.guard === 0 ? 0 : 1 },
     bank: { n: clamp(Math.floor(num(o.bank?.n, 0)), 0, 15), last: ymdOk(o.bank?.last), sum: clamp(Math.floor(num(o.bank?.sum, 0)), 0, 15000), won: clamp(Math.floor(num(o.bank?.won, 0)), 0, 99999) },
     bpaid: Array.isArray(o.bpaid) ? [...new Set(o.bpaid.filter(id => BADGES.some(b => b.id === id)))] : [],
     sign: { n: clamp(Math.floor(num(o.sign?.n, 0)), 0, 99999), last: typeof o.sign?.last === 'string' && /^\d{4}-\d\d-\d\d$/.test(o.sign.last) ? o.sign.last : '' },
