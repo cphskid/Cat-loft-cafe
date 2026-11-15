@@ -144,6 +144,8 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
 .hudbar[aria-expanded="true"] .caret{transform:rotate(180deg)}
 .hudmore{background:rgba(253,251,247,.95);box-shadow:0 4px 14px rgba(60,40,30,.2)}
 .falert{border-radius:16px;padding:4px 12px 4px 6px;font-size:13px;font-weight:700;color:var(--ink);background:rgba(255,255,255,.95);border:2px solid var(--accent);display:flex;align-items:center;gap:6px;max-width:100%;text-align:left}
+.falert.stock{border-color:#B4561F;background:#FFF4E4}
+.falert.stock i{background:none;font-size:15px}
 .falert i{flex:none;font-style:normal;width:20px;height:20px;line-height:20px;border-radius:50%;background:var(--accent);color:#fff;text-align:center}
 .rb{width:48px;height:48px;padding:0;border-radius:50%;font-size:13px;font-weight:700;background:rgba(253,251,247,.9);box-shadow:0 2px 8px rgba(60,40,30,.2);display:flex;align-items:center;justify-content:center;line-height:1.1}
 .rb.on{background:var(--sun);border-color:var(--wood)}
@@ -199,6 +201,7 @@ textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,monospa
       </div>
     </div>
     <button class="falert" id="floorAlert" hidden><i>!</i><span id="floorAlertTxt"></span></button>
+    <button class="falert stock" id="stockAlert" hidden aria-label="員工回報庫存不足，點一下打開商店補貨"><i>📦</i><span id="stockAlertTxt"></span></button>
   </div>
 
   <div class="rbtns">
@@ -2381,6 +2384,7 @@ function drawStaff(s) {
   if (s.resting) { const t = (S.t * .7 + s.x) % 1; g.globalAlpha = 1 - t; text('z', s.x + 18 + t * 10, s.y - 120 - t * 18, 13 + t * 6, '#8B776B', 'center', DFONT, 700); g.globalAlpha = 1; }
   if (s.task && s.mode === 'act' && s.task.steps[s.si].dur > .3) progressRing(s, s.y - 150);
   if (s.say) bubble(s.x, s.y - 166, s.say.text);
+  else if (stockReported(s)) { rrect(s.x - 26, s.y - 178, 52, 24, 10, '#FFF4E4', '#D9773E', 1.4); text('缺貨！', s.x, s.y - 166, 12, '#B4561F', 'center', FONT, 700); alertMark(s.x + 32, s.y - 178); }
   text(s.name, s.x, s.y + 12, 10, '#6B4A35', 'center', FONT, 700);
   if (s.stamina < 40) { rrect(s.x - 14, s.y + 20, 28, 4, 2, '#EEE4D8', null); rrect(s.x - 14, s.y + 20, 28 * s.stamina / 100, 4, 2, '#C65445', null); }
 }
@@ -2827,7 +2831,58 @@ function actWalk(x, y) {
 }
 
 // ====================== staff AI ======================
-function warnOnce(key, msg) { if (!S.warned[key]) { S.warned[key] = true; toast(msg); } }
+// ====================== 庫存回報 ======================
+// Chuck 2026-11-15: running low went unnoticed, so the staff member in charge now tells the manager.
+// When something drops to "low" and again when it runs out: a speech bubble, a toast, a 「缺貨！」 mark over
+// their head and a 📦 banner under the top bar on every floor (tap it to open 商店 → 食材) until it's restocked.
+const STOCK_WATCH = [
+  { id: 'flour',   role: 'cook',    low: 3, name: '麵粉',     unit: '份', out: '沒辦法烤點心' },
+  { id: 'food',    role: 'cook',    low: 1, name: '正餐食材', unit: '份', out: '沒辦法做正餐' },
+  { id: 'garden',  role: 'cook',    low: 2, name: '庭院蔬果', unit: '份', out: '庭院餐點做不了' },
+  { id: 'catfood', role: 'feeder',  low: 1, name: '貓糧',     unit: '包', out: '貓碗沒辦法補' },
+  { id: 'litter',  role: 'feeder',  low: 1, name: '貓砂',     unit: '次', out: '貓砂盆沒辦法換' },
+  // extras you sell: only watched once you've had some today
+  { id: 'treat',   role: 'sitter',  low: 3, name: '貓咪肉泥', unit: '條', out: '2F 客人買不到肉泥', extra: true },
+  { id: 'beans',   role: 'cashier', low: 1, name: '咖啡豆',   unit: '包', out: '客人買不到咖啡豆', extra: true },
+];
+function stockWatched(w) {
+  if (w.extra) return !!S.stockHad[w.id];
+  if (w.role === 'cook') return unlockedDishes().some(d => RES(d) === w.id);
+  return true;
+}
+// who tells the manager: someone in that job who's in the shop, else anyone at work, else the manager notices it
+function stockReporter(role) {
+  const here = s => !s.away && !s.hidden;
+  return S.staff.find(s => s.role === role && here(s)) || S.staff.find(here) || null;
+}
+function checkStock(dt) {
+  if (!S.stockRep) { S.stockRep = {}; S.stockHad = {}; S.stockT = 1.5; }
+  if ((S.stockT -= dt) > 0) return;
+  S.stockT = 1; // one report per second at most, so a morning with three things low doesn't talk over itself
+  if (S.phase !== 'prep' && S.phase !== 'open') return;
+  if (window.TUT && TUT.active()) return; // day 1: the guide already says when to buy
+  for (const w of STOCK_WATCH) {
+    const n = G.stock[w.id]; if (n > 0) S.stockHad[w.id] = true;
+    const lv = !stockWatched(w) ? null : n <= 0 ? 'out' : n <= w.low ? 'low' : null, old = S.stockRep[w.id];
+    if (!lv) { delete S.stockRep[w.id]; continue; } // restocked: next time it runs low gets reported again
+    if (old && (old.lv === lv || lv === 'low')) { old.lv = lv; continue; } // already told
+    const s = stockReporter(w.role), m = S.mgr;
+    S.stockRep[w.id] = { lv, who: s };
+    const line = lv === 'out' ? `${w.name}用完了，${w.out}` : `${w.name}只剩 ${n} ${w.unit}了`;
+    if (s) { say(s, (lv === 'out' ? '店長！' : '店長～') + line, 4); toast(`📦 ${s.name}（${s.title}）：${line}，要補貨喔`); }
+    else { say(m, line + '，要記得補貨', 4); toast(`📦 ${line}，打開手機「商店」補貨`); }
+    sfx('notify');
+    return;
+  }
+}
+function stockAlertText() {
+  const r = S && S.stockRep; if (!r) return '';
+  const ids = Object.keys(r); if (!ids.length) return '';
+  ids.sort((a, b) => (r[a].lv === 'out' ? 0 : 1) - (r[b].lv === 'out' ? 0 : 1));
+  const w = STOCK_WATCH.find(w => w.id === ids[0]), who = r[ids[0]].who;
+  return `${who ? who.name + '：' : ''}${w.name}${r[ids[0]].lv === 'out' ? '用完了' : '快沒了'}${ids.length > 1 ? `（還有 ${ids.length - 1} 樣）` : ''}・點我補貨`;
+}
+const stockReported = s => !!S.stockRep && Object.values(S.stockRep).some(r => r.who === s);
 function findJob(s) {
   const open = S.phase === 'open';
   switch (s.role) {
@@ -2835,7 +2890,7 @@ function findJob(s) {
       if (S.cook || Object.values(S.baking).filter(Boolean).length >= S.staff.filter(o => o.role === 'cook' && !o.away).length) return null;
       const can = unlockedDishes().filter(d => G.stock[RES(d)] > 0 && !S.baking[d] && (S.phase !== 'closing' || S.customers.some(c => c.state === 'waitFood' && c.order.dish === d && !S.display[d])));
       if (S.phase === 'closing') return can.length ? bakeTask(can[0]) : null; // after closing time only cook what a waiting guest still needs
-      if (!can.length) { if (unlockedDishes().some(d => S.baking[d])) return null; warnOnce('flour', `${roleName('cook')}：麵粉和食材都用完了，沒辦法做`); return null; }
+      if (!can.length) return null; // out of flour/food: checkStock() has the cook tell the manager
       const d = can.sort((a, b) => S.display[a] - S.display[b])[0];
       if (S.display[d] >= (unlockedDishes().length > 2 ? 3 : 4)) return null;
       return bakeTask(d);
@@ -2859,8 +2914,8 @@ function findJob(s) {
     }
     case 'feeder': {
       const mate = kind => S.staff.some(o => o !== s && o.task?.kind === kind);
-      if (G.bowl <= 2 && !mate('bowl')) { if (G.stock.catfood > 0) return bowlTask(); warnOnce('catfood', `${roleName('feeder')}：貓糧用完了`); }
-      if (G.litterDirt >= 2 && !mate('litter')) { if (G.stock.litter > 0) return litterTask(); warnOnce('litter', `${roleName('feeder')}：貓砂用完了`); }
+      if (G.bowl <= 2 && !mate('bowl')) { if (G.stock.catfood > 0) return bowlTask(); }
+      if (G.litterDirt >= 2 && !mate('litter')) { if (G.stock.litter > 0) return litterTask(); }
       if (G.at === 2 && S.phase === 'open') return gardenJob();
       return null;
     }
@@ -3895,6 +3950,7 @@ function update(dt) {
     if (S.time >= 1260) { startClosing(); return; }
     growGarden(dt);
   } else if (S.phase === 'closing') updClosing(dt);
+  checkStock(dt);
   updMgr(dt);
   S.staff.forEach(s => updStaff(s, dt));
   S.cats.forEach(k => updCat(k, dt));
@@ -4337,7 +4393,7 @@ function hudTick(dt) {
     `<span>肉泥 <b>${st.treat}</b> 條</span>` + (G.at === 2 ? `<span class="${st.garden < 3 ? 'low' : ''}">庭院蔬果 <b>${st.garden}</b> 份</span>` : '') +
     `<span>展示櫃 ${dispTotal() ? DISHES.filter(d => S.display[d] > 0).map(d => `${MENU[d].short} <b>${S.display[d]}</b>`).join('・') : '<b>空的</b>'}</span>` +
     `<span>貓碗 <b>${G.bowl}</b>/6</span><span>桌子 <b>${S.tables.length}</b> 張</span>`;
-  $('invBadge').hidden = !(st.flour < 4 || st.catfood < 1 || st.litter < 1);
+  $('invBadge').hidden = !(st.flour < 4 || st.catfood < 1 || st.litter < 1 || (S.stockRep && Object.keys(S.stockRep).length));
   const nt = S.tasks.length + (S.mgr.task ? 1 : 0), tb = $('taskBadge'); tb.hidden = !nt; tb.textContent = nt;
   const sp = $('staffPanel');
   $('staffTab').hidden = !S.staff.length;
@@ -4356,6 +4412,7 @@ function updateButtons() {
   });
   const of = otherFloor(), oa = floorAlerts(of), fa = $('floorAlert');
   fa.hidden = !started || S.phase === 'settle' || !oa.length; if (oa.length) { fa.dataset.f = of; $('floorAlertTxt').textContent = `${fname(of)}：${oa[0]}`; }
+  const sat = stockAlertText(), sa = $('stockAlert'); sa.hidden = !started || S.phase === 'settle' || S.phase === 'closing' || !sat; if (sat) $('stockAlertTxt').textContent = sat;
   $('openBtn').hidden = S.phase !== 'prep';
   $('endBtn').hidden = !(S.phase === 'closing' && S.close.wind != null);
   $('game').classList.toggle('busy', !!(S.mini || S.cook || S.reg));
@@ -4379,6 +4436,7 @@ $('pauseBtn').onclick = togglePause;
 function togglePause() { if (S.phase === 'settle') return; S.paused = !S.paused; updateButtons(); }
 $('phoneBtn').onclick = () => openPhone('home');
 $('floorAlert').onclick = () => { S.view = +$('floorAlert').dataset.f; updateButtons(); };
+$('stockAlert').onclick = () => { storeTab = 'stock'; openPhone('shop'); };
 // fold-away panels: open on tap, the game keeps running underneath
 const PANE_TITLE = { tasks: '店長待辦', inv: '庫存', staff: '員工', tips: '今天的提示', howto: '怎麼玩' };
 function openDrawer(k) {
