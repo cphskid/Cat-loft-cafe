@@ -621,6 +621,29 @@ const CAT_IDS = Object.keys(CAT_DEFS);
 const HONMEI = id => 'q_' + id;
 for (const t of window.CATQ ? CATQ.TYPES : []) { const o = CAT_DEFS[t.base];
   CAT_DEFS[HONMEI(t.id)] = { ...o, orig: false, honmei: t.id, no: 0, size: 1, pers: t.p, pers2: t.q, rarity: 0, price: 0, lv: 1, name: t.cat, desc: `${t.name}的本命貓，${CATQ.persName(t)}` }; }
+// 真實店貓 (realcat.js, supabase/catloft_realcats.sql): cats from real cat cafes, painted from the owner's photo.
+// Their details live in the save (G.real = { r<id>: {n name, p [personas], t intro, s shop, l link, b stand-in cat, m mine} }),
+// so they load before the cats list is read and keep working offline. Sprites come from Supabase storage (REAL_ART).
+const REAL_PRICE = 1200;
+const REALTAG = '<span style="font-size:11px;padding:1px 6px;border-radius:8px;color:#4E7A34;background:#E9F1E2;border:1px solid #BFD3AE;margin-left:4px">🏠 真實店貓</span>';
+const REAL_ART = id => `${SB_URL}/storage/v1/object/public/catloft-realcats/${id}/`;
+function readReal(o) {
+  const out = {};
+  for (const [k, r] of Object.entries(o && typeof o === 'object' ? o : {})) {
+    if (!/^r\d{1,9}$/.test(k) || !r || typeof r !== 'object') continue;
+    const p = (Array.isArray(r.p) ? r.p : []).filter(n => Number.isInteger(n) && PERSONAS[n]).slice(0, 2);
+    out[k] = { n: cleanName(r.n, '店貓', 6), p: p.length ? p : [0], t: cleanName(r.t, '', 30), s: cleanName(r.s, '貓咪咖啡廳', 20), l: cleanName(r.l, '', 120), b: CAT_DEFS[r.b] && CAT_DEFS[r.b].orig ? r.b : 'orange', m: !!r.m };
+  }
+  return out;
+}
+function regReal(map) {
+  for (const [k, r] of Object.entries(map || {})) {
+    if (CAT_DEFS[k] && !CAT_DEFS[k].real) continue;
+    const o = CAT_DEFS[r.b] || CAT_DEFS.orange, pn = r.p.map(n => PERSONAS[n].name).join('・');
+    CAT_DEFS[k] = { ...o, orig: false, real: +k.slice(1), no: 0, size: 1, pers: r.p[0], pers2: r.p[1] == null ? null : r.p[1], rarity: 0, price: REAL_PRICE, lv: 1,
+      name: r.n, shop: r.s, link: r.l, intro: r.t, mine: r.m, desc: `來自「${r.s}」的真實店貓，${pn}${r.t ? `。「${r.t}」` : ''}` };
+  }
+}
 const catDef = id => CAT_DEFS[id];
 const catCoat = d => COATS[d.coat] || COATS[0];
 const catDot = d => d.body;
@@ -648,8 +671,16 @@ function tintImage(im, t) {
   }
   x.putImageData(d, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height; return c;
 }
+const REAL_IMG = {};
+function realImg(d, pose) {
+  const key = d.real + '_' + pose; let im = REAL_IMG[key];
+  if (!im) { im = REAL_IMG[key] = new Image(); im.decoding = 'async'; im.crossOrigin = 'anonymous'; im.src = REAL_ART(d.real) + pose + '.webp'; }
+  return im.complete && im.naturalWidth ? im : null;
+}
 function catImg(d, pose) {
+  if (d.real) { const r = realImg(d, pose); if (r) return r; } // until it arrives (or if it can't), the stand-in painted cat
   const im = art(`cat_${d.base}_${pose}`); if (!im) return null;
+  if (d.real) return im;
   const t = catCoat(d).t; if (d.orig || !t) return im;
   const key = d.coat + '_' + pose;
   try { return TINTED[key] || (TINTED[key] = tintImage(im, t)); } catch { return im; }
@@ -657,8 +688,9 @@ function catImg(d, pose) {
 // small picture of a coat for the phone apps
 const COAT_PIC = {};
 function coatPic(d) {
-  const key = d.orig ? d.base : 'c' + d.coat; if (COAT_PIC[key]) return COAT_PIC[key];
+  const key = d.real ? 'r' + d.real : d.orig ? d.base : 'c' + d.coat; if (COAT_PIC[key]) return COAT_PIC[key];
   const im = catImg(d, 1); if (!im) return '';
+  if (d.real && !realImg(d, 1)) return ''; // don't remember the stand-in picture
   try { const c = document.createElement('canvas'); c.width = 60; c.height = 80; const x = c.getContext('2d'); const s = Math.min(60 / im.naturalWidth, 80 / im.naturalHeight); x.drawImage(im, (60 - im.naturalWidth * s) / 2, 80 - im.naturalHeight * s, im.naturalWidth * s, im.naturalHeight * s); return (COAT_PIC[key] = c.toDataURL()); } catch { return ''; }
 }
 const catThumb = (d, size = 40) => { const src = coatPic(d), b = BODIES[d.size];
@@ -976,7 +1008,7 @@ function freshG() {
   const prices = { loft: LOFT_BASE, beans: BEANS_BASE, treat: TREAT_BASE }; for (const d of DISHES) prices[d] = MENU[d].base;
   return { day: 1, cash: 500, debt: 0, fans: 0, stock: { flour: 0, food: 0, catfood: 0, litter: 1, beans: 0, treat: 0, garden: 0 },
            prices, bowl: 0, litterDirt: 0, tables: 4, expand: 0, staff: [], hired: {},
-           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [],
+           exp: 0, earned: 0, furn: [], keep: {}, reviews: [], revTotal: 0, bond: {}, cats: START_CATS.map(id => ({ id, since: 1, pets: 0 })), duty: START_CATS.slice(), seen: START_CATS.slice(), outfit: 'basic', wardrobe: ['basic'], guests: {}, badges: [], stats: { change: 0, perfect: 0, promo: 0, best: 0, bestLatte: 0, bestMemo: 0, bestPeek: 0, guests: 0, fed: 0, tips: 0, rename: 0, adopt: 0, stray: 0, harvest: 0, rehome: 0 }, landReady: false, shopName: '暖陽貓閣', mgrName: '小暖', mgrSex: 'f', music: 'piano', sfx: true, sched: {}, ev: {}, acc: { own: [], mgr: {}, cats: {} }, collab: null, ig: [], letters: [], mtype: '', hm: '', real: {}, ref: null, inv: 0, sign: { n: 0, last: '' }, play: 0, streak: { n: 0, best: 0, last: '', days: 0 }, bank: { n: 0, last: '', sum: 0, won: 0 }, bpaid: [],
            at: 1, owned: [1], shops: {}, nextShop: 0, stray: null, garden: [], toys: [], elev: false, made: {} };
 }
 // Each shop keeps its own level, furniture, tables, staff, cats on duty, prices, stock and so on (PER_SHOP).
@@ -2484,9 +2516,11 @@ function drawCat(k) {
   const out = k.fluffy ? '#BFAE96' : INK;
   const pose = k.state === 'sleep' || act === 'nap' ? 2 : (k.jumpFrom || k.state === 'play' || act === 'play') ? 3 : k.moving || k.state === 'eat' ? 0 : 1;
   if (act === 'scratch') text('抓抓', x + 30 * f, y - 40, 12, '#B07E52', 'center', DFONT, 700);
+  // 真實店貓: a small sign under its name with the real cafe's name, when the manager is close by
+  if (k.def.real && S.mgr.floor === k.floor && Math.abs(S.mgr.x - k.x) < 150) tag(`🏠 ${k.def.shop}`, x, y + 27, 10);
   const ci = catImg(k.def, pose);
   if (ci) sprite(ci, x, y + (pose === 2 ? 3 : 1), ci.naturalHeight * CATK * k.size.s, f < 0, ci.naturalWidth * CATK * k.size.sx);
-  if (ci && pose !== 2 && CHARMS[G.acc.cats[k.id]]) drawCatWorn(G.acc.cats[k.id], k, ci, pose, x, y + 1, f);
+  if (ci && pose !== 2 && !k.def.real && CHARMS[G.acc.cats[k.id]]) drawCatWorn(G.acc.cats[k.id], k, ci, pose, x, y + 1, f);
   if (pose === 2) {
     if (!ci) {
     g.beginPath(); g.moveTo(x - 18 * f, y - 6); g.quadraticCurveTo(x - 30 * f, y + 10, x - 36 * f, y + 30); // tail hanging off the shelf like the reference
@@ -4521,12 +4555,13 @@ function renderPhone() {
     if (CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['rank', '排行榜', '誰最會賺', '#C9A03A', '榜']);
     if (CLOUD.sb && !CLOUD.db && window.FRIENDS) apps.splice(apps.length - 2, 0, ['friend', '好友', FRIENDS.sub(), '#D98AA0', '友']);
     if (window.MEOW) apps.splice(apps.length - 2, 0, ['quiz', '喵型測驗', MEOW.sub(), '#E0A040', '喵']);
+    if (window.REALCAT && CLOUD.sb && !CLOUD.db) apps.splice(apps.length - 2, 0, ['realcat', '我的真實店貓', REALCAT.sub(), '#6E9B4E', '🏠']);
     if (window.CatFeedback && CLOUD.sb) apps.push(['report', '問題回報', FB.unread ? `${FB.unread} 則新回覆` : '壞掉了・想法', '#9A7FB0', '💬']);
     h += `<div class="ahead"><h3>店長手機</h3><button id="pClose">關閉</button></div><div class="apps">` +
       apps.map(a => `<button class="app-ic" data-app="${a[0]}"><span class="ico" style="background:${a[3]}">${a[4]}<img src="assets/ic_${a[0]}.webp" alt="" onerror="this.remove()">${(a[0] === 'report' && FB.unread) || (a[0] === 'sign' && window.CHECKIN && CHECKIN.can()) || (a[0] === 'news' && window.NEWS && NEWS.unread()) || (a[0] === 'bank' && window.BANK && BANK.can()) || (a[0] === 'badge' && badgeUnpaid().length) ? '<span class="badge sm">!</span>' : ''}</span><span>${a[1]}</span><small>${a[2]}</small></button>`).join('') + '</div>' +
       `<p class="muted" style="padding:0 16px 16px">喵信會在之後的版本開放。</p>`;
   } else {
-    const titles = { quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到', news: '公告', bank: '喵喵銀行', record: '我的紀錄' };
+    const titles = { realcat: '我的真實店貓', quiz: '喵型測驗', map: '分店地圖', menu: '掌上菜單', shop: '商店', hire: '喵才獵人', wallet: '喵錢包', save: '存檔碼', music: '喵音樂', myshop: '我的店', promo: '喵喵宣傳', ig: '喵IG', badge: '徽章', game: '小遊戲', cats: '喵喵家族', phone: '電話', daily: '每日任務', review: '喵評論', guests: '客人圖鑑', closet: '衣櫃', settings: '設定', rank: '排行榜', collab: '聯名合作', friend: '好友', outing: '出去玩', sign: '每日簽到', news: '公告', bank: '喵喵銀行', record: '我的紀錄' };
     h += `<div class="ahead"><button id="pBack">‹ 返回</button><h3>${titles[phoneApp]}</h3><button id="pClose">關閉</button></div><div class="abody">`;
     if (phoneApp === 'menu') {
       const rows = unlockedDishes().map(d => [d, MENU[d].name, baseOf(d)]).concat([['loft', '2F 吸貓入場費', baseOf('loft')], ['beans', '咖啡豆（一包）', baseOf('beans')], ['treat', '貓咪肉泥（一條）', baseOf('treat')]]);
@@ -4698,7 +4733,7 @@ function renderPhone() {
       const where = k => k.anim ? '跟店長玩' : k.state === 'sleep' ? '睡覺中' : k.state === 'play' || k.state === 'toPlay' ? '陪客人玩' : k.state === 'eat' ? '吃飯中' : k.floor === 3 ? (G.at === 3 ? '在 5F 休息' : '休息室') : `在 ${fname(k.floor)} 散步`;
       const tab = S.catTab || 'mine', cap = dutyCap(), duty = onDuty();
       const rtag = d => `<span style="font-size:11px;padding:1px 6px;border-radius:8px;color:#fff;background:${RARITY[d.rarity].color};margin-left:4px">${RARITY[d.rarity].name}</span>`;
-      h += `<div class="row" style="margin:0 0 6px;gap:6px">${[['mine', `我的貓 ${G.cats.length}`], ['adopt', '領養中心'], ['dex', `圖鑑 ${G.seen.length}/${CAT_IDS.length}`]].map(([k, n]) => `<button data-ctab="${k}" ${k === tab ? 'class="primary"' : ''}>${n}</button>`).join('')}</div>`;
+      h += `<div class="row" style="margin:0 0 6px;gap:6px">${[['mine', `我的貓 ${G.cats.length}`], ['adopt', '領養中心'], ['dex', `圖鑑 ${G.seen.length}/${CAT_IDS.length}`], ...(window.REALCAT && CLOUD.sb && !CLOUD.db ? [['real', '真實店貓']] : [])].map(([k, n]) => `<button data-ctab="${k}" ${k === tab ? 'class="primary"' : ''}>${n}</button>`).join('')}</div>`;
       if (tab === 'mine') {
         if (G.owned.includes(3)) h += `<p class="muted">貓咪室內樂園開張後可以「送養」：幫貓咪找到愛牠的新家，新家會寄感謝信來，還會多一些粉絲。</p>`;
         h += `<p class="muted">今天是第 ${G.day} 天。${G.owned.length > 1 ? G.owned.map(id => `${shopRec(id).shopName}可以有 ${dutyCapOf(id)} 隻貓上班（現在 ${dutyList(id).length} 隻）`).join('，') + '。' : `店裡同時可以有 ${cap} 隻貓上班（店鋪等級越高、擴建越多，名額越多，最多 ${shopDef().cats} 隻）。`}其他的貓在貓咪宿舍休息。排班從明天開店生效。點「改名」可以幫貓取名字。</p>`;
@@ -4711,12 +4746,14 @@ function renderPhone() {
             if (at === id) return `<button data-move="${c.id}:0" ${id === 1 && dutyList(1).length <= 1 ? 'disabled' : ''}>${nm ? '從' + nm + '' : ''}排休</button>`;
             const full = dutyList(id).length >= dutyCapOf(id);
             return `<button class="${full ? '' : 'primary'}" data-move="${c.id}:${id}" ${full ? 'disabled' : ''}>${full ? (nm || '上班') + '名額滿了' : nm ? `到${nm}上班` : '排上班'}</button>`; }).join('');
-          h += `<div class="item"><div class="top"><span class="nm">${catThumb(d, 30)} ${catNameOf(c.id)}${d.honmei ? '<span style="font-size:11px;padding:1px 6px;border-radius:8px;color:#5D4037;background:#F5C16C;margin-left:4px">⭐ 本命貓</span>' : rtag(d)}</span><b>♥ ${v}</b></div>
-            <div class="sub">${d.honmei ? '' : `No.${String(d.no).padStart(3, '0')}・`}${d.desc}${d.honmei ? '，親密度長得比較快' : ''}。來店第 ${days} 天（${catRank(days)}）・${BOND[bondLvV(v)].title}・${st}</div>
-            <div class="row" style="margin:0;flex-wrap:wrap"><button data-rename="${c.id}">改名</button>${btns}${G.owned.includes(3) ? `<button data-rehome="${c.id}" ${S.phase === 'settle' ? 'disabled' : ''}>送養</button>` : ''}</div></div>`;
+          h += `<div class="item"><div class="top"><span class="nm">${catThumb(d, 30)} ${catNameOf(c.id)}${d.honmei ? '<span style="font-size:11px;padding:1px 6px;border-radius:8px;color:#5D4037;background:#F5C16C;margin-left:4px">⭐ 本命貓</span>' : d.real ? REALTAG : rtag(d)}</span><b>♥ ${v}</b></div>
+            <div class="sub">${d.honmei || d.real ? '' : `No.${String(d.no).padStart(3, '0')}・`}${d.desc}${d.honmei ? '，親密度長得比較快' : ''}。來店第 ${days} 天（${catRank(days)}）・${BOND[bondLvV(v)].title}・${st}</div>
+            <div class="row" style="margin:0;flex-wrap:wrap"><button data-rename="${c.id}">改名</button>${btns}${G.owned.includes(3) && !d.mine ? `<button data-rehome="${c.id}" ${S.phase === 'settle' ? 'disabled' : ''}>送養</button>` : ''}${d.real && d.link ? `<button data-rclink="${c.id}">看${d.shop} ↗</button>` : ''}</div></div>`;
         }
         if (G.letters?.length) h += `<p class="kh">💌 新家寄來的信</p>` + G.letters.slice().reverse().map(l => `<div class="item"><div class="top"><span class="nm">${catThumb(CAT_DEFS[l.id], 26)} ${l.nm}</span><span class="sub">第 ${l.d} 天送養</span></div><div class="sub">${l.fam}：「謝謝你們照顧${l.nm}，牠在新家過得很好！」</div></div>`).join('');
         if (list.length > per) h += `<div class="row" style="margin:0;justify-content:center"><button data-cpage="${pg - 1}" ${pg ? '' : 'disabled'}>‹ 上一頁</button><span class="sub">${pg + 1}/${Math.ceil(list.length / per)}</span><button data-cpage="${pg + 1}" ${(pg + 1) * per < list.length ? '' : 'disabled'}>下一頁 ›</button></div>`;
+      } else if (tab === 'real' && window.REALCAT) {
+        h += REALCAT.tabHtml();
       } else if (tab === 'adopt') {
         h += `<p class="muted">中途之家每天會送來 4 隻新的貓，明天會換一批。店鋪 Lv.2 開始會出現「少見」的貓，Lv.4「稀有」，Lv.6「傳說」。領養要付現金，不能賒帳。</p>`;
         const offers = (S.offers || []).filter(id => !G.cats.some(c => c.id === id)).concat(CAT_IDS.filter(id => CAT_DEFS[id].orig && !G.cats.some(c => c.id === id)));
@@ -4783,6 +4820,8 @@ function renderPhone() {
         <div class="item"><div class="top"><span class="nm">動作鍵</span></div><div class="sub">藏起來之後，直接點店長旁邊的東西一樣能互動（鍵盤 E 也可以）。</div>${seg('act', [['on', '正常'], ['mini', '縮小靠邊'], ['off', '隱藏']])}</div>`;
     } else if (phoneApp === 'rank') {
       h += boardHtml();
+    } else if (phoneApp === 'realcat') {
+      h += REALCAT.appHtml();
     } else if (phoneApp === 'quiz') {
       h += MEOW.appHtml();
     } else if (phoneApp === 'friend') {
@@ -4846,6 +4885,7 @@ function renderPhone() {
   sc.querySelectorAll('[data-outfit]').forEach(b => b.onclick = () => { const o = OUTFITS.find(o => o.id === b.dataset.outfit), E = evNow(); if (!o || o.inv || G.wardrobe.includes(o.id) || (o.ev ? !E || E.id !== o.ev : o.lv > topLv()) || G.cash < o.price) return;
     G.cash -= o.price; S.today.spent += o.price; G.wardrobe.push(o.id); G.outfit = o.id; for (let i = 0; i < 3; i++) art(`${o.spr}${mgrSfx()}_${i}`); toast(`買了「${outfitName(o)}」，${G.mgrName}店長換上新衣服了！`); say(S.mgr, '好看嗎？'); saveProgress(); renderPhone(); });
   sc.querySelectorAll('[data-ctab]').forEach(b => b.onclick = () => { S.catTab = b.dataset.ctab; renderPhone(); });
+  if (window.REALCAT && (phoneApp === 'cats' || phoneApp === 'realcat')) REALCAT.bind(sc);
   sc.querySelectorAll('[data-cpage]').forEach(b => b.onclick = () => { S.catPage = +b.dataset.cpage; renderPhone(); });
   sc.querySelectorAll('[data-dpage]').forEach(b => b.onclick = () => { S.dexPage = +b.dataset.dpage; renderPhone(); });
   sc.querySelectorAll('[data-dexr]').forEach(b => b.onclick = () => { S.dexR = +b.dataset.dexr; S.dexPage = 0; renderPhone(); });
@@ -4999,6 +5039,7 @@ function decodeSave(code) {
   if (sum !== +m[2]) throw new Error('存檔碼有缺字');
   const o = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
   const base = freshG();
+  const real = readReal(o.real); regReal(real); // before the cats list below, which drops ids it doesn't know
   const num = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d);
   const ymdOk = v => typeof v === 'string' && /^\d{4}-\d\d-\d\d$/.test(v) ? v : '';
   const owned = [1, ...(Array.isArray(o.owned) ? o.owned.filter(id => id !== 1 && SHOP_DEFS[id]) : [])].filter((v, i, a) => a.indexOf(v) === i);
@@ -5052,6 +5093,7 @@ function decodeSave(code) {
     reviews: Array.isArray(o.reviews) ? o.reviews.filter(r => r && typeof r.t === 'string').slice(0, 80).map(r => ({ d: Math.max(1, Math.floor(num(r.d, 1))), s: clamp(Math.floor(num(r.s, 3)), 1, 5), w: cleanName(r.w, '客人', 8), t: cleanName(r.t, '', 60) })) : [],
     revTotal: Math.max(0, Math.floor(num(o.revTotal, 0))),
     // 喵型測驗: last result, which 本命貓 this save got, who invited this player (s: 0 = not joined yet, 1 = joined, 2 = first day done, 3 = link not valid), invite rewards handed out
+    real,
     mtype: window.CATQ && CATQ.typeOf(o.mtype) ? o.mtype : '', hm: window.CATQ && CATQ.typeOf(o.hm) ? o.hm : '',
     ref: o.ref && /^[A-Z0-9]{6}$/.test(o.ref.c) ? { c: o.ref.c, s: [0, 1, 2, 3].includes(o.ref.s) ? o.ref.s : 0 } : null, inv: clamp(Math.floor(num(o.inv, 0)), 0, 9999),
     // 每日簽到 (checkin.js): how many days signed in, and the real-world date of the last one
@@ -5856,5 +5898,6 @@ window.__game = { get G() { return G; }, get S() { return S; }, openBranch, goSh
 <script src="checkin.js"></script>
 <script src="news.js"></script>
 <script src="bank.js"></script>
+<script src="realcat.js"></script>
 </body>
 </html>
