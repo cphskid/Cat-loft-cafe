@@ -7,7 +7,10 @@
 // 貓咪資料存在存檔的 G.real（index.html readReal / regReal），圖片在 Supabase 公開儲存（REAL_ART）。
 // 用到 index.html 的全域：G、S、CLOUD、PERSONAS、CAT_DEFS、REAL_PRICE、REAL_ART、REALTAG、readReal、regReal、welcomeCat、
 //   catNameOf、yen、toast、sfx、saveProgress、renderPhone、closeChoose、cleanName、$。
+// 2026-11-15 Chuck：「這個先不開放，太燒 token 了」→ 玩家那邊的申請 app 和「真實店貓」分頁先藏起來（OPEN = false）。
+// 管理頁、資料庫和已經收到的店貓照常運作；要開放時把 OPEN 改成 true。
 (function () {
+  const OPEN = false;
   const MAX_PHOTOS = 3;
   const IN = 'display:block;width:100%;box-sizing:border-box;margin-top:4px;font:inherit;font-size:15px;font-weight:400;padding:8px 10px;border:1.5px solid var(--wood-l);border-radius:10px;background:#fff;color:var(--ink)';
   const F = { name: '', pers: [], intro: '', shop: '', link: '', pub: true, agree: false, photos: [], sending: false };
@@ -174,5 +177,5 @@
     mine = null;
   }
 
-  window.REALCAT = { sub, appHtml, tabHtml, bind, offerGift, reload: () => { mine = null; pub = null; } };
+  window.REALCAT = { open: OPEN, sub, appHtml, tabHtml, bind, offerGift, reload: () => { mine = null; pub = null; } };
 })();
