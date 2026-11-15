@@ -5,7 +5,7 @@
 //   3. Gemini 文字模型先把貓的花色寫成一段英文（只寫花色、斑塊位置、眼睛顏色、體型），畫圖時花色才不會亂掉
 //   4. Gemini 圖片模型照遊戲的水彩畫法（web/assets/realcat_ref.webp：橘子和黑豆的 5 個動作）畫這隻貓的 5 個動作
 // 回傳 PNG（base64），切圖、挑上排或下排、上傳都在管理者網頁上做。
-// 需要 Supabase secret GEMINI_API_KEY（網頁裡不放金鑰）。部署時 verify_jwt = true。
+// 需要 Supabase secret GEMINI_API_KEY（網頁裡不放金鑰）。部署時 verify_jwt = false（新的 sb_publishable 金鑰下由這裡自己用 catloft_is_admin 檢查登入的人）。
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
 const ORIGINS = ['https://catloftcafe.ciyulab.com', 'https://cphskid.github.io', 'http://localhost:8000', 'http://127.0.0.1:8000'];

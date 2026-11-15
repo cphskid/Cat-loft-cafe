@@ -63,10 +63,7 @@ drop policy if exists "catloft realcats art: admin delete" on storage.objects;
 create policy "catloft realcats art: admin delete" on storage.objects for delete to authenticated
   using (bucket_id = 'catloft-realcats' and public.catloft_is_admin());
 
--- 去掉 HTML 會用到的字元、頭尾空白
-create or replace function public.catloft_clean(p text, p_max int) returns text
-language sql immutable set search_path to 'public', 'pg_temp'
-as $$ select left(btrim(regexp_replace(coalesce(p, ''), '[<>&"''`\\\r\n\t]', '', 'g')), p_max) $$;
+-- 文字清理用現有的 catloft_clean(t, n)（supabase/catloft_friends.sql）：去掉 HTML 會用到的字元、頭尾空白、截長度
 
 create or replace function public.catloft_realcat_apply(p_name text, p_pers int[], p_intro text, p_shop text, p_link text, p_public boolean, p_photos text[])
 returns bigint
@@ -180,7 +177,7 @@ begin
   update public.catloft_realcats set photos_gone = true where id = p_id;
 end $$;
 
-revoke all on function public.catloft_clean(text, int), public.catloft_realcat_apply(text, int[], text, text, text, boolean, text[]), public.catloft_my_realcats(),
+revoke all on function public.catloft_realcat_apply(text, int[], text, text, text, boolean, text[]), public.catloft_my_realcats(),
   public.catloft_realcats_public(), public.catloft_realcat_get(bigint), public.catloft_admin_realcats(), public.catloft_admin_realcat_art(bigint, text),
   public.catloft_admin_realcat_decide(bigint, boolean, text, text, text), public.catloft_admin_realcat_photos_gone(bigint) from public, anon;
 grant execute on function public.catloft_realcat_apply(text, int[], text, text, text, boolean, text[]), public.catloft_my_realcats(),
