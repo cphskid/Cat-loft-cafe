@@ -842,13 +842,8 @@ const slotKey = (role, n) => n > 1 ? role + '#' + n : role;
 const validKey = k => typeof k === 'string' && /^[a-z0-9]+(#[23])?$/.test(k) && !!ROLES[roleOf(k)];
 const keysOf = role => G.staff.filter(k => roleOf(k) === role).sort((a, b) => slotOf(a) - slotOf(b));
 const freeSlot = role => [1, 2, 3].map(n => slotKey(role, n)).find(k => !G.staff.includes(k));
-// the 2nd and 3rd person in a job wear a crew look borrowed from the other shops, so they don't look like clones
-const SPR_SETS = ['', 's2', 's3'];
-function slotSpr(role, n, own) {
-  if (n === 1) return own;
-  const base = role === 'server2' ? 'server' : role, mine = own.slice(0, own.length - base.length);
-  return SPR_SETS.filter(p => p !== mine)[n - 2] + base;
-}
+// every person in a job wears this shop's own uniform, so the whole crew of one shop looks consistent
+function slotSpr(role, n, own) { return own; }
 // ---- job interviews: the manager picks who to hire; a poor pick works slowly and fewer guests come in (fans never drop)
 const HIRE_FEE = [9000, 12000];
 const IV_Q = ['為什麼想來我們店工作？', '客人突然變很多的時候，你會怎麼做？', '一個禮拜可以來幾天？'];
