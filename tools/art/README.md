@@ -22,3 +22,6 @@ Backgrounds were repainted from screenshots of the old canvas-drawn floors so th
 
 ## 真實店貓
 `web/assets/realcat_ref.webp` is the style/pose reference sheet (橘子 and 黑豆, 5 poses each, 2× on white) that `supabase/functions/catloft-realcat-draw` sends to Gemini together with a player's cat photo. The admin page (`web/admin/realcats.js`) cuts the returned sheet into rows of 5 sprites in the browser and scales them like `pack.py cats` (walking pose 160 px wide).
+
+## 喵喵寫真館（貓咪頭飾、拍照背景、抓拍時刻）
+`acc_h_*` (cat headwear) were painted in one gen2.py sheet on white, using in-game cat sprites wearing each item as the reference, cut with cut.py (threshold 215) and scaled to 100-150 px wide. Where each one sits on each cat and pose is the `HEAD` table in `web/photo.js`. `pb_*` (photo backdrops, 900x500) are one 2x2 gen2.py sheet of empty photo corners with a stool in the middle, cropped. `mo_*` (抓拍時刻 photos, 800x470) are three 2x2 gen2.py sheets of candid cat moments painted from the cat sprites, cropped.
